@@ -1,0 +1,77 @@
+
+
+<div class="w3-panel w3-pale-blue w3-leftbar
+ w3-rightbar w3-topbar w3-border-blue w3-margin-right w3-margin-left">
+<table width = "100%" border = 0 >
+
+<tr><td>
+  <font family = 'courier' size='5'><b>IRA</b> - Add an Entity</font>
+</td><td align = "right">
+<a href = '/portfolio/{{userObj.id}}'>{{userObj.firstname}}</a>&emsp;<img width='50' src={{userObj.photo}}>
+</td></tr>
+
+<tr><td align = "left">
+  <a href = "/">Home</a>&emsp;
+</td><td>
+</td><td align = "right">
+</td></tr>
+
+<tr><td>
+<br>
+{{message}}
+</td></tr>
+</table>
+</div>
+
+<form action = "{{postendpoint}}" method = "POST">
+<div class="w3-panel w3-pale-blue w3-leftbar
+          w3-rightbar w3-border-blue w3-margin-right w3-margin-left">
+<br>
+<table>
+<tr>
+	<td>
+	Entity Type:
+	</td><td>
+              <select name="type">
+              {{#each typeOptions}}
+              <option value='{{type_num}}'>{{name}}</option>
+              {{/each}}
+              </select>
+  </td>
+<tr>
+
+<tr>
+	<td>
+  Entity Name:
+	</td><td>
+	<input type = "text" name = "name"><br>
+    </td>
+<tr>
+
+<tr>
+	<td>
+  Tax-ID or EIN:
+	</td><td>
+    <input type = "text" name = "taxid"><br>
+    </td>
+<tr>
+
+  <tr>
+  	<td>
+    Key Man:
+  	</td><td>
+      <input type = "text" name = "keyman_id"><br>
+      </td>
+  <tr>
+
+
+<tr>
+	<td></td>
+  <td>
+     <input type = "submit" value = "Submit">
+  </td>
+<tr>
+</table>
+      </form>
+</div>
+&emsp;&emsp;

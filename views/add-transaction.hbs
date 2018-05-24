@@ -1,0 +1,136 @@
+
+
+<div class="w3-panel w3-pale-blue w3-leftbar
+ w3-rightbar w3-topbar w3-border-blue w3-margin-right w3-margin-left">
+<table width = "100%" border = 0 >
+
+<tr><td>
+  <font family = 'courier' size='5'><b>IRA</b> - Add a Transaction</font>
+</td><td align = "right">
+<a href = '/portfolio/{{userObj.id}}'>{{userObj.firstname}}</a>&emsp;<img width='50' src={{userObj.photo}}>
+</td></tr>
+
+<tr><td align = "left">
+  <a href = "/">Home</a>&emsp;
+</td><td>
+</td><td align = "right">
+</td></tr>
+
+<tr><td>
+<br>
+{{message}}
+</td></tr>
+</table>
+</div>
+
+<form action = "{{postendpoint}}" method = "POST" id="newtrans">
+<div class="w3-panel w3-pale-blue w3-leftbar
+          w3-rightbar w3-border-blue w3-margin-right w3-margin-left">
+<br>
+<table width = "100%" border = 0>
+      <colgroup>
+      <col width="20%"/>
+      <col width="20%"/>
+      <col width="1%"/>
+      <col width="10%"/>
+      <col width="30%"/>
+      </colgroup>
+
+
+<tr>
+	<td>
+Transaction Type:
+	</td><td>
+              <select name="trans_type">
+              {{#each typeOptions}}
+              <option value='{{type_num}}'>{{name}}</option>
+              {{/each}}
+              </select>
+  </td>
+  <td><br></td>
+  <td><br></td>
+  <td><br></td>
+</tr>
+<tr><td><br></td></tr>
+<tr>
+
+  <td>
+Deal:
+	</td><td>
+              <select name="investment_entity_id">
+              {{#each deals}}
+              <option value='{{id}}'>{{name}}</option>
+              {{/each}}
+              </select>
+  </td>
+  <td><br></td>
+  <td>
+Investor:
+	</td><td>
+              <select name="investor_entity_id">
+              {{#each investors}}
+              <option value='{{id}}'>{{name}}</option>
+              {{/each}}
+              </select>
+  </td>
+</tr>
+
+
+<tr><td><br></td></tr>
+<tr>
+  <td>
+Pass-Thru or Target Entity:
+	</td><td>
+              <select name="passthru_entity_id">
+              <option value=''>No Passthru</option>
+              {{#each passthrus}}
+              <option value='{{id}}'>{{name}}</option>
+              {{/each}}
+              </select>
+  </td>
+</tr>
+
+<tr><td><br></td></tr>
+<tr>
+  <tr>
+  	<td>
+    Amount:
+  	</td><td>
+      <input type = "text" name = "amount" value="$0.00"><br>
+      </td>
+
+
+  <td><br></td>
+
+	<td>
+  Wire Date:
+	</td><td>
+	<input type = "date" name = "wired_date"><br>
+    </td>
+</tr>
+
+<tr><td><br></td></tr>
+<tr>
+  	<td>
+    Notes:
+  	</td><td>
+      <textarea name = "notes" cols="25" rows="3"></textarea>
+      </td>
+  <tr>
+
+      </form>
+<tr>
+	<td></td>
+  <td></td>
+  <td></td>
+  <td></td>
+  <td>
+    <button type="submit" form="newtrans" xtyle="color:white;background-color:dodgerblue;width:150px;height:50px">Add transaction</button>
+
+  </td>
+<tr>
+</table>
+<br>
+
+</div>
+&emsp;&emsp;
