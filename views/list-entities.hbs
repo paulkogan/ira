@@ -55,10 +55,16 @@
 
           </td>
           <td >{{taxid}}</td>
-          <td>{{entity_type}}</td>
+          <td>
+                 {{#ifEqual entity_type "Deal"}}
+                     <a href = "/ownership/{{id}}">{{entity_type}}</a>
+                  {{else}}
+                     {{entity_type}}
+                  {{/ifEqual}}
+          </td>
           <td align="left">
             {{#ifEqual entity_type "Deal"}}
-            <a href = "/dealownership/{{id}}">
+            <a href = "/dealdetails/{{id}}">
                 <img width="30" src = "../static/file-black-512.png">
             </a>
             {{else}}

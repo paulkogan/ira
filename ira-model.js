@@ -37,6 +37,8 @@ module.exports = {
   getAllEntities: getAllEntities,
   getAllTransactions: getAllTransactions,
   getOwnershipForEntity: getOwnershipForEntity,
+  getEntityDetails: getEntityDetails,
+  getDealDetails: getDealDetails,
   insertEntity: insertEntity,
   insertTransaction: insertTransaction,
   getEntitiesByTypes: getEntitiesByTypes,
@@ -118,6 +120,52 @@ function getEntityTypes () {
 } // function
 
 
+
+
+
+//owneship: parent_entity_id, child_entity_id, capital_pct
+function getEntityDetails (entity_id) {
+  let queryString = 'SELECT * from entities'
+  + ' WHERE id ='+entity_id;
+      return new Promise(function(succeed, fail) {
+            connection.query(queryString,
+              function(err, results) {
+                      if (err) {
+                            fail(err)
+                      } else {
+                            if (!results[0]) {
+                                    fail("No such entity, sorry")
+                            }
+
+                            console.log ("Success - The found entity "+results[0].name +"\n")
+                            succeed(results[0])
+                      }
+              }); //connection
+      }); //promise
+} // function
+
+
+
+//owneship: parent_entity_id, child_entity_id, capital_pct
+function getDealDetails (deal_id) {
+  let queryString = 'SELECT * from deals'
+  + ' WHERE id ='+deal_id+' ORDER BY id';
+
+      return new Promise(function(succeed, fail) {
+            connection.query(queryString,
+              function(err, results) {
+                      if (err) {
+                            fail(err)
+                      } else {
+                            succeed(results)
+                      }
+              }); //connection
+      }); //promise
+} // function
+
+
+
+
 //owneship: parent_entity_id, child_entity_id, capital_pct
 function getOwnershipForEntity (child_id) {
   let queryString = 'SELECT o.id, investor.name as investor_name, investment.name as investment_name, passthru.name as passthru_name,'
@@ -133,8 +181,14 @@ function getOwnershipForEntity (child_id) {
             connection.query(queryString,
               function(err, results) {
                       if (err) {
+                            console.log ("Cant find ownership "+err)
                             fail(err)
                       } else {
+                            console.log ("Ownership query OK got "+results.length)
+                            //console.log ("The results are:"+JSON.stringify(results))
+                            // if (results.length<1) {
+                            //           fail("no ownership data")
+                            // }
                             succeed(results)
                       }
               }); //connection

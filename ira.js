@@ -21,7 +21,7 @@ const RedisStore = require('connect-redis')(session)
 
 const iraSQL =  require('./ira-model');
 const secret = "cat"
-const iraVersion = "0.4"
+const iraVersion = "0.5 +Deals +Add Transaction"
 const nodePort = 8081
 //var router = express.Router();  then call router.post('/')
 
@@ -77,8 +77,6 @@ let userObj =
 
 
 
-
-
 //============ FUNCTIONS ======================
 
 function formatCurrency (amount) {
@@ -94,25 +92,144 @@ function validateOwnership (investors) {
              totalCapital += expandInvestors[index].amount;
              totalCapitalPct += expandInvestors[index].capital_pct;
              expandInvestors[index].formattedAmount = formatCurrency(expandInvestors[index].amount)
-             console.log("IN validate ownership: "+ index +" lastname: "+expandInvestors[index].investor_name+" amount: "+expandInvestors[index].formattedAmount+" cap_pct: "+expandInvestors[index].capital_pct)
+             //console.log("IN validate ownership: "+ index +" lastname: "+expandInvestors[index].investor_name+" amount: "+expandInvestors[index].formattedAmount+" cap_pct: "+expandInvestors[index].capital_pct)
       }//for
       return [expandInvestors, formatCurrency(totalCapital), totalCapitalPct];
   } //function
 
 
-function getAllEntitiesByType(type){
-      iraSQL.getAllEntitiesByType(type).then(
-            async function(entities) {
-                    return entities
-               }).catch(error => {
-                     console.log("Process_add_entity problem: "+error);
-                     return;
-              }); //try-catch
-}
+  function calculateDeal (deal) {
+    console.log("in CalculateDeal, Deal is  "+JSON.stringify(deal));
+        let expandDeal = deal
+        expandDeal.total_value = formatCurrency(expandDeal.aggregate_value + expandDeal.cash_assets)
+        expandDeal.total_debt = formatCurrency(expandDeal.aggregate_debt + expandDeal.deal_debt)
+        expandDeal.aggregate_value = formatCurrency(expandDeal.aggregate_value)
+        expandDeal.cash_assets = formatCurrency(expandDeal.cash_assets)
+        expandDeal.aggregate_debt = formatCurrency(expandDeal.aggregate_debt)
+        expandDeal.deal_debt  = formatCurrency(expandDeal.deal_debt)
+        return expandDeal;
+    } //function
+
 
 
 
 //============ ROUTES  ======================
+
+
+app.get('/dealdetails/:id', (req, res) => {
+
+    if (req.session && req.session.passport) {
+                 userObj = req.session.passport.user;
+    }
+
+    //call the async function
+    pullDealComponents().catch(err => {
+          console.log("Deal Components problem: "+err);
+    })
+
+    async function pullDealComponents() {
+          var entity = await iraSQL.getEntityDetails(req.params.id);
+          console.log("have Entity   "+ entity.name);
+          var deals = await iraSQL.getDealDetails(entity.deal_id);
+          console.log("Before Ownership, have Entity   "+ entity.name+"   and Deal is  "+JSON.stringify(deals));
+          var investors = await iraSQL.getOwnershipForEntity(entity.id)
+          if (investors.length>0) {
+                                let results = validateOwnership(investors)
+                                let expandInvestors = results[0]
+                                let totalCapital =  results[1]
+                                let totalCapitalPct = results[2]
+                                let expandDeal = calculateDeal(deals[0])
+                                console.log("rendering ownership and Deal is "+JSON.stringify(deals))
+                                res.render('deal-details', {
+                                        userObj: userObj,
+                                        message:  "Showing "+investors.length+" investors",
+                                        dealName: expandDeal.name,
+                                        investors: expandInvestors,
+                                        totalCapital: totalCapital,
+                                        totalCapitalPct: totalCapitalPct,
+                                        deal:expandDeal
+                                });
+
+            } else { //no ownership data
+                                let expandDeal = calculateDeal(deals[0])
+                                res.render('deal-details', {
+                                      userObj: userObj,
+                                      message:  "No ownership information found ",
+                                      dealName: expandDeal.name,
+                                      deal:expandDeal
+                                }); //  render
+
+            }  //if-else  - no ownership get name of entity
+
+      } //async function
+
+}); //route - deal details
+
+
+
+
+
+
+
+
+
+app.get('/ownership/:id', (req, res) => {
+              if (req.session && req.session.passport) {
+                 userObj = req.session.passport.user;
+               }
+
+
+  iraSQL.getEntityDetails(req.params.id).then(
+    function(result) { //got a good entity
+      //console.log("what I got: "+JSON.stringify(result));
+      console.log("in get Ownership, have Entity   "+ result.name+"   getting Owners for "+result.id);
+      iraSQL.getOwnershipForEntity(result.id).then(
+              function(investors) {
+                          if (investors.length>0) {
+                          let results = validateOwnership(investors)
+                          let expandInvestors = results[0]
+                          let totalCapital =  results[1]
+                          let totalCapitalPct = results[2]
+                          console.log("rendering ownership")
+                          res.render('deal-ownership', {
+                                  userObj: userObj,
+                                  message:  "Showing "+investors.length+" investors ",
+                                  dealName: investors[0].investment_name,
+                                  investors: expandInvestors,
+                                  totalCapital: totalCapital,
+                                  totalCapitalPct: totalCapitalPct
+                          });
+
+                    } else { //no ownership data
+                                        res.render('deal-ownership', {
+                                              userObj: userObj,
+                                              message:  "No Ownership information found ",
+                                              dealName: foundEntity.name
+                                        }); //  render
+
+                  }  //if-else  - no ownership get name of entity
+
+          }).catch(error => {
+                          console.log("getOwnershipForEntity problem: "+error);
+                          return;
+          }); //then ownership promise
+
+
+
+      }, function(error) {   //not getting entity
+                console.log("No entity found" + req.params.id)
+                req.flash('login', "No entity "+req.params.id+".  ")
+                res.redirect('/home')
+
+
+  }); //then enity promise then
+}); //route - ownership
+
+
+
+
+
+
 
 
 app.get('/add-transaction', (req, res) => {
@@ -150,7 +267,6 @@ app.get('/add-transaction', (req, res) => {
         //pass-thrus
         iraSQL.getEntitiesByTypes([3]).then(
               async function(entities) {
-                      console.log("Getting passthrus!");
                       passthrusToPick = entities;
                   }, function(error) {   //failed
                        console.log("Getting passthrus problem: "+error);
@@ -242,42 +358,12 @@ app.post('/process_add_entity', urlencodedParser, (req, res) => {
 
 
 
-app.get('/dealownership/:id', (req, res) => {
-              if (req.session && req.session.passport) {
-                 userObj = req.session.passport.user;
-               }
-
-              iraSQL.getOwnershipForEntity(req.params.id).then(
-                  function(investors) {
-                      let results = validateOwnership(investors)
-                      let expandInvestors = results[0]
-                      let totalCapital =  results[1]
-                      let totalCapitalPct = results[2]
-                      console.log("rendering ownership")
-                      res.render('deal-ownership', {
-                              userObj: userObj,
-                              message:  "Showing "+investors.length+" investors ",
-                              dealName: investors[0].investment_name,
-                              investors: expandInvestors,
-                              totalCapital: totalCapital,
-                              totalCapitalPct: totalCapitalPct
-                      });
-
-                  }).catch(error => {
-                  console.log("getOwnershipForEntity problem: "+error);
-                  return;
-            })
-    }); //route - deal ownership
-
-
-
 
 app.get('/transactions', (req, res) => {
   if (req.session && req.session.passport) {
      userObj = req.session.passport.user;
 
    }
-
           iraSQL.getAllTransactions().then(
                 async function(transactions) {
                           res.render('list-transactions', {
