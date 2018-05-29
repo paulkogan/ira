@@ -21,7 +21,7 @@ const RedisStore = require('connect-redis')(session)
 
 const iraSQL =  require('./ira-model');
 const secret = "cat"
-const iraVersion = "0.5 +Deals +Add Transaction"
+const iraVersion = "0.6 +Add Deal"
 const nodePort = 8081
 //var router = express.Router();  then call router.post('/')
 
@@ -116,6 +116,64 @@ function validateOwnership (investors) {
 //============ ROUTES  ======================
 
 
+
+  app.get('/add-deal', (req, res) => {
+          if (req.session && req.session.passport) {
+             userObj = req.session.passport.user;
+          }
+
+          res.render('add-deal', {
+                  userObj: userObj,
+                  postendpoint: '/process_add_deal'
+
+          });//render
+
+  }); //route
+
+
+
+// insert the new deal and corresponding entity
+app.post('/process_add_deal', urlencodedParser, (req, res) => {
+
+  //call the async function
+  insertDealAndEntity().catch(err => {
+        console.log("Deal and Entity problem: "+err);
+  })
+
+  async function insertDealAndEntity() {
+            let formDeal = req.body
+            let newDeal = {
+              name: formDeal.name,
+              aggregate_value: formDeal.aggregate_value,
+              cash_assets: formDeal.cash_assets,
+              aggregate_debt: formDeal.aggregate_debt,
+              deal_debt: formDeal.deal_debt,
+              notes: formDeal.notes
+            }
+
+            var insertDealResults = await iraSQL.insertDeal(newDeal);
+            console.log( "Added deal #: "+insertDealResults.insertId);
+            req.flash('login', "Added Deal: "+insertDealResults.insertId);
+
+            let dealEntity = {
+              type:1,
+              deal_id: insertDealResults.insertId,
+              investor_id:null,
+              keyman_id: null,
+              name: newDeal.name,
+              taxid: formDeal.taxid
+            }
+            var insertEntityResults = await iraSQL.insertEntity(dealEntity);
+            req.flash('login', "In deals, added entity #: "+insertEntityResults.insertId);
+
+            res.redirect('/entities');
+
+   } //async function
+}); //process add-deal route
+
+
+
+
 app.get('/dealdetails/:id', (req, res) => {
 
     if (req.session && req.session.passport) {
@@ -161,7 +219,7 @@ app.get('/dealdetails/:id', (req, res) => {
 
             }  //if-else  - no ownership get name of entity
 
-      } //async function
+      } //async function pullDealComponents
 
 }); //route - deal details
 
@@ -340,8 +398,8 @@ app.post('/process_add_transaction', urlencodedParser, (req, res) => {
 // insert the new entity
 app.post('/process_add_entity', urlencodedParser, (req, res) => {
       let entity = req.body
-      entity.deal_id = 999;
-      entity.investor_id = 999;
+      entity.deal_id = null;
+      entity.investor_id = null;
       iraSQL.insertEntity(entity).then (
           function (savedData) {
               //console.log( "Added entity #: "+savedData.insertId);
@@ -422,8 +480,9 @@ app.get('/entities', (req, res) => {
       let menuOptions = []
       menuOptions[0] = {name:"Entities", link:"/entities"}
       menuOptions[1] = {name:"Transactions", link:"/transactions"}
-      menuOptions[2] = {name:"Add Entity", link:"/add-entity"}
+      menuOptions[2] = {name:"Add Deal", link:"/add-deal"}
       menuOptions[3] = {name:"Add Ledger Transaction", link:"/add-transaction"}
+      menuOptions[4] = {name:"Add Entity", link:"/add-entity"}
 
       res.render('home', {
               userObj: userObj,

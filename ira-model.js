@@ -41,6 +41,7 @@ module.exports = {
   getDealDetails: getDealDetails,
   insertEntity: insertEntity,
   insertTransaction: insertTransaction,
+  insertDeal: insertDeal,
   getEntitiesByTypes: getEntitiesByTypes,
   getEntityTypes: getEntityTypes,
   getTransactionTypes: getTransactionTypes
@@ -62,6 +63,24 @@ function insertEntity (entity) {
             function(err, results) {
                     if (err) {
                           console.log("Problem inserting Entity SQL"+err)
+                          fail(err)
+                    } else {
+                          //console.log("In model, results: "+JSON.stringify(results));
+                          succeed(results)
+                    }
+            }); //connection
+    }); //promise
+} // function
+
+
+function insertDeal(deal) {
+    console.log("In Model, adding new deal: "+JSON.stringify(deal))
+    return new Promise(function(succeed, fail) {
+          connection.query(
+          'INSERT INTO deals SET ?', deal,
+            function(err, results) {
+                    if (err) {
+                          console.log("Problem inserting Deal SQL"+err)
                           fail(err)
                     } else {
                           //console.log("In model, results: "+JSON.stringify(results));
@@ -125,8 +144,7 @@ function getEntityTypes () {
 
 //owneship: parent_entity_id, child_entity_id, capital_pct
 function getEntityDetails (entity_id) {
-  let queryString = 'SELECT * from entities'
-  + ' WHERE id ='+entity_id;
+  let queryString = 'SELECT * from entities WHERE id ='+entity_id;
       return new Promise(function(succeed, fail) {
             connection.query(queryString,
               function(err, results) {
@@ -148,8 +166,7 @@ function getEntityDetails (entity_id) {
 
 //owneship: parent_entity_id, child_entity_id, capital_pct
 function getDealDetails (deal_id) {
-  let queryString = 'SELECT * from deals'
-  + ' WHERE id ='+deal_id+' ORDER BY id';
+  let queryString = 'SELECT * from deals WHERE id ='+deal_id+' ORDER BY id';
 
       return new Promise(function(succeed, fail) {
             connection.query(queryString,
