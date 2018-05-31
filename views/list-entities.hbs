@@ -29,10 +29,10 @@
 
   <table width = "100%" border = 0>
         <colgroup>
-        <col width="10%"/>
-        <col width="35%"/>
-        <col width="0%"/>
-        <col width="25%"/>
+        <col width="5%"/>
+        <col width="30%"/>
+        <col width="20%"/>
+        <col width="20%"/>
         <col width="15%"/>
         <col width="10%"/>
         </colgroup>
@@ -51,17 +51,21 @@
       <tr>
           <td align="center">{{id}}</td>
           <td align="left"><b>{{name}}</b></td>
-          <td>
 
-          </td>
           <td >{{taxid}}</td>
+
+
           <td>
-                 {{#ifEqual entity_type "Deal"}}
-                     <a href = "/ownership/{{id}}">{{entity_type}}</a>
-                  {{else}}
                      {{entity_type}}
-                  {{/ifEqual}}
           </td>
+
+          <td align="center">
+            {{#ifLessThan own_status 2}}
+                <a href = "/ownership/{{id}}">Ownership</a>
+              {{/ifLessThan}}
+          </td>
+
+
           <td align="left">
             {{#ifEqual entity_type "Deal"}}
             <a href = "/dealdetails/{{id}}">

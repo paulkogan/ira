@@ -21,7 +21,7 @@ const RedisStore = require('connect-redis')(session)
 
 const iraSQL =  require('./ira-model');
 const secret = "cat"
-const iraVersion = "0.6 +Add Deal"
+const iraVersion = "0.7 +set ownership"
 const nodePort = 8081
 //var router = express.Router();  then call router.post('/')
 
@@ -56,7 +56,21 @@ hbs.registerHelper('ifEqual', function(v1, v2, options) {
 
 });
 
+hbs.registerHelper('ifLessThan', function(v1, v2, options) {
+          if(v1 < v2) {
+              return options.fn(this);
+          }
+          return options.inverse(this);
 
+});
+
+hbs.registerHelper('ifGreaterThan', function(v1, v2, options) {
+          if(v1 > v2) {
+              return options.fn(this);
+          }
+          return options.inverse(this);
+
+});
 
 
 app.set('view engine', 'hbs');
@@ -76,15 +90,14 @@ let userObj =
 }
 
 
-
 //============ FUNCTIONS ======================
 
 function formatCurrency (amount) {
-     return "$"+amount.toString().replace(/(\d)(?=(\d\d\d)+(?!\d))/g, "$1,");
+     return "$"+amount.toFixed(2).replace(/(\d)(?=(\d\d\d)+(?!\d))/g, "$1,");
 }
 
 
-function validateOwnership (investors) {
+function totalupInvestors (investors) {
       let expandInvestors = investors
       let totalCapital = 0;
       let totalCapitalPct =0;
@@ -96,6 +109,27 @@ function validateOwnership (investors) {
       }//for
       return [expandInvestors, formatCurrency(totalCapital), totalCapitalPct];
   } //function
+
+  function calculateOwnership (transactionsFromEntity) {
+        var ownershipRows = transactionsFromEntity
+        var totalCapital = 0;
+
+        for (let index = 0; index < ownershipRows.length; index++) {
+               totalCapital += ownershipRows[index].amount;
+               //console.log("IN validate ownership: "+ index +" lastname: "+expandInvestors[index].investor_name+" amount: "+expandInvestors[index].formattedAmount+" cap_pct: "+expandInvestors[index].capital_pct)
+        }//for  total capital
+
+        console.log("In CalculateOwnership for "+ownershipRows[0].investment_name+"  total capital is: "+totalCapital)
+
+        for (let index = 0; index < ownershipRows.length; index++) {
+               ownershipRows[index].percent = (ownershipRows[index].amount/totalCapital)
+               ownershipRows[index].formattedPercent = (ownershipRows[index].percent*100).toFixed(2)+"%"
+               ownershipRows[index].formattedAmount = formatCurrency(ownershipRows[index].amount)
+               //console.log("IN validate ownership: "+ index +" lastname: "+expandInvestors[index].investor_name+" amount: "+expandInvestors[index].formattedAmount+" cap_pct: "+expandInvestors[index].capital_pct)
+        }//for  total capital
+
+        return [ownershipRows, formatCurrency(totalCapital)];
+    } //function
 
 
   function calculateDeal (deal) {
@@ -114,6 +148,136 @@ function validateOwnership (investors) {
 
 
 //============ ROUTES  ======================
+
+app.get('/entities', (req, res) => {
+          if (req.session && req.session.passport) {
+             userObj = req.session.passport.user;
+
+           }
+          iraSQL.getAllEntities().then(
+                function(entities) {
+                          console.log("in get all ENTITIES, we got:   "+JSON.stringify(entities))
+                          var expandEntities = entities;
+
+                          for (let index = 0; index < entities.length; index++) {
+                                 if(  (expandEntities[index].ownership===0) && (expandEntities[index].type === 1)    ) {
+                                            expandEntities[index].canSetOwnership = true
+                                 //console.log("IN validate ownership: "+ index +" lastname: "+expandInvestors[index].investor_name+" amount: "+expandInvestors[index].formattedAmount+" cap_pct: "+expandInvestors[index].capital_pct)
+                               } //
+                          }//for
+
+
+                          res.render('list-entities', {
+                                  userObj: userObj,
+                                  sessioninfo: JSON.stringify(req.session),
+                                  message: req.flash('login') + "Showing "+entities.length+" entities.",
+                                  entities: expandEntities
+                          });//render
+
+
+                }, function(err) {   //failed
+                               console.log("List entitiesproblem: "+err);
+                               return;
+                } //  success function
+          ); //getAll Entities then
+}); //  entities route
+
+
+
+
+
+app.get('/setownership/:id', (req, res) => {
+
+    if (req.session && req.session.passport) {
+                 userObj = req.session.passport.user;
+    }
+
+    //call the async function
+    pullOwnershipTransactions().catch(err => {
+          console.log("??? ownership transactions problem: "+err);
+    })
+
+    async function pullOwnershipTransactions() {
+          var entity = await iraSQL.getEntityDetails(req.params.id);
+          console.log("have Entity   "+ entity.name);
+          var rows = await iraSQL.getTransactionsForEntity(entity.deal_id);
+          console.log("Got "+rows.length+" Transactions for   "+ entity.name+"  , look:  "+JSON.stringify(rows));
+                  // screen transaction and calculate ownership
+          if(entity.ownership_status===0 && (rows.length >0) ) {
+
+                                var results = calculateOwnership(rows);
+                                let ownershipRows = results[0]
+                                let totalCapital =  results[1]
+                                res.render('set-ownership', {
+                                        userObj: userObj,
+                                        message:  "Showing "+ownershipRows.length+" transactions",
+                                        entityName: entity.name,
+                                        investors: ownershipRows,
+                                        totalCapital: totalCapital,
+                                        postendpoint: '/process_set_ownership'
+
+                                });
+           } else {
+            res.redirect('/home');
+
+            // } else { //no transactions
+            //                     res.render('set-ownership', {
+            //                           userObj: userObj,
+            //                           message:  "No relevant transactions found",
+            //                           entityName: entity.name,
+            //                           totalCapital: "$0.00"
+            //                    }); //  render
+      }  //if-else ownership status
+   } //async function pullDealComponents
+}); //route - deal details
+
+
+// insert the new deal and corresponding entity
+app.post('/process_set_ownership', urlencodedParser, (req, res) => {
+
+  //call the async function
+  insertOwnerhipAndUpdateEntity().catch(err => {
+        console.log("New Ownership problem: "+err);
+  })
+
+  async function insertOwnerhipAndUpdateEntity() {
+            let formDeal = req.body
+            let newDeal = {
+              name: formDeal.name,
+              aggregate_value: formDeal.aggregate_value,
+              cash_assets: formDeal.cash_assets,
+              aggregate_debt: formDeal.aggregate_debt,
+              deal_debt: formDeal.deal_debt,
+              notes: formDeal.notes
+            }
+
+            var insertDealResults = await iraSQL.insertDeal(newDeal);
+            console.log( "Added deal #: "+insertDealResults.insertId);
+            req.flash('login', "Added Deal: "+insertDealResults.insertId);
+
+            let dealEntity = {
+              type:1,
+              deal_id: insertDealResults.insertId,
+              investor_id:null,
+              keyman_id: null,
+              name: newDeal.name,
+              taxid: formDeal.taxid
+            }
+            var insertEntityResults = await iraSQL.insertEntity(dealEntity);
+            req.flash('login', "In deals, added entity #: "+insertEntityResults.insertId);
+
+            res.redirect('/entities');
+
+   } //async function
+}); //process add-deal route
+
+
+
+
+
+
+
+
 
 
 
@@ -192,7 +356,7 @@ app.get('/dealdetails/:id', (req, res) => {
           console.log("Before Ownership, have Entity   "+ entity.name+"   and Deal is  "+JSON.stringify(deals));
           var investors = await iraSQL.getOwnershipForEntity(entity.id)
           if (investors.length>0) {
-                                let results = validateOwnership(investors)
+                                let results = totalupInvestors(investors)
                                 let expandInvestors = results[0]
                                 let totalCapital =  results[1]
                                 let totalCapitalPct = results[2]
@@ -216,11 +380,8 @@ app.get('/dealdetails/:id', (req, res) => {
                                       dealName: expandDeal.name,
                                       deal:expandDeal
                                 }); //  render
-
             }  //if-else  - no ownership get name of entity
-
       } //async function pullDealComponents
-
 }); //route - deal details
 
 
@@ -244,7 +405,7 @@ app.get('/ownership/:id', (req, res) => {
       iraSQL.getOwnershipForEntity(result.id).then(
               function(investors) {
                           if (investors.length>0) {
-                          let results = validateOwnership(investors)
+                          let results = totalupInvestors(investors)
                           let expandInvestors = results[0]
                           let totalCapital =  results[1]
                           let totalCapitalPct = results[2]
@@ -414,16 +575,13 @@ app.post('/process_add_entity', urlencodedParser, (req, res) => {
 
 
 
-
-
-
 app.get('/transactions', (req, res) => {
   if (req.session && req.session.passport) {
      userObj = req.session.passport.user;
 
    }
           iraSQL.getAllTransactions().then(
-                async function(transactions) {
+                function(transactions) {
                           res.render('list-transactions', {
                                   userObj: userObj,
                                   sessioninfo: JSON.stringify(req.session),
@@ -441,30 +599,6 @@ app.get('/transactions', (req, res) => {
 
 
 
-app.get('/entities', (req, res) => {
-  if (req.session && req.session.passport) {
-     userObj = req.session.passport.user;
-
-   }
-
-          iraSQL.getAllEntities().then(
-                async function(entities) {
-                          //let expandInvestors = await addPortfolioToInvestors(investors)
-                          //let msg = await addPortfolioToInvestors(investors)[1]
-                          res.render('list-entities', {
-                                  userObj: userObj,
-                                  sessioninfo: JSON.stringify(req.session),
-                                  message: req.flash('login') + "Showing "+entities.length+" entities.",
-                                  entities: entities
-                          });//render
-
-
-                }, function(err) {   //failed
-                               console.log("List entitiesproblem: "+err);
-                               return;
-                } //  success function
-          ); //getAll Entities then
-}); //  /entities route
 
 
 
@@ -513,196 +647,48 @@ module.exports = app;
 //======================   from PROPS  ==================
 
 
-// props.get('/viewprop/:id', checkAuthentication, (req, res) => {
+// props.get('/delete/:id', checkAuthentication, (req, res) => {
+//   pModel.read (req.params.id, (err, entity) => {
+//           //err comes back but not results
+//           if (err) {
+//             console.log("Props3: del request problem "+JSON.stringify(err));
+//           }
+//     res.render('delprop', {
+//             title: 'Delete a Property',
+//             property: entity,
+//             deleteendpoint: '/process_delete'
+//     });
 //
-//      if (req.session && req.session.passport) {
-//           userObj = req.session.passport.user;
-//       }
+//  }); //end modelRead
 //
-//      sessioninfo = JSON.stringify(req.session);
-//
-//
-//      pModel.read (req.params.id, (err, entity) => {
-//            //err comes back but not results
-//            if (err) {
-//              console.log("Viewprop problem "+JSON.stringify(err));
-//            }
-//
-//            let expandProperty = entity
-//            expandProperty.propValue = parseFloat(expandProperty.units*unitValue);
-//
-//            pModel.getInvestorList(entity.id, function(err, investors){
-//                    if (err) {
-//                          //next(err);
-//                          console.log("Investor problems "+err);
-//                          return;
-//                    }
-//                    let expandPropInvestors = investors
-//                    let totalInvestorsOwnership = 0.00
-//                    let totalInvestorsValue = 0.00
-//                    investors.forEach(function(item, key) {
-//                          expandPropInvestors[key].percent = parseFloat(investors[key].ownership)/10;
-//                          totalInvestorsOwnership += expandPropInvestors[key].percent
-//                          expandPropInvestors[key].investmentValue = expandProperty.propValue * (expandPropInvestors[key].percent/100)
-//                          totalInvestorsValue += expandPropInvestors[key].investmentValue
-//                          //make them 2 digit strings
-//                          expandPropInvestors[key].investmentValue = expandPropInvestors[key].investmentValue.toFixed(2)
-//                          expandPropInvestors[key].percent  = expandPropInvestors[key].percent.toFixed(2)
-//
-//                   }) //foreach
-//                   expandProperty.propValue = expandProperty.propValue.toFixed(2)
-//
-//
-//                  res.render('viewprop', {
-//                          property: expandProperty,
-//                          investors: expandPropInvestors,
-//                          totalinvestorsvalue: totalInvestorsValue.toFixed(2),
-//                          totalinvestorsownership: totalInvestorsOwnership.toFixed(2),
-//                          userObj: userObj,
-//                          sessioninfo: JSON.stringify(req.session),
-//                          message: req.flash('login'),
-//
-//                  });
-//
-//           }); //get investor list
-//     }); //read
-// });   // END VIEWPROP =========
+// });  //end DELETE request
 //
 //
 //
-// //FUNCTION - non recusrive promise method
-// function addPortfolioToInvestors (investors) {
-//       let expandInvestors = investors
-//       return new Promise( function(succeed, fail) {
-//                 for (let index = 0; index < investors.length; index++) {
-//                       pModel.getPortfolioList(investors[index].id, async function(err, investments){
-//                               if (err) {
-//                                     console.log("Boom! "+err);
-//                                     return fail(err);
-//                               }
-//                                expandInvestors[index].numOfDeals = investments.length;
-//                                expandInvestors[index].totalPortfolioValue = calculatePortfolioValue(investments)[1]
-//                                console.log("IN getPortfolio: "+ expandInvestors[index].id +" lastname: "+expandInvestors[index].lastname+"   tPV: "+ expandInvestors[index].totalPortfolioValue+"   numOfDeals: "+expandInvestors[index].numOfDeals )
-//                                if (index === investors.length-1) {
-//                                       console.log("done in loop")
-//                                       succeed(expandInvestors)  //give back when array is done
-//                               }
-//                       }) //get portfolioList
-//
-//                 } //for
-//                 //succeed(expandInvestors)
-//         }); //promise
-//   } //addPortfolio function
-//
-//
-//
-//
-//
-// props.get('/investors', (req, res) => {
-//         if (req.session && req.session.passport) {
-//            userObj = req.session.passport.user;
-//          }
-//
-//         //get a list of all investors
-//         pModel.getAllInvestorsPromise().then(
-//             async function(investors) {
-//                       let expandInvestors = await addPortfolioToInvestors(investors)
-//                       //let msg = await addPortfolioToInvestors(investors)[1]
-//                       console.log ("portfolio success with ")  // succeed
-//                       res.render('investors', {
-//                               userObj: userObj,
-//                               sessioninfo: JSON.stringify(req.session),
-//                               message: req.flash('login') + "Showing "+investors.length+" investors.",
-//                               investors: expandInvestors
-//                       });//render
-//
-//
-//             }, function(err) {   //failed
-//                            console.log("Promise add portfolio problem: "+err);
-//                            return;
-//             } //  success function
-//     ); //getAllinvestors then
-// }); //  /inevestors route
-//
-//
-//
-//
-//   props.get('/portfolio/:id', checkAuthentication, (req, res) => {
-//
-//                      if (req.session && req.session.passport) {
-//                         userObj = req.session.passport.user;
-//                         console.log ("UserOBJ from Session "+JSON.stringify(userObj))
-//                       } else {
-//                            res.redirect('/login')
-//                            return
-//                       }
-//
-//
-//                       pModel.getPortfolioPromise(req.params.id).then(
-//                           function(investments) {
-//
-//                               let expandInvest = calculatePortfolioValue(investments)[0]
-//                               let totalPortfolioValue = calculatePortfolioValue(investments)[1]
-//
-//                               res.render('portfolio', {
-//                                       userObj: userObj,
-//                                       message:  "Showing "+investments.length+" investments. (Promise)" +req.flash('login'),
-//                                       portfolioOwner: investments[0].firstname + " "+investments[0].lastname,
-//                                       //portfolioOwner: "Jack",
-//                                       investments: expandInvest,
-//                                       totalPortfolioValue: totalPortfolioValue,
-//                                       xInv: JSON.stringify(expandInvest)
-//                               });
-//
-//                           }, function(err) {
-//
-//                                       console.log("Promise problem: "+err);
-//                                       return;
-//
-//                           } //function
-//                     ); //end then
-//
-//     }); //portfolio
-//
-//
-//
-//   props.get('/properties', (req, res) => {
-//
-//     if (req.session && req.session.passport) {
-//        userObj = req.session.passport.user;
-//
-//      }
-//
-//
-//             pModel.getAllProps( function(err, properties, cursor){
-//                   if (err) {
-//                         //next(err);
-//                         console.log("Boom! "+err);
-//                         return;
-//                   }
-//
-//           let expandProperties = []
-//           properties.forEach(function(item, key) {
-//           //Object.keys(properties).forEach(function(key) {
-//                expandProperties[key]= properties[key];
-//                expandProperties[key].propValue = (expandProperties[key].units*unitValue).toFixed(2);;
-//                console.log(expandProperties[key].id, expandProperties[key].address)
-//              });
-//
-//
-//
-//                   res.render('list', {
-//                           userObj: userObj,
-//                           sessioninfo:  JSON.stringify(req.session),
-//                           message: req.flash('login') + "Showing "+properties.length+" properties.",
-//                           properties: expandProperties
-//                   });
+//   // process delete
+//   props.post('/process_delete', urlencodedParser, (req, res) => {
+//         const data = req.body
+//         //res.send("Just got: "+JSON.stringify(data)+"<br>")
+//         if (data.del_response.toLowerCase() === "yes") {
+//              pModel.delete (data.id, (err, results) => {
+//                     //err comes back but not results
+//                     if (err) {
+//                       console.log("Props2: Delete problem "+JSON.stringify(err));
+//                     } else { //deleted OK
+//                     //res.send("Deleted Property ID "+data.id);
+//                     req.flash('login', "Deleted Property "+data.id+".  ")
+//                     res.redirect('/properties');
+//                     }
 //
 //             });
-//     }); //proprties
+//         } else  {
+//               res.redirect('/properties');
+//         }
 //
 //
-//
+// }); //===== END PROCESS DELETE
+
+
 //     props.get('/updateuser/', checkAuthentication, (req, res) => {
 //           if (req.session && req.session.passport) {
 //              userObj = req.session.passport.user;
@@ -759,244 +745,3 @@ module.exports = app;
 //                    }); //hash
 //            }); //getSalt
 //     }); //===== END PROCESS USER UPDATE
-//
-//
-// // ========== HOME & AUTH ========================
-//
-//
-//
-//   props.get('/home', (req, res) => {
-//
-//     if (req.session && req.session.passport) {
-//        userObj = req.session.passport.user;
-//      }
-//
-//
-//       let menuOptions = []
-//       menuOptions[0] = {name:"Properties", link:"/properties"}
-//       menuOptions[1] = {name:"Investors", link:"/investors"}
-//       menuOptions[2] = {name:"Add Property", link:"/addprop"}
-//       menuOptions[3] = {name:"Add Investor", link:"/home"}
-//
-//       res.render('home', {
-//               userObj: userObj,
-//               message: req.flash('login'),
-//               menuoptions: menuOptions,
-//               propsVersion: propsVersion
-//       });
-//
-//   });
-//
-//
-// props.get('/logout', function(req, res){
-//     req.logout();
-//     userObj =
-//     {
-//       "id":0,
-//       "firstname":"Log In",
-//       "lastname":"",
-//       "email":"",
-//       "password":"",
-//       "photo":"https://raw.githubusercontent.com/wilsonvargas/ButtonCirclePlugin/master/images/icon/icon.png",
-//       "access":0
-//     }
-//     res.redirect('/login');
-//   });
-//
-//
-// props.get('/login', (req, res) => {
-//         res.render('login', {
-//                 postendpoint: '/checklogin',
-//                 message: req.flash('login')
-//         });
-// });
-//
-//
-//
-// //grab info, call strategy
-// props.post('/checklogin', function(req, res, next) {
-//   passport.authenticate('local', function(err, user, info) {
-//
-//     if (err) { return next(err); }
-//
-//     //if you did not get a user back from Strategy
-//     if (!user) {
-//       req.flash('login', 'Credentials could not be verified, please try again.')
-//       return res.redirect('/login');
-//     }
-//     //found user
-//     req.logIn(user, function(err) {
-//           if (err) {
-//             req.flash('login', 'Login problem '+err)
-//             return next(err);
-//           }
-//
-//
-//       console.log('START OF SESSION for user '+user.id+" sending to "+req.session.return_to)
-//       req.flash('login', 'Login success: '+req.session.passport.user.email); //does not work yet
-//       //req.session.user = user; //put user object in session - dont need this
-//
-//       //on first login, use this to redirect
-//       if (req.session.return_to) {
-//             return res.redirect(req.session.return_to);  //WORKS?
-//       } else return res.redirect("/");
-//
-//       //return res.redirect(url);
-//
-//     });
-//   })(req, res, next);
-// });
-//
-//
-//
-
-// }); // END LIST =============
-//
-//
-//
-// props.get('/delete/:id', checkAuthentication, (req, res) => {
-//   pModel.read (req.params.id, (err, entity) => {
-//           //err comes back but not results
-//           if (err) {
-//             console.log("Props3: del request problem "+JSON.stringify(err));
-//           }
-//     res.render('delprop', {
-//             title: 'Delete a Property',
-//             property: entity,
-//             deleteendpoint: '/process_delete'
-//     });
-//
-//  }); //end modelRead
-//
-// });  //end DELETE request
-//
-//
-//
-//   // process delete
-//   props.post('/process_delete', urlencodedParser, (req, res) => {
-//         const data = req.body
-//         //res.send("Just got: "+JSON.stringify(data)+"<br>")
-//         if (data.del_response.toLowerCase() === "yes") {
-//              pModel.delete (data.id, (err, results) => {
-//                     //err comes back but not results
-//                     if (err) {
-//                       console.log("Props2: Delete problem "+JSON.stringify(err));
-//                     } else { //deleted OK
-//                     //res.send("Deleted Property ID "+data.id);
-//                     req.flash('login', "Deleted Property "+data.id+".  ")
-//                     res.redirect('/properties');
-//                     }
-//
-//             });
-//         } else  {
-//               res.redirect('/properties');
-//         }
-//
-//
-// }); //===== END PROCESS DELETE
-//
-//
-//
-//
-// props.get('/addprop', checkAuthentication, (req, res) => {
-//   if (req.session && req.session.passport) {
-//      userObj = req.session.passport.user;
-//    }
-//
-//
-//         res.render('addprop', {
-//                 userObj: userObj,
-//                 postendpoint: '/process_add'
-//         });
-// });
-//
-//
-//
-//   // insert the new property
-// props.post('/process_add', urlencodedParser, (req, res) => {
-//     const data = req.body
-//     pModel.create(data, (err, savedData) => {
-//       if (err) {
-//         //next(err);
-//         console.log("Boom! "+err);
-//       }
-//
-//       req.flash('login', "Added property: "+savedData.address)
-//       res.redirect('/properties');
-//     });
-//   });
-//
-//
-// // Basic 404 handler
-// props.use((req, res) => {
-//   res.status(404).send('404 Props Not Found at '+req.url);
-// });
-//
-//
-
-//
-// module.exports = props;
-//
-//
-// //========== passport STRATEGY =========
-// passport.use(new LocalStrategy(
-//   {
-//     passReqToCallback: true
-//   },
-//   (req, username, password, done) => {
-//          pModel.authUser (username, password, (err, autheduser) => {
-//                  //err comes back but not results
-//                  if (err) {
-//                    console.log("call to model is err "+JSON.stringify(err));
-//                    //req.flash('login', 'strategy: bad user name or password')
-//                    return done(null, false);
-//                  }
-//                  if (!autheduser) {
-//                         console.log("strategy: user "+ username +" not found ");
-//                         return done(null, false);
-//                  }
-//                  console.log("OK autheduser is "+autheduser.firstname);
-//                  return done(null, autheduser);
-//
-//           }) //loginuser
-//
-//
-// })) //localstrategy
-//
-//
-//
-//     passport.serializeUser(function(user, done){
-//         done(null, user);  //save user or just user.id in session
-//     });
-//
-//     passport.deserializeUser(function(user, done){
-//         //connection.query("select * from tbl_users where id = "+ id, function (err, rows){
-//             done(null, user);
-//
-//     });
-//
-//
-//       // User found - check passwpord
-//       // bcrypt.compare(checkpass, user.password, (err, isValid) => {
-//       // }) //bcrypt
-//
-// //NOT FIRST TIME LOGIN
-// function checkAuthentication(req,res,next){
-//           if (userObj.id == 0) {
-//                req.session.return_to = "/";
-//           } else {
-//                req.session.return_to = req.url;
-//           }
-//
-//           if(req.isAuthenticated()){
-//                  console.log("YES, authenticated"+req.url)
-//                  //req.flash('login', 'checkAuth success')
-//                  return next();
-//                  //res.redirect(req.url);
-//
-//           } else {
-//               console.log("NO, not authenticated"+req.url)
-//               //req.flash('login', 'checkAuth failed, need to login')
-//               res.redirect("/login");
-//           }
-// }
