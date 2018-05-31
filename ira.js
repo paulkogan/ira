@@ -149,6 +149,48 @@ function totalupInvestors (investors) {
 
 //============ ROUTES  ======================
 
+app.get('/ownership/:id', (req, res) => {
+    if (req.session && req.session.passport) {
+       userObj = req.session.passport.user;
+     }
+
+     showOwnershipInfo().catch(err => {
+           console.log("ownership info problem: "+err);
+           req.flash('login', "Problems getting Ownership "+req.params.id+".  ")
+           res.redirect('/home')
+     })
+
+     async function showOwnershipInfo() {
+           let foundEntity = await iraSQL.getEntityDetails(req.params.id);
+           console.log("in OWN, have Entity   "+ JSON.stringify(foundEntity));
+           if (foundEntity.ownership_status === 1) {
+                          let investors = await iraSQL.getOwnershipForEntity(foundEntity.id);
+                          let results = totalupInvestors(investors)
+                          let expandInvestors = results[0]
+                          let totalCapital =  results[1]
+                          let totalCapitalPct = results[2]
+                          console.log("rendering ownership")
+                          res.render('deal-ownership', {
+                                  userObj: userObj,
+                                  message:  "Showing "+investors.length+" investors ",
+                                  dealName: investors[0].investment_name,
+                                  investors: expandInvestors,
+                                  totalCapital: totalCapital,
+                                  totalCapitalPct: totalCapitalPct
+                          });
+
+                    } else { //no ownership data
+                          res.redirect('/setownership/'+req.params.id)
+
+                } //if ownership
+     } //async function
+}); //route - ownership
+
+
+
+
+
+
 app.get('/entities', (req, res) => {
           if (req.session && req.session.passport) {
              userObj = req.session.passport.user;
@@ -156,7 +198,7 @@ app.get('/entities', (req, res) => {
            }
           iraSQL.getAllEntities().then(
                 function(entities) {
-                          console.log("in get all ENTITIES, we got:   "+JSON.stringify(entities))
+                          console.log("in get all ENTITIES, we got:   "+JSON.stringify(entities[0]))
                           var expandEntities = entities;
 
                           for (let index = 0; index < entities.length; index++) {
@@ -194,12 +236,12 @@ app.get('/setownership/:id', (req, res) => {
 
     //call the async function
     pullOwnershipTransactions().catch(err => {
-          console.log("??? ownership transactions problem: "+err);
+          console.log("SET ownership transactions problem: "+err);
     })
 
     async function pullOwnershipTransactions() {
           var entity = await iraSQL.getEntityDetails(req.params.id);
-          console.log("have Entity   "+ entity.name);
+          console.log("in SET, have Entity   "+ JSON.stringify(entity));
           var rows = await iraSQL.getTransactionsForEntity(entity.deal_id);
           console.log("Got "+rows.length+" Transactions for   "+ entity.name+"  , look:  "+JSON.stringify(rows));
                   // screen transaction and calculate ownership
@@ -218,6 +260,7 @@ app.get('/setownership/:id', (req, res) => {
 
                                 });
            } else {
+            req.flash('login', "No ownership info or transactions found for "+entity.name);
             res.redirect('/home');
 
             // } else { //no transactions
@@ -351,7 +394,7 @@ app.get('/dealdetails/:id', (req, res) => {
 
     async function pullDealComponents() {
           var entity = await iraSQL.getEntityDetails(req.params.id);
-          console.log("have Entity   "+ entity.name);
+          console.log("have Entity   "+ JSON.stringify(entity));
           var deals = await iraSQL.getDealDetails(entity.deal_id);
           console.log("Before Ownership, have Entity   "+ entity.name+"   and Deal is  "+JSON.stringify(deals));
           var investors = await iraSQL.getOwnershipForEntity(entity.id)
@@ -383,67 +426,6 @@ app.get('/dealdetails/:id', (req, res) => {
             }  //if-else  - no ownership get name of entity
       } //async function pullDealComponents
 }); //route - deal details
-
-
-
-
-
-
-
-
-
-app.get('/ownership/:id', (req, res) => {
-              if (req.session && req.session.passport) {
-                 userObj = req.session.passport.user;
-               }
-
-
-  iraSQL.getEntityDetails(req.params.id).then(
-    function(result) { //got a good entity
-      //console.log("what I got: "+JSON.stringify(result));
-      console.log("in get Ownership, have Entity   "+ result.name+"   getting Owners for "+result.id);
-      iraSQL.getOwnershipForEntity(result.id).then(
-              function(investors) {
-                          if (investors.length>0) {
-                          let results = totalupInvestors(investors)
-                          let expandInvestors = results[0]
-                          let totalCapital =  results[1]
-                          let totalCapitalPct = results[2]
-                          console.log("rendering ownership")
-                          res.render('deal-ownership', {
-                                  userObj: userObj,
-                                  message:  "Showing "+investors.length+" investors ",
-                                  dealName: investors[0].investment_name,
-                                  investors: expandInvestors,
-                                  totalCapital: totalCapital,
-                                  totalCapitalPct: totalCapitalPct
-                          });
-
-                    } else { //no ownership data
-                                        res.render('deal-ownership', {
-                                              userObj: userObj,
-                                              message:  "No Ownership information found ",
-                                              dealName: foundEntity.name
-                                        }); //  render
-
-                  }  //if-else  - no ownership get name of entity
-
-          }).catch(error => {
-                          console.log("getOwnershipForEntity problem: "+error);
-                          return;
-          }); //then ownership promise
-
-
-
-      }, function(error) {   //not getting entity
-                console.log("No entity found" + req.params.id)
-                req.flash('login', "No entity "+req.params.id+".  ")
-                res.redirect('/home')
-
-
-  }); //then enity promise then
-}); //route - ownership
-
 
 
 
