@@ -116,11 +116,8 @@ function totalupInvestors (investors) {
 
         for (let index = 0; index < ownershipRows.length; index++) {
                totalCapital += ownershipRows[index].amount;
-               //console.log("IN validate ownership: "+ index +" lastname: "+expandInvestors[index].investor_name+" amount: "+expandInvestors[index].formattedAmount+" cap_pct: "+expandInvestors[index].capital_pct)
-        }//for  total capital
-
-        console.log("In CalculateOwnership for "+ownershipRows[0].investment_name+"  total capital is: "+totalCapital)
-
+        }
+        // now calculate % for each
         for (let index = 0; index < ownershipRows.length; index++) {
                ownershipRows[index].percent = (ownershipRows[index].amount/totalCapital)
                ownershipRows[index].formattedPercent = (ownershipRows[index].percent*100).toFixed(2)+"%"
@@ -149,6 +146,54 @@ function totalupInvestors (investors) {
 
 //============ ROUTES  ======================
 
+
+
+
+app.post('/process_set_ownership', urlencodedParser, (req, res) => {
+  //call the async function
+  insertOwnershipAndUpdateEntity().catch(err => {
+        console.log("Insert Ownership problem: "+err);
+  })
+
+  async function insertOwnershipAndUpdateEntity() {
+            let formTransIds = req.body.trans_ids
+            let formPercents = req.body.percents
+            console.log("POST from Set Ownsership form we got: "+JSON.stringify(req.body)+"\n\n");
+            console.log("POST from Set Ownsership "+JSON.stringify(formTransIds)+"\n");
+
+            // get each transaction, total capital,
+            //calculate %,
+            //push new Ownership Row
+            //
+            for (let i=0;i<formTransIds.length;i++) {
+                    let transId = parseInt(formTransIds[i]);
+                    console.log("Trans ID="+transId+"")
+                    let transPercent = (formPercents[i]*100).toFixed(4);
+                    console.log("Percent="+transPercent+"\n\n")
+                    let trans = await iraSQL.getTransactionById(transId)
+                    console.log("\nInserting new owners, the transaction is: "+JSON.stringify(trans)+"\n\n")
+                    let newOwnershipRow = {
+                           parent_entity_id: trans[0].investor_entity_id,
+                           child_entity_id: trans[0].investment_entity_id,
+                           transaction_id: transId,
+                           capital_pct: transPercent,
+                           member_interest_pct: null
+                    }
+                    var insertOwnershipResults = await iraSQL.insertOwnership(newOwnershipRow);
+                    req.flash('login', "In deals, added ownership #: "+insertOwnershipResults.insertId);
+
+          } //for loop
+          res.redirect('/entities');
+
+
+    } //async function
+  }) //route
+
+
+
+
+
+
 app.get('/ownership/:id', (req, res) => {
     if (req.session && req.session.passport) {
        userObj = req.session.passport.user;
@@ -162,7 +207,7 @@ app.get('/ownership/:id', (req, res) => {
 
      async function showOwnershipInfo() {
            let foundEntity = await iraSQL.getEntityDetails(req.params.id);
-           console.log("in OWN, have Entity   "+ JSON.stringify(foundEntity));
+           //console.log("in OWN, have Entity   "+ JSON.stringify(foundEntity));
            if (foundEntity.ownership_status === 1) {
                           let investors = await iraSQL.getOwnershipForEntity(foundEntity.id);
                           let results = totalupInvestors(investors)
@@ -198,7 +243,7 @@ app.get('/entities', (req, res) => {
            }
           iraSQL.getAllEntities().then(
                 function(entities) {
-                          console.log("in get all ENTITIES, we got:   "+JSON.stringify(entities[0]))
+                          //console.log("in get all ENTITIES, we got:   "+JSON.stringify(entities[0]))
                           var expandEntities = entities;
 
                           for (let index = 0; index < entities.length; index++) {
@@ -218,7 +263,7 @@ app.get('/entities', (req, res) => {
 
 
                 }, function(err) {   //failed
-                               console.log("List entitiesproblem: "+err);
+                               console.log("List entities problem: "+err);
                                return;
                 } //  success function
           ); //getAll Entities then
@@ -241,15 +286,15 @@ app.get('/setownership/:id', (req, res) => {
 
     async function pullOwnershipTransactions() {
           var entity = await iraSQL.getEntityDetails(req.params.id);
-          console.log("in SET, have Entity   "+ JSON.stringify(entity));
+          console.log("in set-ownership, got Entity   "+ JSON.stringify(entity)+"\n\n");
           var rows = await iraSQL.getTransactionsForEntity(entity.deal_id);
-          console.log("Got "+rows.length+" Transactions for   "+ entity.name+"  , look:  "+JSON.stringify(rows));
+          console.log("\nGot "+rows.length+" transactions for "+ entity.name+":  "+JSON.stringify(rows)+"\n\n");
                   // screen transaction and calculate ownership
           if(entity.ownership_status===0 && (rows.length >0) ) {
-
                                 var results = calculateOwnership(rows);
                                 let ownershipRows = results[0]
                                 let totalCapital =  results[1]
+                                console.log("Rendering proposed ownership for "+ownershipRows[0].investment_name+"  total capital is: "+totalCapital)
                                 res.render('set-ownership', {
                                         userObj: userObj,
                                         message:  "Showing "+ownershipRows.length+" transactions",
@@ -276,44 +321,6 @@ app.get('/setownership/:id', (req, res) => {
 
 
 // insert the new deal and corresponding entity
-app.post('/process_set_ownership', urlencodedParser, (req, res) => {
-
-  //call the async function
-  insertOwnerhipAndUpdateEntity().catch(err => {
-        console.log("New Ownership problem: "+err);
-  })
-
-  async function insertOwnerhipAndUpdateEntity() {
-            let formDeal = req.body
-            let newDeal = {
-              name: formDeal.name,
-              aggregate_value: formDeal.aggregate_value,
-              cash_assets: formDeal.cash_assets,
-              aggregate_debt: formDeal.aggregate_debt,
-              deal_debt: formDeal.deal_debt,
-              notes: formDeal.notes
-            }
-
-            var insertDealResults = await iraSQL.insertDeal(newDeal);
-            console.log( "Added deal #: "+insertDealResults.insertId);
-            req.flash('login', "Added Deal: "+insertDealResults.insertId);
-
-            let dealEntity = {
-              type:1,
-              deal_id: insertDealResults.insertId,
-              investor_id:null,
-              keyman_id: null,
-              name: newDeal.name,
-              taxid: formDeal.taxid
-            }
-            var insertEntityResults = await iraSQL.insertEntity(dealEntity);
-            req.flash('login', "In deals, added entity #: "+insertEntityResults.insertId);
-
-            res.redirect('/entities');
-
-   } //async function
-}); //process add-deal route
-
 
 
 

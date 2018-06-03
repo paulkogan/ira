@@ -11,7 +11,7 @@ let options = {};
 if (env === 'ebawsira') {
         options = {
           user: 'iraadmin',
-          password: 'sqlschool2018',
+          password: '',
           host: 'iradb.cdlgrjtshtb6.us-east-2.rds.amazonaws.com',
           database: 'iradb',
           port: 3306
@@ -43,6 +43,8 @@ module.exports = {
   insertEntity: insertEntity,
   insertTransaction: insertTransaction,
   insertDeal: insertDeal,
+  insertOwnership: insertOwnership,
+  getTransactionById: getTransactionById,
   getEntitiesByTypes: getEntitiesByTypes,
   getEntityTypes: getEntityTypes,
   getTransactionTypes: getTransactionTypes
@@ -79,7 +81,7 @@ function getTransactionsForEntity (entityId) {
                             console.log ("Cant find transcations "+err)
                             fail(err)
                       } else {
-                            console.log ("Transactions for Own query OK got "+results.length)
+                            console.log ("In Model: for Ownership found "+results.length+" \n")
                             //console.log ("The results are:"+JSON.stringify(results))
                             // if (results.length<1) {
                             //           fail("no ownership data")
@@ -147,6 +149,25 @@ function insertTransaction (transaction) {
             }); //connection
     }); //promise
 } // function
+
+
+function insertOwnership (ownershipRow) {
+    console.log("In Model, adding new ownership row: "+JSON.stringify(ownershipRow))
+    return new Promise(function(succeed, fail) {
+          connection.query(
+          'INSERT INTO ownership SET ?', ownershipRow,
+            function(err, results) {
+                    if (err) {
+                          console.log("Problem inserting owmership SQL"+err)
+                          fail(err)
+                    } else {
+                          //console.log("In model, results: "+JSON.stringify(results));
+                          succeed(results)
+                    }
+            }); //connection
+    }); //promise
+} // function
+
 
 
 
@@ -227,7 +248,7 @@ function getDealDetails (deal_id) {
 function getOwnershipForEntity (child_id) {
   let queryString = 'SELECT o.id, investor.name as investor_name, investment.name as investment_name, passthru.name as passthru_name,'
   + ' DATE_FORMAT(t.wired_date, "%b %d %Y") as wired_date, t.amount as amount, t.id as t_id,'
-  + ' TRUNCATE(o.capital_pct,2) as capital_pct FROM ownership as o'
+  + ' ROUND(o.capital_pct,2) as capital_pct FROM ownership as o'
   + ' JOIN entities as investment ON investment.id = o.child_entity_id'
   + ' JOIN entities as investor ON investor.id = o.parent_entity_id'
   + ' JOIN transactions as t ON t.id = o.transaction_id'
@@ -308,6 +329,21 @@ function getAllTransactions () {
       }); //promise
 } // function
 
+function getTransactionById (trans_id) {
+      return new Promise(function(succeed, fail) {
+            connection.query(
+              'SELECT * from transactions WHERE id = ?', trans_id,
+              function(err, results) {
+                      if (err) {
+                          console.log ("in Model: TransByID problem "+err)
+                            fail(err)
+                      } else {
+                            console.log ("in Model: TransByID "+JSON.stringify(results))
+                            succeed(results)
+                      }
+              }); //connection
+      }); //promise
+} // function
 
 
 
@@ -315,7 +351,6 @@ function getAllTransactions () {
 // (investor_entity_id,  investment_entity_id,  passthru_entity_id,  trans_type, wired_date, amount, notes)
 
 
-//not live yet
 function getTransactionsForInvestment (investment_entity) {
       return new Promise(function(succeed, fail) {
             connection.query(
