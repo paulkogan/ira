@@ -38,16 +38,18 @@ module.exports = {
   getAllTransactions: getAllTransactions,
   getOwnershipForEntity: getOwnershipForEntity,
   getTransactionsForEntity: getTransactionsForEntity,
-  getEntityDetails: getEntityDetails,
-  getDealDetails: getDealDetails,
+  getEntitiesByTypes: getEntitiesByTypes,
+  getTransactionById: getTransactionById,
+  getEntityById: getEntityById,
+  getDealById: getDealById,
+  getEntityTypes: getEntityTypes,
+  getTransactionTypes: getTransactionTypes,
   insertEntity: insertEntity,
   insertTransaction: insertTransaction,
   insertDeal: insertDeal,
   insertOwnership: insertOwnership,
-  getTransactionById: getTransactionById,
-  getEntitiesByTypes: getEntitiesByTypes,
-  getEntityTypes: getEntityTypes,
-  getTransactionTypes: getTransactionTypes
+  updateEntity: updateEntity
+
   //getTransactionsForInvestment: getTransactionsForInvestment
 
 };
@@ -59,10 +61,31 @@ module.exports = {
 //  ================  Functions =====================
 
 
-// transactions
-// (investor_entity_id,  investment_entity_id,  passthru_entity_id,
-// trans_type, wired_date, amount, notes)
+// connection.query(
+//     'UPDATE users SET email = ?, photo =?, password=? WHERE id=?',
+//     [updateuser.email, updateuser.photo, updateuser.password, updateuser.id],
 
+
+//owneship: parent_entity_id, child_entity_id, capital_pct
+function updateEntity (updatedEntity) {
+
+  let queryString = 'UPDATE entities SET ownership_status = \''+updatedEntity.ownership_status+'\','
+  +' taxid=\''+updatedEntity.taxid+'\''
+  +' WHERE id ='+updatedEntity.id+'';
+   console.log ("in update entity, the query string is "+queryString+"\n\n")
+
+      return new Promise(function(succeed, fail) {
+            connection.query(queryString,
+              function(err, results) {
+                      if (err) {
+                            fail(err)
+                      } else {
+                            //console.log ("Success - Updated entity with "+JSON.stringify(results)+"\n")
+                            succeed(results.affectedRows)
+                      }
+              }); //connection
+      }); //promise
+} // function
 
 
 function getTransactionsForEntity (entityId) {
@@ -81,7 +104,7 @@ function getTransactionsForEntity (entityId) {
                             console.log ("Cant find transcations "+err)
                             fail(err)
                       } else {
-                            console.log ("In Model: for Ownership found "+results.length+" \n")
+                            console.log ("In Model: for Ownership found "+results.length+" transactions \n")
                             //console.log ("The results are:"+JSON.stringify(results))
                             // if (results.length<1) {
                             //           fail("no ownership data")
@@ -204,7 +227,7 @@ function getEntityTypes () {
 
 
 //owneship: parent_entity_id, child_entity_id, capital_pct
-function getEntityDetails (entity_id) {
+function getEntityById (entity_id) {
   let queryString = 'SELECT * from entities WHERE id ='+entity_id;
       return new Promise(function(succeed, fail) {
             connection.query(queryString,
@@ -216,7 +239,7 @@ function getEntityDetails (entity_id) {
                                     fail("No such entity, sorry")
                             }
 
-                            console.log ("Success - The found entity "+results[0].name +"\n")
+                            //console.log ("Success found by Id entity "+results[0].name +"\n")
                             succeed(results[0])
                       }
               }); //connection
@@ -226,7 +249,7 @@ function getEntityDetails (entity_id) {
 
 
 //owneship: parent_entity_id, child_entity_id, capital_pct
-function getDealDetails (deal_id) {
+function getDealById (deal_id) {
   let queryString = 'SELECT * from deals WHERE id ='+deal_id+' ORDER BY id';
 
       return new Promise(function(succeed, fail) {

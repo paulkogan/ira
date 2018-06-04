@@ -21,7 +21,7 @@ const RedisStore = require('connect-redis')(session)
 
 const iraSQL =  require('./ira-model');
 const secret = "cat"
-const iraVersion = "0.7 +set ownership"
+const iraVersion = "0.8.2 +entity ownership"
 const nodePort = 8081
 //var router = express.Router();  then call router.post('/')
 
@@ -158,6 +158,7 @@ app.post('/process_set_ownership', urlencodedParser, (req, res) => {
   async function insertOwnershipAndUpdateEntity() {
             let formTransIds = req.body.trans_ids
             let formPercents = req.body.percents
+            let ownEntityId = 0
             console.log("POST from Set Ownsership form we got: "+JSON.stringify(req.body)+"\n\n");
             console.log("POST from Set Ownsership "+JSON.stringify(formTransIds)+"\n");
 
@@ -171,7 +172,8 @@ app.post('/process_set_ownership', urlencodedParser, (req, res) => {
                     let transPercent = (formPercents[i]*100).toFixed(4);
                     console.log("Percent="+transPercent+"\n\n")
                     let trans = await iraSQL.getTransactionById(transId)
-                    console.log("\nInserting new owners, the transaction is: "+JSON.stringify(trans)+"\n\n")
+                    console.log("\nIn process, Inserting new ownership row from trans: "+JSON.stringify(trans)+"\n\n")
+                    ownEntityId = trans[0].investment_entity_id
                     let newOwnershipRow = {
                            parent_entity_id: trans[0].investor_entity_id,
                            child_entity_id: trans[0].investment_entity_id,
@@ -183,6 +185,13 @@ app.post('/process_set_ownership', urlencodedParser, (req, res) => {
                     req.flash('login', "In deals, added ownership #: "+insertOwnershipResults.insertId);
 
           } //for loop
+
+          let entityWithOwnership =  await iraSQL.getEntityById(ownEntityId)
+          console.log("Want to update Entity Own status for "+JSON.stringify(entityWithOwnership)+"\n");
+          entityWithOwnership.ownership_status = 1;
+          entityWithOwnership.taxid = "EIN 444-7777";
+          var updateEntityResults = await iraSQL.updateEntity(entityWithOwnership);
+          console.log("\nUpdated Ownership Status, status: "+updateEntityResults+"\n\n")
           res.redirect('/entities');
 
 
@@ -206,7 +215,7 @@ app.get('/ownership/:id', (req, res) => {
      })
 
      async function showOwnershipInfo() {
-           let foundEntity = await iraSQL.getEntityDetails(req.params.id);
+           let foundEntity = await iraSQL.getEntityById(req.params.id);
            //console.log("in OWN, have Entity   "+ JSON.stringify(foundEntity));
            if (foundEntity.ownership_status === 1) {
                           let investors = await iraSQL.getOwnershipForEntity(foundEntity.id);
@@ -285,9 +294,9 @@ app.get('/setownership/:id', (req, res) => {
     })
 
     async function pullOwnershipTransactions() {
-          var entity = await iraSQL.getEntityDetails(req.params.id);
+          var entity = await iraSQL.getEntityById(req.params.id);
           console.log("in set-ownership, got Entity   "+ JSON.stringify(entity)+"\n\n");
-          var rows = await iraSQL.getTransactionsForEntity(entity.deal_id);
+          var rows = await iraSQL.getTransactionsForEntity(entity.id);
           console.log("\nGot "+rows.length+" transactions for "+ entity.name+":  "+JSON.stringify(rows)+"\n\n");
                   // screen transaction and calculate ownership
           if(entity.ownership_status===0 && (rows.length >0) ) {
@@ -400,9 +409,9 @@ app.get('/dealdetails/:id', (req, res) => {
     })
 
     async function pullDealComponents() {
-          var entity = await iraSQL.getEntityDetails(req.params.id);
+          var entity = await iraSQL.getEntityById(req.params.id);
           console.log("have Entity   "+ JSON.stringify(entity));
-          var deals = await iraSQL.getDealDetails(entity.deal_id);
+          var deals = await iraSQL.getDealById(entity.deal_id);
           console.log("Before Ownership, have Entity   "+ entity.name+"   and Deal is  "+JSON.stringify(deals));
           var investors = await iraSQL.getOwnershipForEntity(entity.id)
           if (investors.length>0) {
@@ -508,10 +517,12 @@ app.get('/add-transaction', (req, res) => {
 // insert the new transaction
 app.post('/process_add_transaction', urlencodedParser, (req, res) => {
     let transaction = req.body
+    console.log("\nAbout to insert new transaction with "+JSON.stringify(transaction)+"\n");
     iraSQL.insertTransaction(transaction).then (
         function (savedData) {
             //console.log( "Added entity #: "+savedData.insertId);
             req.flash('login', "Added transaction no. "+savedData.insertId);
+            console.log("\nAdded transaction no. "+savedData.insertId);
             res.redirect('/transactions');
           }, function(error) {   //failed
                console.log("Process_add_transaction problem: "+error);
@@ -520,7 +531,6 @@ app.post('/process_add_transaction', urlencodedParser, (req, res) => {
 
     ); //try-catch
 }); //route
-
 
 
 //route for add entity
@@ -600,17 +610,23 @@ app.get('/transactions', (req, res) => {
      }
 
 
-      let menuOptions = []
-      menuOptions[0] = {name:"Entities", link:"/entities"}
-      menuOptions[1] = {name:"Transactions", link:"/transactions"}
-      menuOptions[2] = {name:"Add Deal", link:"/add-deal"}
-      menuOptions[3] = {name:"Add Ledger Transaction", link:"/add-transaction"}
-      menuOptions[4] = {name:"Add Entity", link:"/add-entity"}
+      let entityMenuOptions = []
+      entityMenuOptions[0] = {name:"View All", link:"/entities"}
+      entityMenuOptions[1] = {name:"New Deal", link:"/add-deal"}
+      entityMenuOptions[2] = {name:"New Entity", link:"/add-entity"}
+
+      let transMenuOptions = []
+      transMenuOptions[0] = {name:"View All", link:"/transactions"}
+      transMenuOptions[1] = {name:"New Transaction", link:"/add-transaction"}
+
+
+
 
       res.render('home', {
               userObj: userObj,
               message: req.flash('login'),
-              menuoptions: menuOptions,
+              entitymenuoptions: entityMenuOptions,
+              transmenuoptions: transMenuOptions,
               iraVersion: iraVersion
       });
 

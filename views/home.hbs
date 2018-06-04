@@ -14,38 +14,78 @@
 </td></tr>
 
 <tr><td>
- {{message}}
+  {{message}}
 </td></tr>
 </table>
 </div>
 
+<table width = "100%" border = 0>
+      <colgroup>
+      <col width="5%"/>
+      <col width="90%"/>
+      <col width="5%"/>
+      </colgroup>
 
-{{#if menuoptions}}
-{{#each menuoptions}}
+    <tr>
+        <td></td>
+        <td align = "center"><b>[ ENTITIES ]</b></td>
+        <td></td>
+     </tr>
+</table>
+
+
+
+
+{{#if entitymenuoptions}}
+{{#each entitymenuoptions}}
 <div class="w3-panel w3-pale-blue w3-leftbar
  w3-rightbar w3-border-blue w3-margin-right w3-margin-left">
-
-  <table width = "100%" border = 0>
-        <colgroup>
-        <col width="5%"/>
-        <col width="90%"/>
-        <col width="5%"/>
-        </colgroup>
-
+ <table width = "100%" border = 0>
       <tr>
         <td></td>
-
         <td align = "center">
             <a href = '{{link}}'>{{name}}</a>
         </td>
-
         <td></td>
       </tr>
-
-  </table>
+</table>
 </div>
 {{/each}}
-<br><br><br>
+{{/if}}
+
+<br>
+<table width = "100%" border = 0>
+      <colgroup>
+      <col width="5%"/>
+      <col width="90%"/>
+      <col width="5%"/>
+      </colgroup>
+
+    <tr>
+        <td></td>
+        <td align = "center"><b>[ TRANSACTIONS ]</b></td>
+        <td></td>
+     </tr>
+</table>
+
+
+
+ {{#if transmenuoptions}}
+ {{#each transmenuoptions}}
+ <div class="w3-panel w3-pale-blue w3-leftbar
+  w3-rightbar w3-border-blue w3-margin-right w3-margin-left">
+   <table width = "100%" border = 0>
+       <tr>
+         <td></td>
+         <td align = "center">
+             <a href = '{{link}}'>{{name}}</a>
+         </td>
+         <td></td>
+       </tr>
+   </table>
+ </div>
+ {{/each}}
  {{/if}}
- &emsp; &emsp;{{sessioninfo}}
- <br><br>
+
+
+  &emsp; &emsp;{{sessioninfo}}
