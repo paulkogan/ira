@@ -37,8 +37,10 @@ module.exports = {
   getAllEntities: getAllEntities,
   getAllTransactions: getAllTransactions,
   getOwnershipForEntity: getOwnershipForEntity,
+  getOwnershipForInvestor: getOwnershipForInvestor,
   getTransactionsForEntity: getTransactionsForEntity,
   getEntitiesByTypes: getEntitiesByTypes,
+  getEntitiesByOwnership: getEntitiesByOwnership,
   getTransactionById: getTransactionById,
   getEntityById: getEntityById,
   getDealById: getDealById,
@@ -265,6 +267,37 @@ function getDealById (deal_id) {
 } // function
 
 
+//owneship: parent_entity_id, child_entity_id, capital_pct
+function getOwnershipForInvestor (investor_id) {
+  let queryString = 'SELECT o.id, investment.deal_id as deal_id, investor.name as investor_name, investment.name as investment_name, investment.id as investment_id, passthru.name as passthru_name,'
+  + ' DATE_FORMAT(t.wired_date, "%b %d %Y") as wired_date, t.amount as amount, t.id as t_id,'
+  + ' ROUND(o.capital_pct,2) as capital_pct FROM ownership as o'
+  + ' JOIN entities as investment ON investment.id = o.child_entity_id'
+  + ' JOIN entities as investor ON investor.id = o.parent_entity_id'
+  + ' JOIN transactions as t ON t.id = o.transaction_id'
+  + ' LEFT JOIN entities as passthru ON passthru.id = t.passthru_entity_id'
+  + ' WHERE o.parent_entity_id ='+investor_id+' ORDER BY amount DESC';
+
+      return new Promise(function(succeed, fail) {
+            connection.query(queryString,
+              function(err, results) {
+                      if (err) {
+                            console.log ("Cant find ownership "+err)
+                            fail(err)
+                      } else {
+                            console.log ("Got "+results.length+" investments for portfolio")
+                            console.log (JSON.stringify(results)+"\n\n")
+                            // if (results.length<1) {
+                            //           fail("no ownership data")
+                            // }
+                            succeed(results)
+                      }
+              }); //connection
+      }); //promise
+} // function
+
+
+
 
 
 //owneship: parent_entity_id, child_entity_id, capital_pct
@@ -302,6 +335,25 @@ function getEntitiesByTypes(wantedTypes) {
       'SELECT e.id as id, t.name as entity_type, e.name as name, e.taxid as taxid, e.ownership_status as own_status FROM entities as e'
         + ' JOIN entity_types as t ON t.type_num = e.type'
         + ' WHERE e.type IN ('+wantedTypes.join()+')';
+
+      return new Promise(function(succeed, fail) {
+            connection.query(queryString,
+              function(err, results) {
+                      if (err) {
+                            fail(err)
+                      } else {
+                            succeed(results)
+                      }
+              }); //connection
+      }); //promise
+} // function
+
+
+function getEntitiesByOwnership(ownStatus) {
+      let queryString =
+      'SELECT e.id as id, t.name as entity_type, e.name as name, e.taxid as taxid, e.ownership_status as own_status FROM entities as e'
+        + ' JOIN entity_types as t ON t.type_num = e.type'
+        + ' WHERE e.ownership_status='+ownStatus+' ORDER BY entity_type ASC';
 
       return new Promise(function(succeed, fail) {
             connection.query(queryString,

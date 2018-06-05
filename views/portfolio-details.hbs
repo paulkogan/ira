@@ -4,7 +4,7 @@
 <table width = "100%" border = 0 >
 
 <tr><td>
-  <font family = 'courier' size='5'><b>IRA</b> - Deal Details</font>
+  <font family = 'courier' size='5'><b>IRA</b> - Portfolio Details</font>
 </td><td align = "right">
 
 <a href = '/home'>{{userObj.firstname}}</a>&emsp;<img width='50' src={{userObj.photo}}>
@@ -18,7 +18,7 @@
 
 <tr><td>
   <br>
-Deal details for: <font family = 'courier' size='4'><b>{{dealName}}</b></font>
+Portfolio details for: <font family = 'courier' size='4'><b>{{investorName}}</b></font>
 </td></tr>
 </table>
 </div>
@@ -66,17 +66,6 @@ Deal details for: <font family = 'courier' size='4'><b>{{dealName}}</b></font>
                 <td align="right">{{deal.total_debt}}</td>
                 <td></td>
               </tr>
-            <tr>
-              <td></td>
-              <td align="right"></td>
-              <td align="right"></td>
-              <td></td>
-              <td >Equity Value</td>
-              <td align="right">{{deal.formatted_equity_value}}</td>
-              <td></td>
-            </tr>
-
-
 
                 <tr>
                   <td></td>
@@ -91,12 +80,12 @@ Deal details for: <font family = 'courier' size='4'><b>{{dealName}}</b></font>
 
 <div class="w3-panel w3-pale-blue w3-leftbar
  w3-rightbar w3-border-blue w3-margin-right w3-margin-left">
-Ownership details: <b>{{message}}</b>
+Portfolio details: <b>{{message}}</b>
 </div>
 
 
-{{#if investors}}
-{{#each investors}}
+{{#if investments}}
+{{#each investments}}
 <div class="w3-panel w3-pale-blue w3-leftbar
  w3-rightbar w3-border-blue w3-margin-right w3-margin-left">
 
@@ -113,9 +102,10 @@ Ownership details: <b>{{message}}</b>
 
 
 
+
       <tr>
           <td align="center">{{id}}</td>
-          <td align="left"><b>{{investor_name}}</b></td>
+          <td align="left"><b>{{investment_name}}</b></td>
           <td align="left">{{passthru_name}}</td>
           <td>{{capital_pct}}%</td>
           <td>{{formattedAmount}}</td>
@@ -144,18 +134,21 @@ Ownership details: <b>{{message}}</b>
       <tr>
         <td></td>
         <td></td>
-        <td>Total Inv. Capital:</td>
-        <td><b>{{totalCapitalPct}}%</b></td>
-        <td><b>{{totalCapital}}</b></td>
+        <td>Total Portfolio Value</td>
+        <td><b></b></td>
+        <td><b>{{totalPortfolioValue}}</b></td>
 
         <td></td>
         <td></td>
       </tr>
-
-
       </table>
 
 </div>
+
+
+        'SELECT o.id, investor.name as investor_name, investment.name as investment_name, investment.id as investment_id, passthru.name as passthru_name,'
+        + ' DATE_FORMAT(t.wired_date, "%b %d %Y") as wired_date, t.amount as amount, t.id as t_id,'
+        + ' ROUND(o.capital_pct,2) as capital_pct FROM ownership as o'
 
  &emsp; &emsp;<br>
  &emsp;&emsp;<br>
