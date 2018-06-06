@@ -26,7 +26,7 @@ Deal details for: <font family = 'courier' size='4'><b>{{dealName}}</b></font>
 {{#if deal}}
 <div class="w3-panel w3-pale-blue w3-leftbar
  w3-rightbar w3-border-blue w3-margin-right w3-margin-left">
-  <table width = "100%" border = 1>
+  <table width = "100%" border = 0>
         <colgroup>
         <col width="5%"/>
         <col width="20%"/>
@@ -71,8 +71,8 @@ Deal details for: <font family = 'courier' size='4'><b>{{dealName}}</b></font>
               <td align="right"></td>
               <td align="right"></td>
               <td></td>
-              <td >Equity Value</td>
-              <td align="right">{{deal.formatted_equity_value}}</td>
+              <td >Deal Equity Value</td>
+              <td align="right"><b>{{deal.formatted_equity_value}}</b></td>
               <td></td>
             </tr>
 

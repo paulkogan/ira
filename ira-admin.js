@@ -1,10 +1,6 @@
 'use strict';
 
-const path = require('path');
-const fs = require('fs');
-const express = require('express');
-//const config = require('./prop3config');
-const app = express();
+
 const bodyParser = require('body-parser');
 const urlencodedParser = bodyParser.urlencoded({ extended: false })
 
@@ -20,11 +16,7 @@ const RedisStore = require('connect-redis')(session)
 //const bcrypt = require('bcrypt');
 
 const iraSQL =  require('./ira-model');
-const secret = "cat"
-const iraVersion = "0.9.2 +investor portfolio+parse commas"
-const nodePort = 8081
-//var router = express.Router();  then call router.post('/')
-
+const iraadmin =  require('./ira-');
 
   app.set('trust proxy', true);
   app.use(flash());
@@ -93,7 +85,7 @@ let userObj =
 //============ FUNCTIONS ======================
 
 function formatCurrency (amount) {
-     return "$"+amount.toFixed(0).replace(/(\d)(?=(\d\d\d)+(?!\d))/g, "$1,");
+     return "$"+amount.toFixed(2).replace(/(\d)(?=(\d\d\d)+(?!\d))/g, "$1,");
 }
 
 
@@ -558,8 +550,7 @@ app.post('/process_add_deal', urlencodedParser, (req, res) => {
               investor_id:null,
               keyman_id: null,
               name: newDeal.name,
-              taxid: formDeal.taxid,
-              ownership_status: 0
+              taxid: formDeal.taxid
             }
             var insertEntityResults = await iraSQL.insertEntity(dealEntity);
             req.flash('login', "In deals, added entity #: "+insertEntityResults.insertId);
@@ -693,8 +684,6 @@ app.get('/add-transaction', (req, res) => {
 app.post('/process_add_transaction', urlencodedParser, (req, res) => {
     let transaction = req.body
     console.log("\nAbout to insert new transaction with "+JSON.stringify(transaction)+"\n");
-    transaction.amount = transaction.amount.replace(/(,|\$)/g,"")
-
     iraSQL.insertTransaction(transaction).then (
         function (savedData) {
             //console.log( "Added entity #: "+savedData.insertId);

@@ -83,6 +83,34 @@ Portfolio details for: <font family = 'courier' size='4'><b>{{investorName}}</b>
 Portfolio details: <b>{{message}}</b>
 </div>
 
+<div class="w3-panel w3-pale-blue w3-leftbar
+ w3-rightbar w3-border-blue w3-margin-right w3-margin-left">
+
+  <table width = "100%" border = 0>
+        <colgroup>
+        <col width="5%"/>
+        <col width="20%"/>
+        <col width="20%"/>
+        <col width="15%"/>
+        <col width="10%"/>
+        <col width="15%"/>
+        <col width="15%"/>
+        </colgroup>
+
+      <tr>
+          <td align="center"><u>Tr.id</td>
+          <td align="center"><u>Investment</b></td>
+          <td align="left"><u>Passthru</td>
+          <td><u>Invest.Amount</td>
+          <td><u>% Own.</td>
+          <td><u>Deal Curr. Value</td>
+          <td><u>Inv. Curr. Value</u></td>
+
+      </tr>
+      </table>
+</div>
+
+
 
 {{#if investments}}
 {{#each investments}}
@@ -95,51 +123,59 @@ Portfolio details: <b>{{message}}</b>
         <col width="20%"/>
         <col width="20%"/>
         <col width="15%"/>
+        <col width="10%"/>
         <col width="15%"/>
         <col width="15%"/>
-        <col width="0%"/>
         </colgroup>
 
 
 
 
       <tr>
-          <td align="center">{{id}}</td>
+          <td align="center">{{t_id}}</td>
           <td align="left"><b>{{investment_name}}</b></td>
           <td align="left">{{passthru_name}}</td>
+          <td>{{formatted_amount}}</td>
           <td>{{capital_pct}}%</td>
-          <td>{{formattedAmount}}</td>
-          <td>{{wired_date}}</td>
-          <td></td>
+          <td>{{formatted_deal_equity_value}}</td>
+          <td>{{formatted_investor_equity_value}}</td>
+
       </tr>
       </table>
 </div>
 {{/each}}
  {{/if}}
+
+
+
+
  <div class="w3-panel w3-pale-blue w3-leftbar
   w3-rightbar w3-bottombar w3-border-blue w3-margin-right w3-margin-left">
   <table width = "100%" border = 0>
         <colgroup>
-          <col width="5%"/>
-          <col width="20%"/>
-          <col width="20%"/>
-          <col width="15%"/>
-          <col width="15%"/>
-          <col width="15%"/>
-          <col width="0%"/>
+        <col width="5%"/>
+        <col width="20%"/>
+        <col width="20%"/>
+        <col width="15%"/>
+        <col width="20%"/>
+        <col width="5%"/>
+        <col width="15%"/>
         </colgroup>
-
 
 
       <tr>
         <td></td>
         <td></td>
-        <td>Total Portfolio Value</td>
-        <td><b></b></td>
+        <td>Total Investment Value:</b></td>
+        <td><b>{{totalInvestmentValue}}</b></td>
+        <td align="right">Total Portfolio Value:</td>
+        <td></td>
         <td><b>{{totalPortfolioValue}}</b></td>
 
-        <td></td>
-        <td></td>
+
+
+
+
       </tr>
       </table>
 
