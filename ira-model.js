@@ -3,7 +3,6 @@
 
 const extend = require('lodash').assign;
 const mysql = require('mysql');
-//const bcrypt = require('bcrypt');
 const env = 'ebawsira'
 
 let options = {};
@@ -91,12 +90,13 @@ function updateEntity (updatedEntity) {
 
 
 function getTransactionsForEntity (entityId) {
-  let queryString = 'SELECT t.id, investor.name as investor_name, investment.name as investment_name, passthru.name as passthru_name,'
+  let queryString = 'SELECT t.id, t.investor_entity_id as investor_entity_id,  t.investment_entity_id as investment_entity_id, t.passthru_entity_id as passthru_entity_id,'
+  + ' investor.name as investor_name, investment.name as investment_name, passthru.name as passthru_name,'
   + ' DATE_FORMAT(t.wired_date, "%b %d %Y") as wired_date, t.amount as amount'
   + ' FROM transactions as t'
   + ' JOIN entities as investment ON investment.id = t.investment_entity_id'
   + ' JOIN entities as investor ON investor.id = t.investor_entity_id'
-  + ' LEFT JOIN `entities` as passthru ON passthru.id = t.passthru_entity_id'
+  + ' LEFT JOIN entities as passthru ON passthru.id = t.passthru_entity_id'
   + ' WHERE t.investment_entity_id ='+entityId+' ORDER BY amount DESC';
 
       return new Promise(function(succeed, fail) {
@@ -269,13 +269,13 @@ function getDealById (deal_id) {
 
 //owneship: parent_entity_id, child_entity_id, capital_pct
 function getOwnershipForInvestor (investor_id) {
-  let queryString = 'SELECT o.id, investment.deal_id as deal_id, investor.name as investor_name, investment.name as investment_name, investment.id as investment_id, passthru.name as passthru_name,'
-  + ' DATE_FORMAT(t.wired_date, "%b %d %Y") as wired_date, t.amount as amount, t.id as t_id,'
-  + ' ROUND(o.capital_pct,2) as capital_pct FROM ownership as o'
+  let queryString = 'SELECT o.id, investment.deal_id as deal_id, investor.name as investor_name,'
+  + ' investment.name as investment_name, investment.id as investment_id, passthru.name as passthru_name,'
+  //+ ' DATE_FORMAT(t.wired_date, "%b %d %Y") as wired_date, t.amount as amount, t.id as t_id,'
+  + ' ROUND(o.capital_pct,2) as capital_pct, o.amount as amount FROM ownership as o'
   + ' JOIN entities as investment ON investment.id = o.child_entity_id'
   + ' JOIN entities as investor ON investor.id = o.parent_entity_id'
-  + ' JOIN transactions as t ON t.id = o.transaction_id'
-  + ' LEFT JOIN entities as passthru ON passthru.id = t.passthru_entity_id'
+  + ' LEFT JOIN entities as passthru ON passthru.id = o.passthru_entity_id'
   + ' WHERE o.parent_entity_id ='+investor_id+' ORDER BY amount DESC';
 
       return new Promise(function(succeed, fail) {
@@ -285,7 +285,7 @@ function getOwnershipForInvestor (investor_id) {
                             console.log ("Cant find ownership "+err)
                             fail(err)
                       } else {
-                            console.log ("Got "+results.length+" investments for portfolio")
+                            console.log ("In model, getOwnershipForInvestor, got "+results.length+" investments for portfolio")
                             console.log (JSON.stringify(results)+"\n\n")
                             // if (results.length<1) {
                             //           fail("no ownership data")
@@ -303,12 +303,10 @@ function getOwnershipForInvestor (investor_id) {
 //owneship: parent_entity_id, child_entity_id, capital_pct
 function getOwnershipForEntity (child_id) {
   let queryString = 'SELECT o.id, investor.name as investor_name, investment.name as investment_name, passthru.name as passthru_name,'
-  + ' DATE_FORMAT(t.wired_date, "%b %d %Y") as wired_date, t.amount as amount, t.id as t_id,'
-  + ' ROUND(o.capital_pct,2) as capital_pct FROM ownership as o'
+  + ' o.amount as amount, ROUND(o.capital_pct,2) as capital_pct FROM ownership as o'
   + ' JOIN entities as investment ON investment.id = o.child_entity_id'
   + ' JOIN entities as investor ON investor.id = o.parent_entity_id'
-  + ' JOIN transactions as t ON t.id = o.transaction_id'
-  + ' LEFT JOIN entities as passthru ON passthru.id = t.passthru_entity_id'
+  + ' LEFT JOIN entities as passthru ON passthru.id = o.passthru_entity_id'
   + ' WHERE o.child_entity_id ='+child_id+' ORDER BY amount DESC';
 
       return new Promise(function(succeed, fail) {
@@ -389,7 +387,8 @@ function getAllTransactions () {
       return new Promise(function(succeed, fail) {
             connection.query(
             //  'SELECT * from transactions',
-              'SELECT t.id as id, investment.name as investment_name, investor.name as investor_name, passthru.name as passthru_name, t.trans_type as t_type, DATE_FORMAT(t.wired_date, "%b %d %Y") as t_wireddate,'
+              'SELECT t.id as id, investment.name as investment_name, investor.name as investor_name, passthru.name as passthru_name, t.trans_type as t_type,'
+              +' DATE_FORMAT(t.wired_date, "%b %d %Y") as t_wireddate,'
               +' TRUNCATE(t.amount,2) as t_amount, t.notes as t_notes FROM transactions as t'
               +' JOIN entities as investment ON investment.id = t.investment_entity_id'
               +' JOIN entities as investor ON investor.id = t.investor_entity_id'
