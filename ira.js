@@ -18,11 +18,8 @@ const cookieParser = require('cookie-parser')
 const session = require('express-session')
 const RedisStore = require('connect-redis')(session)
 //const bcrypt = require('bcrypt');
-
-const iraSQL =  require('./ira-model');
-//require('./ira-menus')(app);
 const secret = "cat"
-const iraVersion = "0.10 +mutiple transactions per ownership"
+
 const nodePort = 8081
 //var router = express.Router();  then call router.post('/')
 
@@ -32,6 +29,12 @@ const nodePort = 8081
   app.use(cookieParser(secret));
   app.use(bodyParser.urlencoded({extended: true}))
   app.use(bodyParser.json());
+
+
+  const iraSQL =  require('./ira-model');
+  var menus = require('./ira-menus.js');
+  //require('./ira-menus')(app); //other approach
+  app.use(menus)
 
   app.use(session({
       cookieName: 'irasess',
@@ -43,8 +46,8 @@ const nodePort = 8081
   }));
   app.use(passport.initialize());
   app.use(passport.session());
-//app.use(passport.authenticate('session'));
-//props.use(app.router);
+  app.use(passport.authenticate('session'));
+;
 
 
 
@@ -90,6 +93,15 @@ let userObj =
   "access":0
 }
 
+// Start the server
+const server = app.listen(nodePort, function() {
+  console.log('IRA listening on port  ' + nodePort);
+});
+
+var iraVersion = "0.10.4 +multiple wire dates +error catching"
+module.exports = app;
+exports.version = iraVersion;
+
 
 //============ FUNCTIONS ======================
 
@@ -99,16 +111,31 @@ function formatCurrency (amount) {
 
 
 function totalupInvestors (investors) {
-      let expandInvestors = investors
+      let expandInvestors = []
       let totalCapital = 0;
-      let totalCapitalPct =0;
+      let totalCapitalPct =0.0000;
       for (let index = 0; index < investors.length; index++) {
-             totalCapital += expandInvestors[index].amount;
-             totalCapitalPct += expandInvestors[index].capital_pct;
-             expandInvestors[index].formattedAmount = formatCurrency(expandInvestors[index].amount)
-             //console.log("IN validate ownership: "+ index +" lastname: "+expandInvestors[index].investor_name+" amount: "+expandInvestors[index].formattedAmount+" cap_pct: "+expandInvestors[index].capital_pct)
-      }//for
-      return [expandInvestors, formatCurrency(totalCapital), totalCapitalPct];
+            let alreadyExists = false
+            for (let j = 0; j < expandInvestors.length; j++) {
+                    if (expandInvestors[j].id === investors[index].id) {
+                            expandInvestors[j].wired_date = "Multiple wires for investment"
+                            console.log("\nMULTIPLE transaction for: " +JSON.stringify(expandInvestors[j])+"  \n");
+                            alreadyExists = true
+                            break
+                    } //if
+            }  //for loop checking existing own rows
+
+            if (!alreadyExists) {  //not a duplicate
+                    expandInvestors[index] = investors[index]
+                    totalCapital += investors[index].amount;
+                    totalCapitalPct += investors[index].capital_pct;
+                    expandInvestors[index].formattedAmount = formatCurrency(expandInvestors[index].amount)
+                    console.log("\nin TUI - Adding own row " +JSON.stringify(expandInvestors[index])+"  \n");
+            } //if not a dupe
+
+      }//for index --- all own rows with transactions
+      console.log("in TotalUpInvestors sending: " +totalCapitalPct+"%  ");
+      return [expandInvestors, formatCurrency(totalCapital), totalCapitalPct.toFixed(2)];
   } //function
 
   async function totalupPortfolio (investments) {
@@ -145,7 +172,7 @@ function totalupInvestors (investors) {
         // now calculate % for each
         for (let index = 0; index < inv_trans_Rows.length; index++) {
                inv_trans_Rows[index].percent = (inv_trans_Rows[index].amount/totalCapital)
-               inv_trans_Rows[index].formattedPercent = (inv_trans_Rows[index].percent*100).toFixed(2)+"%"
+               inv_trans_Rows[index].formattedPercent = (inv_trans_Rows[index].percent*100).toFixed(4)+"%"
                inv_trans_Rows[index].formattedAmount = formatCurrency(inv_trans_Rows[index].amount)
                //console.log("IN validate ownership: "+ index +" lastname: "+expandInvestors[index].investor_name+" amount: "+expandInvestors[index].formattedAmount+" cap_pct: "+expandInvestors[index].capital_pct)
         }//for  total capital
@@ -155,7 +182,7 @@ function totalupInvestors (investors) {
 
 
   function calculateDeal (deal) {
-        console.log("\nin CalculateDeal, Deal is  "+JSON.stringify(deal));
+        //console.log("\nin CalculateDeal, Deal is  "+JSON.stringify(deal));
          let expandDeal = deal
          //expandDeal.equity_value = 999
          //expandDeal.equity_value = expandDeal.aggregate_value
@@ -167,7 +194,7 @@ function totalupInvestors (investors) {
          expandDeal.aggregate_debt = formatCurrency(expandDeal.aggregate_debt)
          expandDeal.deal_debt  = formatCurrency(expandDeal.deal_debt)
          expandDeal.formatted_equity_value =formatCurrency(expandDeal.equity_value)
-        console.log("\nin CalculateDeal, expandDeal is  "+JSON.stringify(expandDeal));
+        //console.log("\nin CalculateDeal, expandDeal is  "+JSON.stringify(expandDeal));
         return expandDeal;
     } //function
 
@@ -185,12 +212,13 @@ app.get('/portfolio/:id', (req, res) => {
 
      showInvestorPortfolio().catch(err => {
            console.log("investor portfolio problem: "+err);
-           req.flash('login', "Problems getting Portfolio "+req.params.id+".  ")
+           req.flash('login', "Problems getting Portfolio info for entity no. "+req.params.id+".  ")
            res.redirect('/home')
      })
 
      async function showInvestorPortfolio() {
-           let investments = await iraSQL.getOwnershipForInvestor(req.params.id);
+           let foundEntity = await iraSQL.getEntityById(req.params.id);
+           let investments = await iraSQL.getOwnershipForInvestor(foundEntity.id);
            console.log("In /portfolio/id, here are all investments: "+JSON.stringify(investments)+"\n\n");
            if (investments.length > 0) {
                           let results = await totalupPortfolio(investments)
@@ -208,13 +236,12 @@ app.get('/portfolio/:id', (req, res) => {
                           });
 
                     } else { //no ownership data
+                          req.flash('login', "No portfolio info for "+foundEntity.name+".  ")
                           res.redirect('/home/')
 
                 } //if ownership
      } //async function
 }); //route - ownership
-
-
 
 
 
@@ -288,11 +315,17 @@ app.post('/process_set_ownership', urlencodedParser, (req, res) => {
             //now add all own_rows to ownsrhip table
             for (let k=0;k<own_Rows.length;k++) {
                     var insertOwnershipResults = await iraSQL.insertOwnership(own_Rows[k]);
-                    console.log("Added new ownershiprow, id= "+insertOwnershipResults.insertId);
-                    //insert into lookup table
-
-
-          } //for loop k
+                    console.log("Added new ownership row, id= "+insertOwnershipResults.insertId);
+                    //insert into own_trans lookup table
+                    for (let l=0;l<inv_trans.length;l++) {
+                           if (inv_trans[l].parent_entity_id === own_Rows[k].parent_entity_id) { //add lookup
+                                 var insertOwnTransResults = await iraSQL.insertOwnTrans(
+                                          insertOwnershipResults.insertId,
+                                          inv_trans[l].trans_id);
+                                  console.log("Added new own_trans lookup, results= "+JSON.stringify(insertOwnTransResults)+"  ow="+insertOwnershipResults.insertId+"  trans="+inv_trans[l].trans_id);
+                           } //if its a match
+                    } //l loop, in case there are multiple trans
+            } //for loop k, for each ownership row
 
           //change entity status
           let entityWithOwnership =  await iraSQL.getEntityById(ownEntityId)
@@ -301,7 +334,12 @@ app.post('/process_set_ownership', urlencodedParser, (req, res) => {
           //entityWithOwnership.taxid = "EIN 444-7777";
           var updateEntityResults = await iraSQL.updateEntity(entityWithOwnership);
           console.log("\nUpdated Ownership Status, here results: "+updateEntityResults+"\n\n")
-          res.redirect('/entities');
+          res.redirect('/deals');
+
+
+
+
+
 
 
     } //async function
@@ -328,10 +366,11 @@ app.get('/ownership/:id', (req, res) => {
            //console.log("in OWN, have Entity   "+ JSON.stringify(foundEntity));
            if (foundEntity.ownership_status === 1) {
                           let investors = await iraSQL.getOwnershipForEntity(foundEntity.id);
+                          console.log("show -ownership is "+JSON.stringify(investors))
                           let results = totalupInvestors(investors)
                           let expandInvestors = results[0]
                           let totalCapital =  results[1]
-                          let totalCapitalPct = results[2]
+                          let totalCapitalPct = (results[2]*1).toFixed(2)
                           console.log("rendering ownership")
                           res.render('deal-ownership', {
                                   userObj: userObj,
@@ -638,217 +677,3 @@ app.post('/process_add_entity', urlencodedParser, (req, res) => {
 
           }); //try-catch
 }); //route
-
-
-
-app.get('/transactions', (req, res) => {
-  if (req.session && req.session.passport) {
-     userObj = req.session.passport.user;
-
-   }
-          iraSQL.getAllTransactions().then(
-                function(transactions) {
-                          res.render('list-transactions', {
-                                  userObj: userObj,
-                                  sessioninfo: JSON.stringify(req.session),
-                                  message: req.flash('login') + "  Showing "+transactions.length+" transactions",
-                                  transactions: transactions
-                          });//render
-
-                }, function(err) {   //failed
-                               console.log("Ledger problem: "+err);
-                               return;
-                } //  success function
-          ); //getAll Trandactions then
-}); //  /entities route
-
-
-
-
-app.get('/entities', (req, res) => {
-          if (req.session && req.session.passport) {
-             userObj = req.session.passport.user;
-
-           }
-          iraSQL.getAllEntities().then(
-                function(entities) {
-                          //console.log("in get all ENTITIES, we got:   "+JSON.stringify(entities[0]))
-                          var expandEntities = entities;
-
-                          for (let index = 0; index < entities.length; index++) {
-                                 if(  (expandEntities[index].ownership===0) && (expandEntities[index].type === 1)    ) {
-                                            expandEntities[index].canSetOwnership = true
-                                 //console.log("IN validate ownership: "+ index +" lastname: "+expandInvestors[index].investor_name+" amount: "+expandInvestors[index].formattedAmount+" cap_pct: "+expandInvestors[index].capital_pct)
-                               } //
-                          }//for
-
-
-                          res.render('list-entities', {
-                                  userObj: userObj,
-                                  sessioninfo: JSON.stringify(req.session),
-                                  message: req.flash('login') + "Showing "+entities.length+" entities.",
-                                  entities: expandEntities
-                          });//render
-
-
-                }, function(err) {   //failed
-                               console.log("List entities problem: "+err);
-                               return;
-                } //  success function
-          ); //getAll Entities then
-}); //  entities route
-
-
-app.get('/investors', (req, res) => {
-          if (req.session && req.session.passport) {
-             userObj = req.session.passport.user;
-
-           }
-          iraSQL.getEntitiesByTypes([2,4]).then(
-                function(entities) {
-                          //console.log("in get all ENTITIES, we got:   "+JSON.stringify(entities[0]))
-                          var expandEntities = entities;
-
-                          // for (let index = 0; index < entities.length; index++) {
-                          //
-                          //      } //
-                          // }//for
-
-
-                          res.render('list-investors', {
-                                  userObj: userObj,
-                                  sessioninfo: JSON.stringify(req.session),
-                                  message: req.flash('login') + "Showing "+entities.length+" investors.",
-                                  entities: expandEntities
-                          });//render
-
-
-                }, function(err) {   //failed
-                               console.log("List investors problem: "+err);
-                               return;
-                } //  success function
-          ); //getAll Entities then
-}); //  entities route
-
-
-
-
-
-app.get('/deals', (req, res) => {
-          if (req.session && req.session.passport) {
-             userObj = req.session.passport.user;
-
-           }
-          iraSQL.getEntitiesByTypes([1]).then(
-                function(entities) {
-                          //console.log("in get all ENTITIES, we got:   "+JSON.stringify(entities[0]))
-                          var expandEntities = entities;
-
-                          for (let index = 0; index < entities.length; index++) {
-                                 if(  (expandEntities[index].ownership===0) && (expandEntities[index].type === 1)    ) {
-                                            expandEntities[index].canSetOwnership = true
-                                 //console.log("IN validate ownership: "+ index +" lastname: "+expandInvestors[index].investor_name+" amount: "+expandInvestors[index].formattedAmount+" cap_pct: "+expandInvestors[index].capital_pct)
-                               } //
-                          }//for
-
-
-                          res.render('list-deals', {
-                                  userObj: userObj,
-                                  sessioninfo: JSON.stringify(req.session),
-                                  message: req.flash('login') + "Showing "+entities.length+" deals.",
-                                  entities: expandEntities
-                          });//render
-
-
-                }, function(err) {   //failed
-                               console.log("List deals problem: "+err);
-                               return;
-                } //  success function
-          ); //getAll Entities then
-}); //  entities route
-
-
-//this is the list page of all possible ownership deals
-app.get('/setownership', (req, res) => {
-          if (req.session && req.session.passport) {
-             userObj = req.session.passport.user;
-
-           }
-          iraSQL.getEntitiesByOwnership(0).then(
-                function(entities) {
-                          //console.log("in get all ENTITIES, we got:   "+JSON.stringify(entities[0]))
-                          var expandEntities = entities;
-
-                          for (let index = 0; index < entities.length; index++) {
-                                 if(  (expandEntities[index].ownership===0) && (expandEntities[index].type === 1)    ) {
-                                            expandEntities[index].canSetOwnership = true
-                                 //console.log("IN validate ownership: "+ index +" lastname: "+expandInvestors[index].investor_name+" amount: "+expandInvestors[index].formattedAmount+" cap_pct: "+expandInvestors[index].capital_pct)
-                               } //
-                          }//for
-
-
-                          res.render('setown-entities', {
-                                  userObj: userObj,
-                                  sessioninfo: JSON.stringify(req.session),
-                                  message: req.flash('login') + "Showing "+entities.length+" entities.",
-                                  entities: expandEntities
-                          });//render
-
-
-                }, function(err) {   //failed
-                               console.log("List entities problem: "+err);
-                               return;
-                } //  success function
-          ); //getAll Entities then
-}); //  entities route
-
-
-
-
-
-  app.get('/home', (req, res) => {
-
-    if (req.session && req.session.passport) {
-       userObj = req.session.passport.user;
-     }
-
-
-      let reportMenuOptions = []
-      reportMenuOptions[0] = {name:"Investors", link:"/investors"}
-      reportMenuOptions[1] = {name:"Deals", link:"/deals"}
-      reportMenuOptions[2] = {name:"All Transactions", link:"/transactions"}
-      reportMenuOptions[3] = {name:"All Entities", link:"/entities"}
-
-
-      let adminMenuOptions = []
-      adminMenuOptions[0] = {name:"New Transaction", link:"/add-transaction"}
-      adminMenuOptions[1] = {name:"New Deal", link:"/add-deal"}
-      adminMenuOptions[2] = {name:"New Entity", link:"/add-entity"}
-      adminMenuOptions[3] = {name:"Set Ownership", link:"/setownership/"}
-
-
-
-      res.render('home', {
-              userObj: userObj,
-              message: req.flash('login'),
-              reportmenuoptions: reportMenuOptions,
-              adminmenuoptions: adminMenuOptions,
-              iraVersion: iraVersion
-      });
-
-  });
-
-
-  app.get('/', function(req, res) {
-        res.redirect('/home')
-
- })
-
-
-    // Start the server
-    const server = app.listen(nodePort, function() {
-      console.log('IRA listening on port  ' + nodePort);
-    });
-
-
-module.exports = app;

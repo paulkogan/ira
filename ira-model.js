@@ -49,6 +49,7 @@ module.exports = {
   insertTransaction: insertTransaction,
   insertDeal: insertDeal,
   insertOwnership: insertOwnership,
+  insertOwnTrans: insertOwnTrans,
   updateEntity: updateEntity
 
   //getTransactionsForInvestment: getTransactionsForInvestment
@@ -118,6 +119,25 @@ function getTransactionsForEntity (entityId) {
 } // function
 
 
+
+
+
+function insertOwnTrans(own_id, trans_id) {
+      let queryString = "INSERT INTO own_trans_lookup (own_id, trans_id) VALUES"
+      + " ("+own_id+", "+trans_id+")"
+
+      console.log ("in insert own_trans, the query string is "+queryString+"\n\n")
+         return new Promise(function(succeed, fail) {
+               connection.query(queryString,
+                 function(err, results) {
+                         if (err) {
+                               fail(err)
+                         } else {
+                                succeed(results.affectedRows)
+                         }
+                 }); //connection
+         }); //promise
+} // function
 
 
 
@@ -272,7 +292,7 @@ function getOwnershipForInvestor (investor_id) {
   let queryString = 'SELECT o.id, investment.deal_id as deal_id, investor.name as investor_name,'
   + ' investment.name as investment_name, investment.id as investment_id, passthru.name as passthru_name,'
   //+ ' DATE_FORMAT(t.wired_date, "%b %d %Y") as wired_date, t.amount as amount, t.id as t_id,'
-  + ' ROUND(o.capital_pct,2) as capital_pct, o.amount as amount FROM ownership as o'
+  + ' ROUND(o.capital_pct,4) as capital_pct, o.amount as amount FROM ownership as o'
   + ' JOIN entities as investment ON investment.id = o.child_entity_id'
   + ' JOIN entities as investor ON investor.id = o.parent_entity_id'
   + ' LEFT JOIN entities as passthru ON passthru.id = o.passthru_entity_id'
@@ -303,10 +323,13 @@ function getOwnershipForInvestor (investor_id) {
 //owneship: parent_entity_id, child_entity_id, capital_pct
 function getOwnershipForEntity (child_id) {
   let queryString = 'SELECT o.id, investor.name as investor_name, investment.name as investment_name, passthru.name as passthru_name,'
-  + ' o.amount as amount, ROUND(o.capital_pct,2) as capital_pct FROM ownership as o'
+  + ' DATE_FORMAT(t.wired_date, "%b %d %Y") as wired_date,'
+  + ' o.amount as amount, ROUND(o.capital_pct,4) as capital_pct FROM ownership as o'
   + ' JOIN entities as investment ON investment.id = o.child_entity_id'
   + ' JOIN entities as investor ON investor.id = o.parent_entity_id'
   + ' LEFT JOIN entities as passthru ON passthru.id = o.passthru_entity_id'
+  + ' LEFT JOIN own_trans_lookup as own_trans on own_trans.own_id = o.id'
+  + ' LEFT JOIN transactions as t on t.id = own_trans.trans_id'
   + ' WHERE o.child_entity_id ='+child_id+' ORDER BY amount DESC';
 
       return new Promise(function(succeed, fail) {

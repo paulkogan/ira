@@ -2,60 +2,46 @@
 
 // const path = require('path');
 // const fs = require('fs');
-// const express = require('express');
+
 // //const config = require('./prop3config');
-// const app = express();
+
 // const bodyParser = require('body-parser');
 // const urlencodedParser = bodyParser.urlencoded({ extended: false })
 
 // //all the auth stuff
- const flash             = require('connect-flash-plus');
+
 // const crypto            = require('crypto');
 // const passport          = require('passport');
 // const LocalStrategy     = require('passport-local').Strategy;
 //
 // const cookieParser = require('cookie-parser')
-// const session = require('express-session')
+
 // const RedisStore = require('connect-redis')(session)
 // //const bcrypt = require('bcrypt');
 //
-const iraSQL =  require('./ira-model');
-const app = require('./ira');
-// const secret = "cat"
+
+
+
 // const iraVersion = "0.9.3 +investor portfolio+parse commas"
 // const nodePort = 8081
-// //var router = express.Router();  then call router.post('/')
+// // then call router.post('/')
 //
 //
 //   app.set('trust proxy', true);
-  app.use(flash());
-  app.use(cookieParser(secret));
-  app.use(bodyParser.urlencoded({extended: true}))
-  app.use(bodyParser.json());
-//
-//   app.use(session({
-//       cookieName: 'irasess',
-//       secret: secret,
-//       resave: true,
-//       //store: RedisStore,
-//       saveUninitialized: true,
-//       cookie : { httpOnly: true, expires: 60*60*1000 }
-//   }));
-//   app.use(passport.initialize());
-//   app.use(passport.session());
-// //app.use(passport.authenticate('session'));
-// //props.use(app.router);
 
-
-
-
-
-
+//   app.use(cookieParser(secret));
+//   app.use(bodyParser.urlencoded({extended: true}))
+//   app.use(bodyParser.json());
+// //
 // app.set('view engine', 'hbs');
 // app.set('views', path.join(__dirname, '/views/'));
 // app.use('/static', express.static(__dirname + '/static'));
 //
-// let sessioninfo = "no session"
+
+
+const flash   = require('connect-flash-plus');
+const session = require('express-session')
+let sessioninfo = "no session"
 let userObj =
 {
   "id":0,
@@ -67,14 +53,72 @@ let userObj =
   "access":0
 }
 
+//const app = express();
+const express = require('express');
+var router = express.Router();
+const iraSQL =  require('./ira-model');
+const ira =  require('./ira');
+const secret = "cat"
+
+router.use(flash());
+router.use(session({
+  cookieName: 'irasess',
+  secret: secret,
+  resave: true,
+  //store: RedisStore,
+  saveUninitialized: true,
+  cookie : { httpOnly: true, expires: 60*60*1000 }
+}));
+// router.use(passport.initialize());
+// router.use(passport.session());
+// router.use(passport.authenticate('session'));
+
+
+
 
 //============ FUNCTIONS ======================
 
+module.exports = router;
 
-module.exports = function(app){
+
+//list for ownerships to set
+  router.get('/setownership', (req, res) => {
+            if (req.session && req.session.passport) {
+               userObj = req.session.passport.user;
+
+             }
+            iraSQL.getEntitiesByOwnership(0).then(
+                  function(entities) {
+                            //console.log("in get all ENTITIES, we got:   "+JSON.stringify(entities[0]))
+                            var expandEntities = entities;
+
+                            for (let index = 0; index < entities.length; index++) {
+                                   if(  (expandEntities[index].ownership===0) && (expandEntities[index].type === 1)    ) {
+                                              expandEntities[index].canSetOwnership = true
+                                   //console.log("IN validate ownership: "+ index +" lastname: "+expandInvestors[index].investor_name+" amount: "+expandInvestors[index].formattedAmount+" cap_pct: "+expandInvestors[index].capital_pct)
+                                 } //
+                            }//for
 
 
-app.get('/entities', (req, res) => {
+                            res.render('setown-entities', {
+                                    userObj: userObj,
+                                    sessioninfo: JSON.stringify(req.session),
+                                    message: req.flash('login') + "Showing "+entities.length+" entities.",
+                                    //message: "Showing "+entities.length+" entities.",
+                                    entities: expandEntities
+                            });//render
+
+
+                  }, function(err) {   //failed
+                                 console.log("List entities problem: "+err);
+                                 return;
+                  } //  success function
+            ); //getAll Entities then
+  }); // setownership route
+
+
+
+router.get('/entities', (req, res) => {
           if (req.session && req.session.passport) {
              userObj = req.session.passport.user;
 
@@ -108,7 +152,7 @@ app.get('/entities', (req, res) => {
 }); //  entities route
 
 
-app.get('/investors', (req, res) => {
+router.get('/investors', (req, res) => {
           if (req.session && req.session.passport) {
              userObj = req.session.passport.user;
 
@@ -134,7 +178,7 @@ app.get('/investors', (req, res) => {
 
 
 
-app.get('/deals', (req, res) => {
+router.get('/deals', (req, res) => {
           if (req.session && req.session.passport) {
              userObj = req.session.passport.user;
 
@@ -170,47 +214,7 @@ app.get('/deals', (req, res) => {
 
 
 
-
-
-
-//this is the list page of all possible ownership deals
-app.get('/setownership', (req, res) => {
-          if (req.session && req.session.passport) {
-             userObj = req.session.passport.user;
-
-           }
-          iraSQL.getEntitiesByOwnership(0).then(
-                function(entities) {
-                          //console.log("in get all ENTITIES, we got:   "+JSON.stringify(entities[0]))
-                          var expandEntities = entities;
-
-                          for (let index = 0; index < entities.length; index++) {
-                                 if(  (expandEntities[index].ownership===0) && (expandEntities[index].type === 1)    ) {
-                                            expandEntities[index].canSetOwnership = true
-                                 //console.log("IN validate ownership: "+ index +" lastname: "+expandInvestors[index].investor_name+" amount: "+expandInvestors[index].formattedAmount+" cap_pct: "+expandInvestors[index].capital_pct)
-                               } //
-                          }//for
-
-
-                          res.render('setown-entities', {
-                                  userObj: userObj,
-                                  sessioninfo: JSON.stringify(req.session),
-                                  message: req.flash('login') + "Showing "+entities.length+" entities.",
-                                  entities: expandEntities
-                          });//render
-
-
-                }, function(err) {   //failed
-                               console.log("List entities problem: "+err);
-                               return;
-                } //  success function
-          ); //getAll Entities then
-}); //  entities route
-
-
-
-
-app.get('/transactions', (req, res) => {
+router.get('/transactions', (req, res) => {
   if (req.session && req.session.passport) {
      userObj = req.session.passport.user;
 
@@ -233,13 +237,7 @@ app.get('/transactions', (req, res) => {
 
 
 
-
-
-
-
-
-
-  app.get('/home', (req, res) => {
+  router.get('/home', (req, res) => {
 
     if (req.session && req.session.passport) {
        userObj = req.session.passport.user;
@@ -266,15 +264,13 @@ app.get('/transactions', (req, res) => {
               message: req.flash('login'),
               reportmenuoptions: reportMenuOptions,
               adminmenuoptions: adminMenuOptions,
-              iraVersion: iraVersion
+              iraVersion: ira.version
       });
 
   });
 
 
-  app.get('/', function(req, res) {
+  router.get('/', function(req, res) {
         res.redirect('/home')
 
  })
-
-}
