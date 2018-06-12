@@ -410,11 +410,13 @@ function getAllTransactions () {
       return new Promise(function(succeed, fail) {
             connection.query(
             //  'SELECT * from transactions',
-              'SELECT t.id as id, investment.name as investment_name, investor.name as investor_name, passthru.name as passthru_name, t.trans_type as t_type,'
+              'SELECT t.id as id, investment.name as investment_name, investor.name as investor_name, passthru.name as passthru_name,'
+              +' trans_types.name as t_type,'
               +' DATE_FORMAT(t.wired_date, "%b %d %Y") as t_wireddate,'
               +' TRUNCATE(t.amount,2) as t_amount, t.notes as t_notes FROM transactions as t'
               +' JOIN entities as investment ON investment.id = t.investment_entity_id'
               +' JOIN entities as investor ON investor.id = t.investor_entity_id'
+              +' JOIN transaction_types as trans_types ON t.trans_type = trans_types.type_num'
               +' LEFT JOIN entities as passthru ON passthru.id = t.passthru_entity_id ORDER BY id DESC',
 
               function(err, results) {
