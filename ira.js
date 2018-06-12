@@ -98,11 +98,8 @@ const server = app.listen(nodePort, function() {
   console.log('IRA listening on port  ' + nodePort);
 });
 
-<<<<<<< HEAD
-var iraVersion = "0.10.4 +multiple wire dates +bugs"
-=======
 var iraVersion = "0.10.5.2 +trans list with type"
->>>>>>> refs/remotes/origin/master
+
 module.exports = app;
 exports.version = iraVersion;
 
