@@ -10,7 +10,7 @@ let options = {};
 if (env === 'ebawsira') {
         options = {
           user: 'iraadmin',
-          password: 'sqlschool2018',
+          password: '',
           host: 'iradb.cdlgrjtshtb6.us-east-2.rds.amazonaws.com',
           database: 'iradb',
           port: 3306
@@ -41,6 +41,7 @@ module.exports = {
   getEntitiesByTypes: getEntitiesByTypes,
   getEntitiesByOwnership: getEntitiesByOwnership,
   getTransactionById: getTransactionById,
+  getTransactionsByType: getTransactionsByType,
   getEntityById: getEntityById,
   getDealById: getDealById,
   getEntityTypes: getEntityTypes,
@@ -429,6 +430,41 @@ function getAllTransactions () {
       }); //promise
 } // function
 
+
+function getTransactionsByType (transType) {
+  let queryString =
+  'SELECT t.id as id, investment.name as investment_name, investor.name as investor_name, passthru.name as passthru_name,'
+  +' trans_types.name as t_type,'
+  +' DATE_FORMAT(t.wired_date, "%b %d %Y") as t_wireddate,'
+  +' TRUNCATE(t.amount,2) as t_amount, t.notes as t_notes FROM transactions as t'
+  +' JOIN entities as investment ON investment.id = t.investment_entity_id'
+  +' JOIN entities as investor ON investor.id = t.investor_entity_id'
+  +' JOIN transaction_types as trans_types ON t.trans_type = trans_types.type_num'
+  +' LEFT JOIN entities as passthru ON passthru.id = t.passthru_entity_id '
+  +' WHERE t.trans_type='+transType+' ORDER BY id DESC';
+
+
+  return new Promise(function(succeed, fail) {
+        connection.query(queryString,
+          function(err, results) {
+                  if (err) {
+                        fail(err)
+                  } else {
+                        succeed(results)
+                  }
+          }); //connection
+  }); //promise
+} // function
+
+
+
+
+
+
+
+
+
+
 function getTransactionById (trans_id) {
       return new Promise(function(succeed, fail) {
             connection.query(
@@ -445,10 +481,6 @@ function getTransactionById (trans_id) {
       }); //promise
 } // function
 
-
-
-// transactions
-// (investor_entity_id,  investment_entity_id,  passthru_entity_id,  trans_type, wired_date, amount, notes)
 
 
 function getTransactionsForInvestment (investment_entity) {
