@@ -214,6 +214,8 @@ router.get('/deals', (req, res) => {
 
 
 
+
+
 router.get('/transactions', (req, res) => {
   if (req.session && req.session.passport) {
      userObj = req.session.passport.user;
@@ -236,6 +238,27 @@ router.get('/transactions', (req, res) => {
 }); //  /entities route
 
 
+router.get('/commitments', (req, res) => {
+  if (req.session && req.session.passport) {
+     userObj = req.session.passport.user;
+
+   }
+          iraSQL.getTransactionsByType(2).then(
+                function(transactions) {
+                          res.render('list-commitments', {
+                                  userObj: userObj,
+                                  sessioninfo: JSON.stringify(req.session),
+                                  message: req.flash('login') + "  Showing "+transactions.length+" transactions",
+                                  transactions: transactions
+                          });//render
+
+                }, function(err) {   //failed
+                               console.log("commitments problem: "+err);
+                               return;
+                } //  success function
+          ); //getAll Trandactions then
+}); //  /entities route
+
 
   router.get('/home', (req, res) => {
 
@@ -247,8 +270,9 @@ router.get('/transactions', (req, res) => {
       let reportMenuOptions = []
       reportMenuOptions[0] = {name:"Investors", link:"/investors"}
       reportMenuOptions[1] = {name:"Deals", link:"/deals"}
-      reportMenuOptions[2] = {name:"All Transactions", link:"/transactions"}
-      reportMenuOptions[3] = {name:"All Entities", link:"/entities"}
+      reportMenuOptions[2] = {name:"Commitments", link:"/commitments"}
+      reportMenuOptions[3] = {name:"All Transactions", link:"/transactions"}
+      reportMenuOptions[4] = {name:"All Entities", link:"/entities"}
 
 
       let adminMenuOptions = []
