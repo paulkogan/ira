@@ -24,7 +24,7 @@ const connection = mysql.createConnection(options);
 
 connection.connect(function(err) {
       if (err) {
-            console.error('error connecting: ' + err.stack);
+            console.error('error connecting to SQL: ' + err.stack);
             return;
       } else {
             console.log('connected as id ' + connection.threadId+"to ");
