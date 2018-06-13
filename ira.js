@@ -98,7 +98,7 @@ const server = app.listen(nodePort, function() {
   console.log('IRA listening on port  ' + nodePort);
 });
 
-var iraVersion = "0.10.6 +commitment report"
+var iraVersion = "0.10.7 +multiple wires display bug"
 
 module.exports = app;
 exports.version = iraVersion;
@@ -110,28 +110,34 @@ function formatCurrency (amount) {
      return "$"+amount.toFixed(0).replace(/(\d)(?=(\d\d\d)+(?!\d))/g, "$1,");
 }
 
-
+//got wonership rows, mith multiples for each wire
 function totalupInvestors (investors) {
+      console.log("TUI Found "+investors.length+"transaction rows\n")
       let expandInvestors = []
       let totalCapital = 0;
       let totalCapitalPct =0.0000;
+
       for (let index = 0; index < investors.length; index++) {
             let alreadyExists = false
+
+            //check if
             for (let j = 0; j < expandInvestors.length; j++) {
+                    console.log("about to check trans "+index+" and expand-own "+j+"");
                     if (expandInvestors[j].id === investors[index].id) {
                             expandInvestors[j].wired_date = "Multiple wires for investment"
-                            console.log("\nMULTIPLE transaction for: " +JSON.stringify(expandInvestors[j])+"  \n");
+                            console.log("\nTUI - rolling trans row "+index+" up to own row: "+j+"  \n");
                             alreadyExists = true
-                            break
                     } //if
+                    if (alreadyExists) break;
             }  //for loop checking existing own rows
 
-            if (!alreadyExists) {  //not a duplicate
-                    expandInvestors[index] = investors[index]
+            if (!alreadyExists) {  //not a duplicate -- not adding sequentially
+                    let newOwnRow =  investors[index]
                     totalCapital += investors[index].amount;
                     totalCapitalPct += investors[index].capital_pct;
-                    expandInvestors[index].formattedAmount = formatCurrency(expandInvestors[index].amount)
-                    console.log("\nin TUI - Adding own row " +JSON.stringify(expandInvestors[index])+"  \n");
+                    newOwnRow.formattedAmount = formatCurrency(investors[index].amount)
+                    expandInvestors.push(newOwnRow)
+                    console.log("\nin TUI NEW own_row from"+index+"  details:" +JSON.stringify(newOwnRow)+"  \n");
             } //if not a dupe
 
       }//for index --- all own rows with transactions
@@ -268,9 +274,9 @@ app.post('/process_set_ownership', urlencodedParser, (req, res) => {
             let own_Rows = []
             for (let i=0;i<formTransIds.length;i++) {
                     let transId = parseInt(formTransIds[i]);
-                    console.log("Trans ID="+transId+"")
+                    console.log("====START Trans #"+i+" =======\n Trans ID="+transId+"")
                     let transPercent = (formPercents[i]*100).toFixed(4);
-                    console.log("Percent="+transPercent+"\n\n")
+                    console.log("Percent="+transPercent+"\n")
                     let trans = await iraSQL.getTransactionById(transId)
 
                     ownEntityId = trans[0].investment_entity_id
@@ -283,7 +289,7 @@ app.post('/process_set_ownership', urlencodedParser, (req, res) => {
                            capital_pct: parseFloat(transPercent),
                            member_interest_pct: null
                     }
-                    console.log("\nIn process, Inserting new inv_trans row: "+JSON.stringify(inv_trans_row)+"\n\n")
+                    console.log("\nIn processSetOwn, add inv_trans row to table: "+JSON.stringify(inv_trans_row)+"")
                     inv_trans.push(inv_trans_row);
 
                     let found = false
@@ -291,6 +297,7 @@ app.post('/process_set_ownership', urlencodedParser, (req, res) => {
                             if(own_Rows[j].parent_entity_id === inv_trans[i].parent_entity_id) {
                                     own_Rows[j].amount += inv_trans[i].trans_amount;
                                     own_Rows[j].capital_pct += inv_trans[i].capital_pct*1;
+                                    console.log("\nRolled upto existing own_row "+JSON.stringify(own_Rows[j])+"\n")
                                     found = true;
                                     break;
                             }
@@ -308,15 +315,15 @@ app.post('/process_set_ownership', urlencodedParser, (req, res) => {
                                      member_interest_pct: null
                               }
                               own_Rows.push(own_row);
-                              console.log("\nIn setownership added ownRow "+JSON.stringify(own_row)+"\n");
+                              console.log("\nPushed NEW ownRow into table\n");
                    }// if !found
             } //for - done creating own_rows
 
-
+             console.log("\nDONE with own_rows, now inserting...==================\n\n")
             //now add all own_rows to ownsrhip table
             for (let k=0;k<own_Rows.length;k++) {
                     var insertOwnershipResults = await iraSQL.insertOwnership(own_Rows[k]);
-                    console.log("Added new ownership row, id= "+insertOwnershipResults.insertId);
+                    console.log("\nInserting ownership row, id= "+insertOwnershipResults.insertId);
                     //insert into own_trans lookup table
                     for (let l=0;l<inv_trans.length;l++) {
                            if (inv_trans[l].parent_entity_id === own_Rows[k].parent_entity_id) { //add lookup
@@ -330,11 +337,11 @@ app.post('/process_set_ownership', urlencodedParser, (req, res) => {
 
           //change entity status
           let entityWithOwnership =  await iraSQL.getEntityById(ownEntityId)
-          console.log("Want to update Entity Own status for "+JSON.stringify(entityWithOwnership)+"\n");
+          console.log("\nWant to update Entity Ownership status for "+JSON.stringify(entityWithOwnership)+"\n");
           entityWithOwnership.ownership_status = 1;
           //entityWithOwnership.taxid = "EIN 444-7777";
           var updateEntityResults = await iraSQL.updateEntity(entityWithOwnership);
-          console.log("\nUpdated Ownership Status, here results: "+updateEntityResults+"\n\n")
+          //console.log("\nUpdated Ownership Status, here results: "+updateEntityResults+"\n\n")
           res.redirect('/deals');
 
 

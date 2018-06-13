@@ -75,7 +75,7 @@ function updateEntity (updatedEntity) {
   let queryString = 'UPDATE entities SET ownership_status = \''+updatedEntity.ownership_status+'\','
   +' taxid=\''+updatedEntity.taxid+'\''
   +' WHERE id ='+updatedEntity.id+'';
-   console.log ("in update entity, the query string is "+queryString+"\n\n")
+   //console.log ("in update entity, the query string is "+queryString+"\n\n")
 
       return new Promise(function(succeed, fail) {
             connection.query(queryString,
@@ -127,7 +127,7 @@ function insertOwnTrans(own_id, trans_id) {
       let queryString = "INSERT INTO own_trans_lookup (own_id, trans_id) VALUES"
       + " ("+own_id+", "+trans_id+")"
 
-      console.log ("in insert own_trans, the query string is "+queryString+"\n\n")
+      //console.log ("in insert own_trans, the query string is "+queryString+"\n\n")
          return new Promise(function(succeed, fail) {
                connection.query(queryString,
                  function(err, results) {
@@ -198,7 +198,7 @@ function insertTransaction (transaction) {
 
 
 function insertOwnership (ownershipRow) {
-    console.log("In Model, adding new ownership row: "+JSON.stringify(ownershipRow))
+    //console.log("In Model, adding new ownership row: "+JSON.stringify(ownershipRow))
     return new Promise(function(succeed, fail) {
           connection.query(
           'INSERT INTO ownership SET ?', ownershipRow,
@@ -474,7 +474,7 @@ function getTransactionById (trans_id) {
                           console.log ("in Model: TransByID problem "+err)
                             fail(err)
                       } else {
-                            console.log ("in Model: TransByID "+JSON.stringify(results))
+                            //console.log ("in Model: TransByID "+JSON.stringify(results))
                             succeed(results)
                       }
               }); //connection
