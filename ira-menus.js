@@ -270,9 +270,9 @@ router.get('/commitments', (req, res) => {
       let reportMenuOptions = []
       reportMenuOptions[0] = {name:"Investors", link:"/investors"}
       reportMenuOptions[1] = {name:"Deals", link:"/deals"}
-      reportMenuOptions[2] = {name:"Commitments", link:"/commitments"}
-      reportMenuOptions[3] = {name:"All Transactions", link:"/transactions"}
-      reportMenuOptions[4] = {name:"All Entities", link:"/entities"}
+      //reportMenuOptions[2] = {name:"Commitments", link:"/commitments"}
+      reportMenuOptions[2] = {name:"All Transactions", link:"/transactions"}
+      reportMenuOptions[3] = {name:"All Entities", link:"/entities"}
 
 
       let adminMenuOptions = []

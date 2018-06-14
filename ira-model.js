@@ -10,7 +10,7 @@ let options = {};
 if (env === 'ebawsira') {
         options = {
           user: 'iraadmin',
-          password: 'sqlschool2018',
+          password: '',
           host: 'iradb.cdlgrjtshtb6.us-east-2.rds.amazonaws.com',
           database: 'iradb',
           port: 3306
@@ -43,6 +43,7 @@ module.exports = {
   getTransactionById: getTransactionById,
   getTransactionsByType: getTransactionsByType,
   getEntityById: getEntityById,
+  getEntityByDealId: getEntityByDealId,
   getDealById: getDealById,
   getEntityTypes: getEntityTypes,
   getTransactionTypes: getTransactionTypes,
@@ -51,7 +52,8 @@ module.exports = {
   insertDeal: insertDeal,
   insertOwnership: insertOwnership,
   insertOwnTrans: insertOwnTrans,
-  updateEntity: updateEntity
+  updateEntity: updateEntity,
+  updateDeal : updateDeal
 
   //getTransactionsForInvestment: getTransactionsForInvestment
 
@@ -61,21 +63,46 @@ module.exports = {
 
 
 
-//  ================  Functions =====================
+
+function updateDeal (updatedDeal) {
+
+    let queryString = 'UPDATE deals SET'
+    +' name = \''+updatedDeal.name+'\','
+    +' aggregate_value = \''+updatedDeal.aggregate_value+'\','
+    +' aggregate_debt = \''+updatedDeal.aggregate_debt+'\','
+    +' cash_assets = \''+updatedDeal.cash_assets+'\','
+    +' deal_debt = \''+updatedDeal.deal_debt+'\','
+    +' notes=\''+updatedDeal.notes+'\''
+    +' WHERE id ='+updatedDeal.id+'';
+
+   console.log ("in update deal, the query string is "+queryString+"\n\n")
+
+      return new Promise(function(succeed, fail) {
+            connection.query(queryString,
+              function(err, results) {
+                      if (err) {
+                            fail(err)
+                      } else {
+                            //console.log ("In Model, Success - Updated entity with "+JSON.stringify(results)+"\n")
+                            succeed(results.affectedRows)
+                      }
+              }); //connection
+      }); //promise
+} // function
 
 
-// connection.query(
-//     'UPDATE users SET email = ?, photo =?, password=? WHERE id=?',
-//     [updateuser.email, updateuser.photo, updateuser.password, updateuser.id],
+
+
 
 
 //owneship: parent_entity_id, child_entity_id, capital_pct
 function updateEntity (updatedEntity) {
 
   let queryString = 'UPDATE entities SET ownership_status = \''+updatedEntity.ownership_status+'\','
+  +' name=\''+updatedEntity.name+'\','
   +' taxid=\''+updatedEntity.taxid+'\''
   +' WHERE id ='+updatedEntity.id+'';
-   //console.log ("in update entity, the query string is "+queryString+"\n\n")
+
 
       return new Promise(function(succeed, fail) {
             connection.query(queryString,
@@ -245,7 +272,24 @@ function getEntityTypes () {
       }); //promise
 } // function
 
+function getEntityByDealId (deal_id) {
+  let queryString = 'SELECT * from entities WHERE deal_id ='+deal_id;
+      return new Promise(function(succeed, fail) {
+            connection.query(queryString,
+              function(err, results) {
+                      if (err) {
+                            fail(err)
+                      } else {
+                            if (!results[0]) {
+                                    fail("No such entity, sorry")
+                            }
 
+                            //console.log ("Success found by Id entity "+results[0].name +"\n")
+                            succeed(results[0])
+                      }
+              }); //connection
+      }); //promise
+} // function
 
 
 

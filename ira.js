@@ -98,7 +98,7 @@ const server = app.listen(nodePort, function() {
   console.log('IRA listening on port  ' + nodePort);
 });
 
-var iraVersion = "0.10.7 +multiple wires display bug"
+var iraVersion = "0.11.1  +update deal"
 
 module.exports = app;
 exports.version = iraVersion;
@@ -109,6 +109,13 @@ exports.version = iraVersion;
 function formatCurrency (amount) {
      return "$"+amount.toFixed(0).replace(/(\d)(?=(\d\d\d)+(?!\d))/g, "$1,");
 }
+
+
+function parseFormAmountInput (fieldInput) {
+    return fieldInput.replace(/(,|\$)/g,"")
+}
+
+
 
 //got wonership rows, mith multiples for each wire
 function totalupInvestors (investors) {
@@ -194,12 +201,14 @@ function totalupInvestors (investors) {
          //expandDeal.equity_value = 999
          //expandDeal.equity_value = expandDeal.aggregate_value
          expandDeal.equity_value = expandDeal.aggregate_value+expandDeal.cash_assets-expandDeal.deal_debt-expandDeal.aggregate_debt
-         expandDeal.total_value = formatCurrency(expandDeal.aggregate_value + expandDeal.cash_assets)
-         expandDeal.total_debt = formatCurrency(expandDeal.aggregate_debt + expandDeal.deal_debt)
-         expandDeal.aggregate_value = formatCurrency(expandDeal.aggregate_value)
-         expandDeal.cash_assets = formatCurrency(expandDeal.cash_assets)
-         expandDeal.aggregate_debt = formatCurrency(expandDeal.aggregate_debt)
-         expandDeal.deal_debt  = formatCurrency(expandDeal.deal_debt)
+         expandDeal.total_value = expandDeal.aggregate_value + expandDeal.cash_assets
+         expandDeal.total_debt = expandDeal.aggregate_debt + expandDeal.deal_debt
+         expandDeal.formatted_total_value = formatCurrency(expandDeal.aggregate_value + expandDeal.cash_assets)
+         expandDeal.formatted_total_debt = formatCurrency(expandDeal.aggregate_debt + expandDeal.deal_debt)
+         expandDeal.formatted_aggregate_value = formatCurrency(expandDeal.aggregate_value)
+         expandDeal.formatted_cash_assets = formatCurrency(expandDeal.cash_assets)
+         expandDeal.formatted_aggregate_debt = formatCurrency(expandDeal.aggregate_debt)
+         expandDeal.formatted_deal_debt  = formatCurrency(expandDeal.deal_debt)
          expandDeal.formatted_equity_value =formatCurrency(expandDeal.equity_value)
         //console.log("\nin CalculateDeal, expandDeal is  "+JSON.stringify(expandDeal));
         return expandDeal;
@@ -209,6 +218,130 @@ function totalupInvestors (investors) {
 
 
 //============ ROUTES  ======================
+
+app.get('/updatedeal/:id', (req, res) => {
+
+    if (req.session && req.session.passport) {
+                 userObj = req.session.passport.user;
+    }
+
+    //call the async function
+    pullDealDetails().catch(err => {
+          console.log("Pull Deal Details problem: "+err);
+    })
+
+    async function pullDealDetails() {
+          var entity = await iraSQL.getEntityById(req.params.id);
+          console.log("have Entity   "+ JSON.stringify(entity));
+          var deals = await iraSQL.getDealById(entity.deal_id);
+          console.log("\nGot raw Deal to edit  "+JSON.stringify(deals));
+
+          let expandDeal = calculateDeal(deals[0])
+          console.log("\nDeal ready to edit  "+JSON.stringify(expandDeal));
+          res.render('update-deal', {
+                userObj: userObj,
+                message: "Updating Deal: " + expandDeal.id,
+                dealEIN: entity.taxid,
+                deal: expandDeal,
+                postendpoint: '/process_update_deal'
+          }); //  render
+
+      } //async function pullDealDetails
+}); //route - update deal
+
+
+
+
+// insert the new deal and corresponding entity
+app.post('/process_update_deal', urlencodedParser, (req, res) => {
+
+  //call the async function
+  updateDealAndEntity().catch(err => {
+        console.log("Deal and Entity problem: "+err);
+  })
+
+  async function updateDealAndEntity() {
+            let formDeal = req.body
+            let updatedDeal = {
+              id:formDeal.id,
+              name: formDeal.name,
+              aggregate_value: parseFormAmountInput(formDeal.aggregate_value),
+              cash_assets: parseFormAmountInput(formDeal.cash_assets),
+              aggregate_debt: parseFormAmountInput(formDeal.aggregate_debt),
+              deal_debt: parseFormAmountInput(formDeal.deal_debt),
+              notes: formDeal.notes
+            }
+            console.log("\nUpdated deal, ready to send to SQL  "+JSON.stringify(updatedDeal));
+
+            let updateDealResults = await iraSQL.updateDeal(updatedDeal);
+            console.log( "Updated deal  no.: "+updatedDeal.id);
+            req.flash('login', "UpdatedDeal: "+updatedDeal.id);
+
+            let oldDealEntity = await iraSQL.getEntityByDealId(updatedDeal.id);
+            console.log( "OldEntity for deal: "+JSON.stringify(oldDealEntity));
+
+            let newDealEntity = oldDealEntity;
+            newDealEntity.name =  updatedDeal.name;
+            newDealEntity.taxid = formDeal.taxid;
+
+            var updateEntityResults = await iraSQL.updateEntity(newDealEntity);
+            //req.flash('login', "In deals, added entity #: "+insertEntityResults.insertId);
+
+            res.redirect('/deals');
+
+   } //async function
+}); //process add-deal route
+
+
+
+
+
+
+
+
+// insert the new deal and corresponding entity
+app.post('/process_add_deal', urlencodedParser, (req, res) => {
+
+  //call the async function
+  insertDealAndEntity().catch(err => {
+        console.log("Deal and Entity problem: "+err);
+  })
+
+  async function insertDealAndEntity() {
+            let formDeal = req.body
+            let newDeal = {
+              name: formDeal.name,
+              aggregate_value: parseFormAmountInput(formDeal.aggregate_value),
+              cash_assets: parseFormAmountInput(formDeal.cash_assets),
+              aggregate_debt: parseFormAmountInput(formDeal.aggregate_debt),
+              deal_debt: parseFormAmountInput(formDeal.deal_debt),
+              notes: formDeal.notes
+            }
+
+            var insertDealResults = await iraSQL.insertDeal(newDeal);
+            console.log( "Added deal #: "+insertDealResults.insertId);
+            req.flash('login', "Added Deal: "+insertDealResults.insertId);
+
+            let dealEntity = {
+              type:1,
+              deal_id: insertDealResults.insertId,
+              investor_id:null,
+              keyman_id: null,
+              name: newDeal.name,
+              taxid: formDeal.taxid,
+              ownership_status: 0
+            }
+            var insertEntityResults = await iraSQL.insertEntity(dealEntity);
+            req.flash('login', "In deals, added entity #: "+insertEntityResults.insertId);
+
+            res.redirect('/entities');
+
+   } //async function
+}); //process add-deal route
+
+
+
+
 
 
 
@@ -466,45 +599,6 @@ app.get('/setownership/:id', (req, res) => {
 
 
 
-// insert the new deal and corresponding entity
-app.post('/process_add_deal', urlencodedParser, (req, res) => {
-
-  //call the async function
-  insertDealAndEntity().catch(err => {
-        console.log("Deal and Entity problem: "+err);
-  })
-
-  async function insertDealAndEntity() {
-            let formDeal = req.body
-            let newDeal = {
-              name: formDeal.name,
-              aggregate_value: formDeal.aggregate_value,
-              cash_assets: formDeal.cash_assets,
-              aggregate_debt: formDeal.aggregate_debt,
-              deal_debt: formDeal.deal_debt,
-              notes: formDeal.notes
-            }
-
-            var insertDealResults = await iraSQL.insertDeal(newDeal);
-            console.log( "Added deal #: "+insertDealResults.insertId);
-            req.flash('login', "Added Deal: "+insertDealResults.insertId);
-
-            let dealEntity = {
-              type:1,
-              deal_id: insertDealResults.insertId,
-              investor_id:null,
-              keyman_id: null,
-              name: newDeal.name,
-              taxid: formDeal.taxid,
-              ownership_status: 0
-            }
-            var insertEntityResults = await iraSQL.insertEntity(dealEntity);
-            req.flash('login', "In deals, added entity #: "+insertEntityResults.insertId);
-
-            res.redirect('/entities');
-
-   } //async function
-}); //process add-deal route
 
 
 
@@ -554,8 +648,6 @@ app.get('/dealdetails/:id', (req, res) => {
             }  //if-else  - no ownership get name of entity
       } //async function pullDealComponents
 }); //route - deal details
-
-
 
 
 
@@ -630,7 +722,7 @@ app.get('/add-transaction', (req, res) => {
 app.post('/process_add_transaction', urlencodedParser, (req, res) => {
     let transaction = req.body
     console.log("\nAbout to insert new transaction with "+JSON.stringify(transaction)+"\n");
-    transaction.amount = transaction.amount.replace(/(,|\$)/g,"")
+    transaction.amount = parseFormAmountInput(transaction.amount)
 
     iraSQL.insertTransaction(transaction).then (
         function (savedData) {

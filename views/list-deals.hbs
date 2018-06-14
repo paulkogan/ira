@@ -32,9 +32,9 @@
         <col width="5%"/>
         <col width="30%"/>
         <col width="5%"/>
-        <col width="25%"/>
         <col width="20%"/>
-        <col width="10%"/>
+        <col width="20%"/>
+        <col width="15%"/>
         </colgroup>
 
 
@@ -51,12 +51,7 @@
       <tr>
           <td align="center">{{id}}</td>
           <td align="left"><b>{{name}}</b></td>
-
-          <td ></td>
-
-
-
-
+          <td></td>
           <td align="center">
             {{#ifLessThan own_status 2}}
                 <a href = "/ownership/{{id}}">Ownership</a>
@@ -64,14 +59,15 @@
           </td>
 
 
-          <td align="left">
-            {{#ifEqual entity_type "Deal"}}
-            <a href = "/dealdetails/{{id}}">
-              Deal Details
-            </a>
-            {{else}}
-            {{/ifEqual}}
+          <td align="center">
+                    {{#ifEqual entity_type "Deal"}}
+                    <a href = "/dealdetails/{{id}}">
+                      Deal Details
+                    </a>
+                    {{else}}
+                    {{/ifEqual}}
           </td>
+          <td ><a href = "/updatedeal/{{id}}">Update</a></td>
 
       </tr>
       <tr>
