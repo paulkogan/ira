@@ -10,7 +10,7 @@ let options = {};
 if (env === 'ebawsira') {
         options = {
           user: 'iraadmin',
-          password: '',
+          password: 'sqlschool2018',
           host: 'iradb.cdlgrjtshtb6.us-east-2.rds.amazonaws.com',
           database: 'iradb',
           port: 3306
@@ -383,7 +383,7 @@ function getOwnershipForInvestor (investor_id) {
   + ' JOIN entities as investment ON investment.id = o.child_entity_id'
   + ' JOIN entities as investor ON investor.id = o.parent_entity_id'
   + ' LEFT JOIN entities as passthru ON passthru.id = o.passthru_entity_id'
-  + ' WHERE o.parent_entity_id ='+investor_id+' ORDER BY amount DESC';
+  + ' WHERE o.parent_entity_id ='+investor_id+' ORDER BY deal_id ASC';
 
       return new Promise(function(succeed, fail) {
             connection.query(queryString,

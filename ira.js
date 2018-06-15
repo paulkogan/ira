@@ -106,7 +106,7 @@ const server = app.listen(nodePort, function() {
   console.log('IRA listening on port  ' + nodePort);
 });
 
-var iraVersion = "0.12  +distributions +investor summary page"
+var iraVersion = "0.12.2  +distributions +new investor summary page"
 
 module.exports = app;
 exports.version = iraVersion;
@@ -209,7 +209,7 @@ function totalupInvestors (investors) {
                portfolioDeals[index].formatted_investor_equity_value = formatCurrency(portfolioDeals[index].investor_equity_value)
                //console.log("IN validate ownership: "+ index +" lastname: "+expandInvestors[index].investor_name+" amount: "+expandInvestors[index].formattedAmount+" cap_pct: "+expandInvestors[index].capital_pct)
         }//for
-        return [portfolioDeals, formatCurrency(totalInvestmentValue), formatCurrency(totalPortfolioValue)];
+        return [portfolioDeals, totalInvestmentValue, totalPortfolioValue];
     } //function
 
 
@@ -291,14 +291,18 @@ app.get('/portfolio/:id', (req, res) => {
                           let portfolioDeals = results[0]
                           let totalInvestmentValue =  results[1]
                           let totalPortfolioValue =  results[2]
+                          let portfolioGain =  totalPortfolioValue-totalInvestmentValue
+                          let portfolioIRR = parseFloat(portfolioGain/totalInvestmentValue)*100
                           console.log("\nrendering Portfolio : " + JSON.stringify(portfolioDeals[0])+"\n\n")
                           res.render('portfolio-details', {
                                   userObj: userObj,
                                   message:  "Showing "+portfolioDeals.length+" investments ",
                                   investorName: investments[0].investor_name,
                                   investments: portfolioDeals,
-                                  totalPortfolioValue: totalPortfolioValue,
-                                  totalInvestmentValue: totalInvestmentValue
+                                  totalPortfolioValue: formatCurrency(totalPortfolioValue),
+                                  totalInvestmentValue: formatCurrency(totalInvestmentValue),
+                                  portfolioGain: formatCurrency(portfolioGain),
+                                  portfolioIRR: portfolioIRR.toFixed(2)
                           });
 
                     } else { //no ownership data
@@ -780,7 +784,8 @@ app.post('/process_add_transaction', urlencodedParser, (req, res) => {
     let transaction = req.body
     console.log("\nAbout to insert new transaction with "+JSON.stringify(transaction)+"\n");
     transaction.amount = parseFormAmountInput(transaction.amount)
-
+    if (transaction.trans_type==3 && transaction.amount>0) transaction.amount*=-1
+    
     iraSQL.insertTransaction(transaction).then (
         function (savedData) {
             //console.log( "Added entity #: "+savedData.insertId);
