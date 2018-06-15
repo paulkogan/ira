@@ -24,6 +24,8 @@ const nodePort = 8081
 //var router = express.Router();  then call router.post('/')
 
 
+const iraVersion = "0.12.3  +logging"
+
   app.set('trust proxy', true);
   app.use(flash());
   app.use(cookieParser(secret));
@@ -106,7 +108,7 @@ const server = app.listen(nodePort, function() {
   console.log('IRA listening on port  ' + nodePort);
 });
 
-var iraVersion = "0.12.2  +distributions +new investor summary page"
+
 
 module.exports = app;
 exports.version = iraVersion;
@@ -177,7 +179,7 @@ function totalupInvestors (investors) {
                 //console.log ("\n\nAdded Cash "+totalCashInDeal+" for Trans "+JSON.stringify(expandTransactions[index])+"\n\n")
         } //for
 
-        console.log ("TotalCash remaininf for deal"+transactions[0].investment_name+" is "+ totalCashInDeal)
+        console.log ("TotalCash remaininf for deal"+transactions[0].investment_name+" is "+ totalCashInDeal+"\n\n")
         return [expandTransactions, formatCurrency(totalCashInDeal) ];
 
     } //function totalupCashInDeal
@@ -192,9 +194,9 @@ function totalupInvestors (investors) {
           for (let index = 0; index < investments.length; index++) {
                var deal = await iraSQL.getDealById(portfolioDeals[index].deal_id);
                portfolioDeals[index].expandDeal = calculateDeal(deal[0])
-               console.log ("pulling transactions for inv: "+investments[index].investor_id+" in deal "+investments[index].investment_id+"\n\n")
+               console.log (index+") START DEAL_ID :"+investments[index].investment_id+" for inv: "+investments[index].investor_name+"")
                var transactionsForDeal = await iraSQL.getTransactionsForInvestorDeal(investments[index].investor_id, investments[index].investment_id,[1,3]);
-               console.log ("Got "+transactionsForDeal.length+" transactions for deal "+index+"  : "+JSON.stringify(transactionsForDeal)+"\n\n")
+               console.log ("TUIP - got "+transactionsForDeal.length+" transactions for deal "+index+"  : "+JSON.stringify(transactionsForDeal, null, 4)+"\n")
                let result = await totalupCashInDeal(transactionsForDeal);
                portfolioDeals[index].transactionsForDeal = result[0];
                portfolioDeals[index].totalCashInDeal = result[1];
@@ -293,7 +295,7 @@ app.get('/portfolio/:id', (req, res) => {
                           let totalPortfolioValue =  results[2]
                           let portfolioGain =  totalPortfolioValue-totalInvestmentValue
                           let portfolioIRR = parseFloat(portfolioGain/totalInvestmentValue)*100
-                          console.log("\nrendering Portfolio : " + JSON.stringify(portfolioDeals[0])+"\n\n")
+                          console.log("\nrendering Portfolio, 1st Deal : " + JSON.stringify(portfolioDeals[0],null,6)+"\n\n")
                           res.render('portfolio-details', {
                                   userObj: userObj,
                                   message:  "Showing "+portfolioDeals.length+" investments ",
@@ -785,7 +787,7 @@ app.post('/process_add_transaction', urlencodedParser, (req, res) => {
     console.log("\nAbout to insert new transaction with "+JSON.stringify(transaction)+"\n");
     transaction.amount = parseFormAmountInput(transaction.amount)
     if (transaction.trans_type==3 && transaction.amount>0) transaction.amount*=-1
-    
+
     iraSQL.insertTransaction(transaction).then (
         function (savedData) {
             //console.log( "Added entity #: "+savedData.insertId);

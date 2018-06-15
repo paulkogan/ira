@@ -10,7 +10,7 @@ let options = {};
 if (env === 'ebawsira') {
         options = {
           user: 'iraadmin',
-          password: 'sqlschool2018',
+          password: '',
           host: 'iradb.cdlgrjtshtb6.us-east-2.rds.amazonaws.com',
           database: 'iradb',
           port: 3306
@@ -140,7 +140,7 @@ function getTransactionsForInvestorDeal (investorId, dealEntityId, transTypes) {
                             console.log ("Cant find transcations "+err)
                             fail(err)
                       } else {
-                            console.log ("\nIn Model: for transForInvestor found "+results.length+" transactions \n")
+                            console.log ("In Model transactionsForInvestor found "+results.length+" transactions for "+results[0].investment_entity_id+"  "+results[0].investment_name+"\n")
                             //console.log ("The results are:"+JSON.stringify(results))
                             // if (results.length<1) {
                             //           fail("no ownership data")
@@ -392,7 +392,7 @@ function getOwnershipForInvestor (investor_id) {
                             console.log ("Cant find ownership "+err)
                             fail(err)
                       } else {
-                            console.log ("In model, getOwnershipForInvestor, got "+results.length+" investments for portfolio")
+                            console.log ("\n\nIn model: getOwnershipForInvestor, got "+results.length+" investments for "+results[0].investor_name)
                             //console.log (JSON.stringify(results)+"\n\n")
                             // if (results.length<1) {
                             //           fail("no ownership data")
