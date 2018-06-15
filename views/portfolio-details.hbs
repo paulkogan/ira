@@ -4,7 +4,7 @@
 <table width = "100%" border = 0 >
 
 <tr><td>
-  <font family = 'courier' size='5'><b>IRA</b> - Portfolio Details</font>
+  <font family = 'courier' size='5'><b>IRA</b> - Investment Summary</font>
 </td><td align = "right">
 
 <a href = '/home'>{{userObj.firstname}}</a>&emsp;<img width='50' src={{userObj.photo}}>
@@ -18,84 +18,206 @@
 
 <tr><td>
   <br>
-Portfolio details for: <font family = 'courier' size='4'><b>{{investorName}}</b></font>
+Investment Summary for: <font family = 'courier' size='4'><b>{{investorName}}</b></font>
+</td></tr>
+<tr><td>
+{{message}}
 </td></tr>
 </table>
 </div>
 
 
-<div class="w3-panel w3-pale-blue w3-leftbar
- w3-rightbar w3-border-blue w3-margin-right w3-margin-left">
-Portfolio details: {{message}}
-</div>
-
-<div class="w3-panel w3-pale-blue w3-leftbar
- w3-rightbar w3-border-blue w3-margin-right w3-margin-left">
-
-  <table width = "100%" border = 0>
-        <colgroup>
-        <col width="5%"/>
-        <col width="20%"/>
-        <col width="20%"/>
-        <col width="15%"/>
-        <col width="10%"/>
-        <col width="15%"/>
-        <col width="15%"/>
-        </colgroup>
-
-      <tr>
-          <td align="center"><u>Own.id</td>
-          <td align="center"><u>Investment</b></td>
-          <td align="left"><u>Passthru</td>
-          <td><u>Invest.Amount</td>
-          <td><u>% Own.</td>
-          <td><u>Deal Curr. Value</td>
-          <td><u>Inv. Curr. Value</u></td>
-
-      </tr>
-      </table>
-</div>
-
-
-
 {{#if investments}}
 {{#each investments}}
-<div class="w3-panel w3-pale-blue w3-leftbar
+<div class="w3-panel w3-pale-blue w3-leftbar w3-topbar
  w3-rightbar w3-border-blue w3-margin-right w3-margin-left">
 
   <table width = "100%" border = 0>
         <colgroup>
         <col width="5%"/>
         <col width="20%"/>
-        <col width="20%"/>
+        <col width="15%"/>
         <col width="15%"/>
         <col width="10%"/>
         <col width="15%"/>
+        <col width="10%"/>
         <col width="15%"/>
         </colgroup>
-
-
 
 
       <tr>
           <td align="center">{{id}}</td>
           <td align="left"><b>{{investment_name}}</b></td>
           <td align="left">{{passthru_name}}</td>
-          <td>{{formatted_amount}}</td>
-          <td>{{capital_pct}}%</td>
-          <td>{{formatted_deal_equity_value}}</td>
-          <td>{{formatted_investor_equity_value}}</td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
 
       </tr>
-      </table>
+</table>
+
+<table width = "100%" border=0 >
+  <colgroup>
+  <col width="10%"/>
+  <col width="20%"/>
+  <col width="60%"/>
+  <col width="10%"/>
+  </colgroup>
+
+<tr>
+  <td></td>
+  <td></td>
+  <td align="left">
+
+  <table style="margin-left: 30px" width = "100%" border = 0>
+      <colgroup>
+      <col width="10%"/>
+      <col width="25%"/>
+      <col width="25%"/>
+      <col width="5%"/>
+      <col width="15%"/>
+      <col width="20%"/>
+      </colgroup>
+
+      <tr>
+
+          <td align="left"></u></td>
+          <td><u>Date</td>
+          <td><u>Description</u></td>
+          <td></td>
+          <td align="center"><u>Amount</u></td>
+          <td></td>
+
+      </tr>
+
+{{#each transactionsForDeal}}
+<tr>
+
+    <td align="left"></td>
+    <td>{{wired_date}}</td>
+    <td>{{t_type}}</td>
+    <td></td>
+    <td align="right">
+      {{#ifIncludes formatted_amount '('}}
+          <font color = "red">
+                {{formatted_amount}}
+          </font>
+      {{else}}
+                {{formatted_amount}}&nbsp;
+      {{/ifIncludes}}
+
+
+    </td>
+    <td></td>
+</tr>
+
+{{/each}}
+
+<tr>
+    <td align="left"></td>
+    <td></td>
+    <td>Current Cash in Deal:</td>
+    <td></td>
+    <td align="right"><b>
+      {{#ifIncludes totalCashInDeal '('}}
+          <font color = "red">
+                {{totalCashInDeal}}
+          </font>
+      {{else}}
+                {{totalCashInDeal}}&nbsp;
+      {{/ifIncludes}}
+  </b>
+   </td>
+    <td></td>
+</tr>
+</table>
+</td></tr>
+
+</table>
+
+
+<table width = "100%" border = 0>
+      <colgroup>
+      <col width="5%"/>
+      <col width="20%"/>
+      <col width="10%"/>
+      <col width="25%"/>
+      <col width="15%"/>
+      <col width="14%"/>
+      <col width="15%"/>
+      </colgroup>
+
+      <tr>
+          <td align="center"> </td>
+          <td align="left"><b>Estimated Valuation</b></td>
+          <td align="left"></td>
+          <td align="right"></td>
+          <td></td>
+          <td align="right"></td>
+          <td></td>
+      </tr>
+
+
+
+    <tr>
+        <td align="center"> </td>
+        <td align="left"></td>
+        <td align="left"></td>
+        <td align="right">Total Amount Invested:&nbsp;</td>
+        <td></td>
+        <td align="right">{{formatted_amount}}</td>
+        <td></td>
+    </tr>
+
+    <tr>
+        <td align="center"> </td>
+        <td align="left"></td>
+        <td align="left"></td>
+        <td align="right">Partner Deal Interest:&nbsp;</td>
+        <td></td>
+        <td align="right">{{capital_pct}}%</td>
+        <td></td>
+    </tr>
+
+
+    <tr>
+        <td align="center"> </td>
+        <td align="left"></td>
+        <td align="left"></td>
+        <td align="right">Value of Total Equity:&nbsp;</td>
+        <td></td>
+        <td align="right">{{formatted_deal_equity_value}}</td>
+        <td></td>
+    </tr>
+
+
+
+    <tr>
+        <td align="center"> </td>
+        <td align="left"></td>
+        <td align="left"></td>
+        <td align="right">Partner Unrealized Deal Equity:&nbsp;</td>
+        <td></td>
+        <td align="right"><b>{{formatted_investor_equity_value}}</b></td>
+        <td></td>
+    </tr>
+
+
+
+</table>
+
+
+
+
 </div>
 {{/each}}
  {{/if}}
 
 
-
-
- <div class="w3-panel w3-pale-blue w3-leftbar
+<br>
+ <div class="w3-panel w3-pale-blue w3-leftbar w3-topbar
   w3-rightbar w3-bottombar w3-border-blue w3-margin-right w3-margin-left">
   <table width = "100%" border = 0>
         <colgroup>
@@ -112,7 +234,7 @@ Portfolio details: {{message}}
       <tr>
         <td></td>
         <td></td>
-        <td>Total Investment Value:</b></td>
+        <td>Total Cash Investment:</b></td>
         <td><b>{{totalInvestmentValue}}</b></td>
         <td align="right">Total Portfolio Value:</td>
         <td></td>
@@ -132,3 +254,33 @@ Portfolio details: {{message}}
  &emsp; &emsp;<br>
  &emsp;&emsp;<br>
  <br><br>
+
+
+
+ <div class="w3-panel w3-pale-blue w3-leftbar
+  w3-rightbar w3-border-blue w3-margin-right w3-margin-left">
+
+   <table width = "100%" border = 1>
+         <colgroup>
+         <col width="5%"/>
+         <col width="20%"/>
+         <col width="20%"/>
+         <col width="15%"/>
+         <col width="10%"/>
+         <col width="15%"/>
+         <col width="15%"/>
+         </colgroup>
+
+       <tr>
+           <td align="center"><u>Own.id</td>
+           <td align="center"><u>Investment</b></td>
+           <td align="left"><u>Passthru</td>
+           <td><u>Invest.Amount</td>
+           <td><u>% Own.</td>
+           <td><u>Deal Curr. Value</td>
+           <td><u>Inv. Curr. Value</u></td>
+
+
+       </tr>
+       </table>
+ </div>

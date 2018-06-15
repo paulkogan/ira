@@ -76,6 +76,14 @@ hbs.registerHelper('ifGreaterThan', function(v1, v2, options) {
 
 });
 
+hbs.registerHelper('ifIncludes', function(v1, v2, options) {
+          if(v1.toString().includes(v2)) {
+              return options.fn(this);
+          }
+          return options.inverse(this);
+
+});
+
 
 app.set('view engine', 'hbs');
 app.set('views', path.join(__dirname, '/views/'));
@@ -98,7 +106,7 @@ const server = app.listen(nodePort, function() {
   console.log('IRA listening on port  ' + nodePort);
 });
 
-var iraVersion = "0.11.1  +update deal"
+var iraVersion = "0.12  +distributions +investor summary page"
 
 module.exports = app;
 exports.version = iraVersion;
@@ -107,8 +115,12 @@ exports.version = iraVersion;
 //============ FUNCTIONS ======================
 
 function formatCurrency (amount) {
-     return "$"+amount.toFixed(0).replace(/(\d)(?=(\d\d\d)+(?!\d))/g, "$1,");
-}
+            if (amount >= 0) {
+               return "$"+amount.toFixed(0).replace(/(\d)(?=(\d\d\d)+(?!\d))/g, "$1,");
+            } else {
+               return "($"+(-1*amount).toFixed(0).replace(/(\d)(?=(\d\d\d)+(?!\d))/g, "$1,")+")";
+            }
+} //function
 
 
 function parseFormAmountInput (fieldInput) {
@@ -152,23 +164,52 @@ function totalupInvestors (investors) {
       return [expandInvestors, formatCurrency(totalCapital), totalCapitalPct.toFixed(2)];
   } //function
 
-  async function totalupPortfolio (investments) {
-        let portfolioRows = investments
-        let totalPortfolioValue = 0;
-        let totalInvestmentValue = 0;
-        for (let index = 0; index < investments.length; index++) {
-               var deal = await iraSQL.getDealById(portfolioRows[index].deal_id);
-               var expandDeal = calculateDeal(deal[0]);
-               portfolioRows[index].deal_equity_value = expandDeal.equity_value
-               portfolioRows[index].investor_equity_value = portfolioRows[index].deal_equity_value*(portfolioRows[index].capital_pct/100);
-               totalPortfolioValue += portfolioRows[index].investor_equity_value
-               totalInvestmentValue += portfolioRows[index].amount;
-               portfolioRows[index].formatted_amount = formatCurrency(portfolioRows[index].amount)
-               portfolioRows[index].formatted_deal_equity_value = formatCurrency(expandDeal.equity_value)
-               portfolioRows[index].formatted_investor_equity_value = formatCurrency(portfolioRows[index].investor_equity_value)
+
+
+  async function totalupCashInDeal (transactions) {
+        let expandTransactions = transactions
+        let totalCashInDeal = 0.0;
+
+        for (let index = 0; index < transactions.length; index++) {
+
+                totalCashInDeal += expandTransactions[index].amount
+                expandTransactions[index].formatted_amount = formatCurrency(expandTransactions[index].amount)
+                //console.log ("\n\nAdded Cash "+totalCashInDeal+" for Trans "+JSON.stringify(expandTransactions[index])+"\n\n")
+        } //for
+
+        console.log ("TotalCash remaininf for deal"+transactions[0].investment_name+" is "+ totalCashInDeal)
+        return [expandTransactions, formatCurrency(totalCashInDeal) ];
+
+    } //function totalupCashInDeal
+
+
+
+    async function totalupInvestorPortfolio (investments) {
+          let portfolioDeals = investments
+          let totalPortfolioValue = 0;
+          let totalInvestmentValue = 0;
+
+          for (let index = 0; index < investments.length; index++) {
+               var deal = await iraSQL.getDealById(portfolioDeals[index].deal_id);
+               portfolioDeals[index].expandDeal = calculateDeal(deal[0])
+               console.log ("pulling transactions for inv: "+investments[index].investor_id+" in deal "+investments[index].investment_id+"\n\n")
+               var transactionsForDeal = await iraSQL.getTransactionsForInvestorDeal(investments[index].investor_id, investments[index].investment_id,[1,3]);
+               console.log ("Got "+transactionsForDeal.length+" transactions for deal "+index+"  : "+JSON.stringify(transactionsForDeal)+"\n\n")
+               let result = await totalupCashInDeal(transactionsForDeal);
+               portfolioDeals[index].transactionsForDeal = result[0];
+               portfolioDeals[index].totalCashInDeal = result[1];
+
+               portfolioDeals[index].investor_equity_value = portfolioDeals[index].expandDeal.equity_value*(portfolioDeals[index].capital_pct/100);
+
+               //add the sums
+               totalPortfolioValue += portfolioDeals[index].investor_equity_value
+               totalInvestmentValue += portfolioDeals[index].amount;
+               portfolioDeals[index].formatted_amount = formatCurrency(portfolioDeals[index].amount)
+               portfolioDeals[index].formatted_deal_equity_value = formatCurrency(portfolioDeals[index].expandDeal.equity_value)
+               portfolioDeals[index].formatted_investor_equity_value = formatCurrency(portfolioDeals[index].investor_equity_value)
                //console.log("IN validate ownership: "+ index +" lastname: "+expandInvestors[index].investor_name+" amount: "+expandInvestors[index].formattedAmount+" cap_pct: "+expandInvestors[index].capital_pct)
         }//for
-        return [portfolioRows, formatCurrency(totalInvestmentValue), formatCurrency(totalPortfolioValue)];
+        return [portfolioDeals, formatCurrency(totalInvestmentValue), formatCurrency(totalPortfolioValue)];
     } //function
 
 
@@ -177,6 +218,7 @@ function totalupInvestors (investors) {
   function calculateOwnership (transactionsFromEntity) {
         var inv_trans_Rows = transactionsFromEntity
         var totalCapital = 0;
+        console.log("In CalculateOwnership, here are "+transactionsFromEntity.length+" transcations :"+JSON.stringify(transactionsFromEntity)+"\n\n")
 
         for (let index = 0; index < inv_trans_Rows.length; index++) {
                totalCapital += inv_trans_Rows[index].amount;
@@ -218,6 +260,65 @@ function totalupInvestors (investors) {
 
 
 //============ ROUTES  ======================
+
+
+
+// {{#each by_width}}
+//     {{#each by_height}}
+//        w: {{../this}}
+//        h: {{this}}
+//     {{/each}}
+// {{/each}}
+
+
+app.get('/portfolio/:id', (req, res) => {
+    if (req.session && req.session.passport) {
+       userObj = req.session.passport.user;
+     }
+
+     showInvestorPortfolio().catch(err => {
+           console.log("investor portfolio problem: "+err);
+           req.flash('login', "Problems getting Portfolio info for entity no. "+req.params.id+".  ")
+           res.redirect('/home')
+     })
+
+     async function showInvestorPortfolio() {
+           let foundEntity = await iraSQL.getEntityById(req.params.id);
+           let investments = await iraSQL.getOwnershipForInvestor(foundEntity.id);
+           console.log("In /portfolio/id, got "+investments.length+ " investments: "+JSON.stringify(investments)+"\n\n");
+           if (investments.length > 0) {
+                          let results = await totalupInvestorPortfolio(investments)
+                          let portfolioDeals = results[0]
+                          let totalInvestmentValue =  results[1]
+                          let totalPortfolioValue =  results[2]
+                          console.log("\nrendering Portfolio : " + JSON.stringify(portfolioDeals[0])+"\n\n")
+                          res.render('portfolio-details', {
+                                  userObj: userObj,
+                                  message:  "Showing "+portfolioDeals.length+" investments ",
+                                  investorName: investments[0].investor_name,
+                                  investments: portfolioDeals,
+                                  totalPortfolioValue: totalPortfolioValue,
+                                  totalInvestmentValue: totalInvestmentValue
+                          });
+
+                    } else { //no ownership data
+                          req.flash('login', "No portfolio info for "+foundEntity.name+".  ")
+                          res.redirect('/home/')
+
+                } //if ownership
+     } //async function
+}); //route - ownership
+
+
+
+
+
+
+
+
+
+
+
 
 app.get('/updatedeal/:id', (req, res) => {
 
@@ -345,47 +446,6 @@ app.post('/process_add_deal', urlencodedParser, (req, res) => {
 
 
 
-app.get('/portfolio/:id', (req, res) => {
-    if (req.session && req.session.passport) {
-       userObj = req.session.passport.user;
-     }
-
-     showInvestorPortfolio().catch(err => {
-           console.log("investor portfolio problem: "+err);
-           req.flash('login', "Problems getting Portfolio info for entity no. "+req.params.id+".  ")
-           res.redirect('/home')
-     })
-
-     async function showInvestorPortfolio() {
-           let foundEntity = await iraSQL.getEntityById(req.params.id);
-           let investments = await iraSQL.getOwnershipForInvestor(foundEntity.id);
-           console.log("In /portfolio/id, here are all investments: "+JSON.stringify(investments)+"\n\n");
-           if (investments.length > 0) {
-                          let results = await totalupPortfolio(investments)
-                          let portfolio = results[0]
-                          let totalInvestmentValue =  results[1]
-                          let totalPortfolioValue =  results[2]
-                          console.log("\nrendering Portfolio : " + JSON.stringify(portfolio)+"\n\n")
-                          res.render('portfolio-details', {
-                                  userObj: userObj,
-                                  message:  "Showing "+portfolio.length+" investments ",
-                                  investorName: investments[0].investor_name,
-                                  investments: portfolio,
-                                  totalPortfolioValue: totalPortfolioValue,
-                                  totalInvestmentValue: totalInvestmentValue
-                          });
-
-                    } else { //no ownership data
-                          req.flash('login', "No portfolio info for "+foundEntity.name+".  ")
-                          res.redirect('/home/')
-
-                } //if ownership
-     } //async function
-}); //route - ownership
-
-
-
-
 app.post('/process_set_ownership', urlencodedParser, (req, res) => {
   //call the async function
   insertOwnershipAndUpdateEntity().catch(err => {
@@ -442,7 +502,6 @@ app.post('/process_set_ownership', urlencodedParser, (req, res) => {
                                      parent_entity_id: inv_trans[i].parent_entity_id,
                                      child_entity_id: inv_trans[i].child_entity_id,
                                      passthru_entity_id: inv_trans[i].passthru_entity_id,
-                                     transaction_id: null,
                                      amount: inv_trans[i].trans_amount,
                                      capital_pct: inv_trans[i].capital_pct,
                                      member_interest_pct: null
@@ -553,8 +612,8 @@ app.get('/setownership/:id', (req, res) => {
     async function pullOwnershipTransactions() {
           var entity = await iraSQL.getEntityById(req.params.id);
           console.log("in set-ownership, got Entity   "+ JSON.stringify(entity)+"\n\n");
-          var rows = await iraSQL.getTransactionsForEntity(entity.id);
-          console.log("\nGot "+rows.length+" transactions for "+ entity.name+":  "+JSON.stringify(rows)+"\n\n");
+          var rows = await iraSQL.getTransactionsForEntity(entity.id, [1]);
+          console.log("\nIn SetOwn - got "+rows.length+" transactions for "+ entity.name+" \n");
                   // screen transaction and calculate ownership
           if(entity.ownership_status===0 && (rows.length >0) ) {
                                 var results = calculateOwnership(rows);
@@ -648,8 +707,6 @@ app.get('/dealdetails/:id', (req, res) => {
             }  //if-else  - no ownership get name of entity
       } //async function pullDealComponents
 }); //route - deal details
-
-
 
 
 
