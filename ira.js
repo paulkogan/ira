@@ -24,7 +24,7 @@ const nodePort = 8081
 //var router = express.Router();  then call router.post('/')
 
 
-const iraVersion = "0.13  +Ownership Adjustment"
+const iraVersion = "0.13  +Ownership Adjustment +only Deals in Portfolio"
 
   app.set('trust proxy', true);
   app.use(flash());
@@ -187,28 +187,40 @@ function totalupInvestors (investors) {
 
 
     async function totalupInvestorPortfolio (investments) {
-          let portfolioDeals = investments
+          let portfolioDeals = []  //empty array - add only if its a deal
           let totalPortfolioValue = 0;
           let totalInvestmentValue = 0;
 
           for (let index = 0; index < investments.length; index++) {
-               var deal = await iraSQL.getDealById(portfolioDeals[index].deal_id);
-               portfolioDeals[index].expandDeal = calculateDeal(deal[0])
-               console.log (index+") START DEAL_ID :"+investments[index].investment_id+" for inv: "+investments[index].investor_name+"")
-               var transactionsForDeal = await iraSQL.getTransactionsForInvestorDeal(investments[index].investor_id, investments[index].investment_id,[1,3]);
-               console.log ("TUIP - got "+transactionsForDeal.length+" transactions for deal "+index+"  : "+JSON.stringify(transactionsForDeal, null, 4)+"\n")
-               let result = await totalupCashInDeal(transactionsForDeal);
-               portfolioDeals[index].transactionsForDeal = result[0];
-               portfolioDeals[index].totalCashInDeal = result[1];
 
-               portfolioDeals[index].investor_equity_value = portfolioDeals[index].expandDeal.equity_value*(portfolioDeals[index].capital_pct/100);
+               if (investments[index].deal_id) {
+                             let deal = await iraSQL.getDealById(investments[index].deal_id);
+                             let expandDeal = calculateDeal(deal[0])
+                             console.log (index+") Investment for ENTITY_ID :"+investments[index].investment_id+" for investor: "+investments[index].investor_name+"")
+                             let transactionsForDeal = await iraSQL.getTransactionsForInvestorDeal(investments[index].investor_id, investments[index].investment_id,[1,3]);
+                             console.log ("TUIP - got "+transactionsForDeal.length+" transactions for deal "+index+"  : "+JSON.stringify(transactionsForDeal, null, 4)+"\n")
+                             let result = await totalupCashInDeal(transactionsForDeal);
 
-               //add the sums
-               totalPortfolioValue += portfolioDeals[index].investor_equity_value
-               totalInvestmentValue += portfolioDeals[index].amount;
-               portfolioDeals[index].formatted_amount = formatCurrency(portfolioDeals[index].amount)
-               portfolioDeals[index].formatted_deal_equity_value = formatCurrency(portfolioDeals[index].expandDeal.equity_value)
-               portfolioDeals[index].formatted_investor_equity_value = formatCurrency(portfolioDeals[index].investor_equity_value)
+                             //first copy the deal basics
+                             let newPortfolioDeal = investments[index];
+                             newPortfolioDeal.expandDeal = expandDeal;
+                             newPortfolioDeal.transactionsForDeal = result[0];
+                             newPortfolioDeal.totalCashInDeal = result[1];
+                             newPortfolioDeal.investor_equity_value = newPortfolioDeal.expandDeal.equity_value*(newPortfolioDeal.capital_pct/100);
+
+                             //add the sums
+                             totalPortfolioValue += newPortfolioDeal.investor_equity_value
+                             totalInvestmentValue += newPortfolioDeal.amount;
+                             newPortfolioDeal.formatted_amount = formatCurrency(newPortfolioDeal.amount)
+                             newPortfolioDeal.formatted_deal_equity_value = formatCurrency(newPortfolioDeal.expandDeal.equity_value)
+                             newPortfolioDeal.formatted_investor_equity_value = formatCurrency(newPortfolioDeal.investor_equity_value)
+                             portfolioDeals.push(newPortfolioDeal);
+              } else {
+                            //dont add to array of portfolioDeals
+                            console.log ("\n"+index+") Investment for ENTITY_ID :"+investments[index].investment_id+" Not a DEAL \n")
+
+              }
+
                //console.log("IN validate ownership: "+ index +" lastname: "+expandInvestors[index].investor_name+" amount: "+expandInvestors[index].formattedAmount+" cap_pct: "+expandInvestors[index].capital_pct)
         }//for
         return [portfolioDeals, totalInvestmentValue, totalPortfolioValue];
