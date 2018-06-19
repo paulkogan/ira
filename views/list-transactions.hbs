@@ -44,10 +44,16 @@
       <tr>
           <td align="left">{{id}}</td>
           <td align="left"><b>{{investor_name}}</b></td>
-          <td>{{investment_name}} </td>
+          <td>{{investment_name}}</td>
           <td>{{passthru_name}}</td>
           <td>{{t_type}}</td>
-          <td align="center">${{t_amount}}</td>
+          <td align="center">
+              {{#ifGreaterThan own_adj 0}}
+                    {{own_adj}}%
+              {{else}}
+                   ${{t_amount}}
+                {{/ifGreaterThan}}
+            </td>
           <td align="left">{{t_wireddate}}</td>
           <td align="left">{{t_notes}}</a>
           </td>

@@ -10,7 +10,7 @@ let options = {};
 if (env === 'ebawsira') {
         options = {
           user: 'iraadmin',
-          password: 'sqlschool2018',
+          password: '',
           host: 'iradb.cdlgrjtshtb6.us-east-2.rds.amazonaws.com',
           database: 'iradb',
           port: 3306
@@ -160,7 +160,7 @@ function getTransactionsForEntity (entityId, transTypes) {
 
   let queryString = 'SELECT t.id, t.trans_type as trans_type, t.investor_entity_id as investor_entity_id,  t.investment_entity_id as investment_entity_id, t.passthru_entity_id as passthru_entity_id,'
   + ' investor.name as investor_name, investment.name as investment_name, passthru.name as passthru_name,'
-  + ' DATE_FORMAT(t.wired_date, "%b %d %Y") as wired_date, t.amount as amount'
+  + ' DATE_FORMAT(t.wired_date, "%b %d %Y") as wired_date, t.amount as amount, t.own_adj as own_adj'
   + ' FROM transactions as t'
   + ' JOIN entities as investment ON investment.id = t.investment_entity_id'
   + ' JOIN entities as investor ON investor.id = t.investor_entity_id'
@@ -498,7 +498,7 @@ function getAllTransactions () {
             connection.query(
             //  'SELECT * from transactions',
               'SELECT t.id as id, investment.name as investment_name, investor.name as investor_name, passthru.name as passthru_name,'
-              +' trans_types.name as t_type,'
+              +' trans_types.name as t_type, own_adj as own_adj,'
               +' DATE_FORMAT(t.wired_date, "%b %d %Y") as t_wireddate,'
               +' TRUNCATE(t.amount,2) as t_amount, t.notes as t_notes FROM transactions as t'
               +' JOIN entities as investment ON investment.id = t.investment_entity_id'

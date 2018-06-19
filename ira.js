@@ -24,7 +24,7 @@ const nodePort = 8081
 //var router = express.Router();  then call router.post('/')
 
 
-const iraVersion = "0.12.3  +logging"
+const iraVersion = "0.13  +Ownership Adjustment"
 
   app.set('trust proxy', true);
   app.use(flash());
@@ -126,7 +126,7 @@ function formatCurrency (amount) {
 
 
 function parseFormAmountInput (fieldInput) {
-    return fieldInput.replace(/(,|\$)/g,"")
+    return fieldInput.replace(/(,|\$,\%)/g,"")
 }
 
 
@@ -145,7 +145,7 @@ function totalupInvestors (investors) {
             for (let j = 0; j < expandInvestors.length; j++) {
                     console.log("about to check trans "+index+" and expand-own "+j+"");
                     if (expandInvestors[j].id === investors[index].id) {
-                            expandInvestors[j].wired_date = "Multiple wires for investment"
+                            expandInvestors[j].wired_date = "Multiple transactions"
                             console.log("\nTUI - rolling trans row "+index+" up to own row: "+j+"  \n");
                             alreadyExists = true
                     } //if
@@ -220,22 +220,35 @@ function totalupInvestors (investors) {
   function calculateOwnership (transactionsFromEntity) {
         var inv_trans_Rows = transactionsFromEntity
         var totalCapital = 0;
-        console.log("In CalculateOwnership, here are "+transactionsFromEntity.length+" transcations :"+JSON.stringify(transactionsFromEntity)+"\n\n")
+        var totalAdjOwnPct = 0
+        var totalOwnPct = 0
+        console.log("In CalculateOwnership, here are "+transactionsFromEntity.length+" transcations :"+JSON.stringify(transactionsFromEntity,null,4)+"\n\n")
 
         for (let index = 0; index < inv_trans_Rows.length; index++) {
                totalCapital += inv_trans_Rows[index].amount;
+               totalAdjOwnPct += inv_trans_Rows[index].own_adj;
                //add each investor to a table. If he's there before,
 
         }
+
+       //Math.round((totalAdjOwnPct*1000)/1000).toFixed(4)
+       let availPct_after_OwnAdj = (100-totalAdjOwnPct)/100
+       console.log("\nIn CalculateOwnership, AO% is "+totalAdjOwnPct+" and remaining % as decimal is "+availPct_after_OwnAdj+" \n")
+
         // now calculate % for each
         for (let index = 0; index < inv_trans_Rows.length; index++) {
-               inv_trans_Rows[index].percent = (inv_trans_Rows[index].amount/totalCapital)
+                if(inv_trans_Rows[index].own_adj > 0) {
+                      inv_trans_Rows[index].percent = (inv_trans_Rows[index].own_adj)/100
+                } else {
+                      inv_trans_Rows[index].percent = ((inv_trans_Rows[index].amount/totalCapital)*availPct_after_OwnAdj)
+                }
+               totalOwnPct += inv_trans_Rows[index].percent*100
                inv_trans_Rows[index].formattedPercent = (inv_trans_Rows[index].percent*100).toFixed(4)+"%"
                inv_trans_Rows[index].formattedAmount = formatCurrency(inv_trans_Rows[index].amount)
                //console.log("IN validate ownership: "+ index +" lastname: "+expandInvestors[index].investor_name+" amount: "+expandInvestors[index].formattedAmount+" cap_pct: "+expandInvestors[index].capital_pct)
         }//for  total capital
 
-        return [inv_trans_Rows, formatCurrency(totalCapital)];
+        return [inv_trans_Rows, totalCapital, totalAdjOwnPct, totalOwnPct];
     } //function
 
 
@@ -287,7 +300,7 @@ app.get('/portfolio/:id', (req, res) => {
      async function showInvestorPortfolio() {
            let foundEntity = await iraSQL.getEntityById(req.params.id);
            let investments = await iraSQL.getOwnershipForInvestor(foundEntity.id);
-           console.log("In /portfolio/id, got "+investments.length+ " investments: "+JSON.stringify(investments)+"\n\n");
+           console.log("In /portfolio/id, got "+investments.length+ " investments: "+JSON.stringify(investments,null,4)+"\n\n");
            if (investments.length > 0) {
                           let results = await totalupInvestorPortfolio(investments)
                           let portfolioDeals = results[0]
@@ -577,6 +590,9 @@ app.get('/ownership/:id', (req, res) => {
                           let expandInvestors = results[0]
                           let totalCapital =  results[1]
                           let totalCapitalPct = (results[2]*1).toFixed(2)
+
+
+
                           console.log("rendering ownership")
                           res.render('deal-ownership', {
                                   userObj: userObj,
@@ -617,21 +633,26 @@ app.get('/setownership/:id', (req, res) => {
 
     async function pullOwnershipTransactions() {
           var entity = await iraSQL.getEntityById(req.params.id);
-          console.log("in set-ownership, got Entity   "+ JSON.stringify(entity)+"\n\n");
-          var rows = await iraSQL.getTransactionsForEntity(entity.id, [1]);
+          console.log("in set-ownership, got Entity   "+ JSON.stringify(entity,null,4)+"\n\n");
+          var rows = await iraSQL.getTransactionsForEntity(entity.id, [1,5]);
           console.log("\nIn SetOwn - got "+rows.length+" transactions for "+ entity.name+" \n");
                   // screen transaction and calculate ownership
           if(entity.ownership_status===0 && (rows.length >0) ) {
                                 var results = calculateOwnership(rows);
                                 let ownershipRows = results[0]
                                 let totalCapital =  results[1]
+                                let totalAdjOwnPct =  results[2]
+                                let totalOwnPct =  results[3]
+
                                 console.log("in Setown, Rendering proposed ownership for "+ownershipRows[0].investment_name+"  total capital is: "+totalCapital)
                                 res.render('set-ownership', {
                                         userObj: userObj,
                                         message:  "Showing "+ownershipRows.length+" transactions",
                                         entityName: entity.name,
                                         investors: ownershipRows,
-                                        totalCapital: totalCapital,
+                                        totalCapital: formatCurrency(totalCapital),
+                                        totalAdjOwnPct: Math.round((totalAdjOwnPct*1000)/1000).toFixed(4),
+                                        totalOwnPct: Math.round((totalOwnPct*1000)/1000).toFixed(4),
                                         postendpoint: '/process_set_ownership'
 
                                 });
@@ -739,7 +760,7 @@ app.get('/add-transaction', (req, res) => {
 
         //deals
 
-        iraSQL.getEntitiesByTypes([1]).then(
+        iraSQL.getEntitiesByTypes([1,3,4]).then(
               async function(entities) {
                        dealsToPick = entities;
               }, function(error) {   //failed
@@ -784,10 +805,10 @@ app.get('/add-transaction', (req, res) => {
 // insert the new transaction
 app.post('/process_add_transaction', urlencodedParser, (req, res) => {
     let transaction = req.body
-    console.log("\nAbout to insert new transaction with "+JSON.stringify(transaction)+"\n");
     transaction.amount = parseFormAmountInput(transaction.amount)
+    transaction.own_adj = parseFloat(transaction.own_adj)
     if (transaction.trans_type==3 && transaction.amount>0) transaction.amount*=-1
-
+    console.log("\nAbout to insert new transaction with "+JSON.stringify(transaction)+"\n");
     iraSQL.insertTransaction(transaction).then (
         function (savedData) {
             //console.log( "Added entity #: "+savedData.insertId);

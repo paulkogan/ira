@@ -34,6 +34,35 @@
 
 <form action = "{{postendpoint}}" method = "POST">
 </div>
+
+<div class="w3-panel w3-pale-blue w3-leftbar
+ w3-rightbar w3-border-blue w3-margin-right w3-margin-left">
+ <table width = "100%" border = 0>
+   <colgroup>
+       <col width="5%"/>
+       <col width="20%"/>
+       <col width="15%"/>
+       <col width="15%"/>
+       <col width="20%"/>
+       <col width="15%"/>
+       <col width="10%"/>
+   </colgroup>
+
+<tr>
+    <td align="center"><u>Tr.Id</u></td>
+    <td align="center"><u>Investor Name</u></td>
+    <td align="center"><u>Passthru Name</u></td>
+
+    <td align="center">
+        <u>Trans.Amount or %</u></u>
+    </td>
+    <td align="center"><u>Trans. Date</u></td>
+    <td align="center"><u>Result Deal %</u></td>
+    <td></td></td>
+</tr>
+</table>
+</div>
+
 {{#if investors}}
 {{#each investors}}
 <div class="w3-panel w3-pale-blue w3-leftbar
@@ -43,23 +72,29 @@
         <colgroup>
         <col width="5%"/>
         <col width="20%"/>
+        <col width="15%"/>
+        <col width="15%"/>
         <col width="20%"/>
         <col width="15%"/>
-        <col width="15%"/>
-        <col width="15%"/>
-        <col width="0%"/>
+        <col width="10%"/>
         </colgroup>
 
 
 
       <tr>
           <td align="center">{{id}}</td>
-          <td align="left"><b>{{investor_name}}</b></td>
-          <td align="left"> {{passthru_name}} </td>
-          <td>{{formattedPercent}}</td>
-          <td>{{formattedAmount}}</td>
-          <td>{{wired_date}}</td>
-          <td></td></td>
+          <td align="center"><b>{{investor_name}}</b></td>
+          <td align="center"> {{passthru_name}} </td>
+          <td align="center">
+              {{#ifGreaterThan own_adj 0}}
+                    {{own_adj}}%
+              {{else}}
+                   {{formattedAmount}}
+                {{/ifGreaterThan}}
+            </td>
+          <td align="center">{{wired_date}}</td>
+          <td align="center">{{formattedPercent}}</td>
+          <td></td>
       </tr>
       </table>
 </div>
@@ -70,15 +105,15 @@
  <div class="w3-panel w3-pale-blue w3-leftbar
   w3-rightbar w3-bottombar w3-border-blue w3-margin-right w3-margin-left">
   <table width = "100%" border = 0>
-        <colgroup>
-          <col width="5%"/>
-          <col width="20%"/>
-          <col width="20%"/>
-          <col width="15%"/>
-          <col width="15%"/>
-          <col width="15%"/>
-          <col width="0%"/>
-        </colgroup>
+    <colgroup>
+    <col width="5%"/>
+    <col width="15%"/>
+    <col width="20%"/>
+    <col width="15%"/>
+    <col width="20%"/>
+    <col width="15%"/>
+    <col width="10%"/>
+    </colgroup>
 
 
 
@@ -86,12 +121,30 @@
         <td></td>
         <td></td>
         <td>Total Invested Capital:</td>
+        <td align="center">{{totalCapital}}</td>
         <td><b></b></td>
-        <td><b>{{totalCapital}}</b></td>
-
         <td></td>
         <td></td>
       </tr>
+
+      <tr>
+        <td></td>
+        <td></td>
+        <td>Total of Adj. Ownerships:</td>
+        <td align="center">{{totalAdjOwnPct}}%</td>
+        <td>Total Calculated %</td>
+        <td align="center"><b>{{totalOwnPct}}%</b></td>
+        <td></td>
+      </tr>
+
+      <tr>
+          	<td></td>
+            <td></td>
+            <td>&nbsp;</td>
+            <td></td>
+      <tr>
+
+
 
       <tr>
           	<td></td>
@@ -101,6 +154,8 @@
                <input type = "submit" value = "Set Ownership">
             </td>
       <tr>
+
+
       </form>
       </table>
 </div>

@@ -55,7 +55,7 @@ Transaction Type:
 <tr>
 
   <td>
-Deal:
+Deal or Entity:
 	</td><td>
               <select name="investment_entity_id">
               {{#each deals}}
@@ -91,28 +91,50 @@ Pass-Thru or Target Entity:
 </tr>
 
 <tr><td><br></td></tr>
+
+
+
 <tr>
-  <tr>
-  	<td>
-    Amount:
-  	</td><td>
-      <input type = "text" name = "amount" value="$0.00"><br>
+  	 <td>
+        Amount:
+      	</td><td>
+          <input type = "text" name = "amount" value="$0.00"><br>
       </td>
 
 
-  <td><br></td>
+      <td><br></td>
 
-	<td>
-Transaction Date:
-	</td><td>
-	<input type = "date" name = "wired_date"><br>
+
+    <td>
+      Ownership Adjustment:
+      	</td><td>
+      	<input type = "text" name = "own_adj"  value="0.0000 %"><br>
     </td>
 </tr>
 
 <tr>
   <td></td>
-  <td><font size = 2><i>For distributions, enter a positive number.</i></font></td>
+  <td><font size = 2><i>Please enter $$ or % but not both.</i></font><br><br></td>
 </tr>
+
+
+<tr>
+	  <td>
+      Transaction Date:
+      	</td><td>
+      	<input type = "date" name = "wired_date"><br>
+    </td>
+
+     <td><br></td>
+
+    <td></td>
+    <td></td>
+
+
+
+</tr>
+
+
 <tr>
   	<td>
     Notes:
