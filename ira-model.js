@@ -10,7 +10,7 @@ let options = {};
 if (env === 'ebawsira') {
         options = {
           user: 'iraadmin',
-          password: 'sqlschool2018',
+          password: '',
           host: 'iradb.cdlgrjtshtb6.us-east-2.rds.amazonaws.com',
           database: 'iradb',
           port: 3306
@@ -43,7 +43,7 @@ module.exports = {
   getEntitiesByOwnership: getEntitiesByOwnership,
   getTransactionById: getTransactionById,
   getTransactionsForEntity: getTransactionsForEntity,
-  getTransactionsForInvestorDeal:getTransactionsForInvestorDeal,
+  getTransactionsForInvestorAndEntity:getTransactionsForInvestorAndEntity,
   getTransactionsByType: getTransactionsByType,
   getDealById: getDealById,
   getEntityTypes: getEntityTypes,
@@ -117,11 +117,11 @@ function updateEntity (updatedEntity) {
       }); //promise
 } // function
 
-function getTransactionsForInvestorDeal (investorId, dealEntityId, transTypes) {
+function getTransactionsForInvestorAndEntity (investorId, dealEntityId, transTypes) {
   let queryString = 'SELECT t.id, t.investor_entity_id as investor_entity_id,  t.investment_entity_id as investment_entity_id, t.passthru_entity_id as passthru_entity_id,'
   + ' investor.name as investor_name, investment.name as investment_name, passthru.name as passthru_name,'
-  + ' trans_types.name as t_type,'
-  + ' DATE_FORMAT(t.wired_date, "%b %d %Y") as wired_date, t.amount as amount'
+  + ' trans_types.name as t_type, t.notes as t_notes,'
+  + ' DATE_FORMAT(t.wired_date, "%b %d %Y") as wired_date, t.amount as amount, t.own_adj as own_adj'
   + ' FROM transactions as t'
   + ' JOIN transaction_types as trans_types ON t.trans_type = trans_types.type_num'
   + ' JOIN entities as investment ON investment.id = t.investment_entity_id'
@@ -140,7 +140,7 @@ function getTransactionsForInvestorDeal (investorId, dealEntityId, transTypes) {
                             console.log ("Cant find transcations "+err)
                             fail(err)
                       } else {
-                            console.log ("In Model transactionsForInvestor found "+results.length+" transactions for "+results[0].investment_entity_id+"  "+results[0].investment_name+"\n")
+                            //console.log ("In Model transactionsForInvestor found "+results.length+" transactions for "+results[0].investment_entity_id+"  "+results[0].investment_name+"\n")
                             //console.log ("The results are:"+JSON.stringify(results))
                             // if (results.length<1) {
                             //           fail("no ownership data")
@@ -383,7 +383,7 @@ function getOwnershipForInvestor (investor_id) {
   + ' JOIN entities as investment ON investment.id = o.child_entity_id'
   + ' JOIN entities as investor ON investor.id = o.parent_entity_id'
   + ' LEFT JOIN entities as passthru ON passthru.id = o.passthru_entity_id'
-  + ' WHERE o.parent_entity_id ='+investor_id+' ORDER BY deal_id ASC';
+  + ' WHERE o.parent_entity_id ='+investor_id+' ORDER BY investment_id ASC';
 
       return new Promise(function(succeed, fail) {
             connection.query(queryString,

@@ -24,7 +24,7 @@ const nodePort = 8081
 //var router = express.Router();  then call router.post('/')
 
 
-const iraVersion = "0.13  +Ownership Adjustment +only Deals in Portfolio"
+const iraVersion = "0.13.3  +Ownership Adjustment +Entities in Portfolio"
 
   app.set('trust proxy', true);
   app.use(flash());
@@ -133,7 +133,7 @@ function parseFormAmountInput (fieldInput) {
 
 //got wonership rows, mith multiples for each wire
 function totalupInvestors (investors) {
-      console.log("TUI Found "+investors.length+"transaction rows\n")
+      console.log("\nTUI Found "+investors.length+" transaction rows")
       let expandInvestors = []
       let totalCapital = 0;
       let totalCapitalPct =0.0000;
@@ -143,10 +143,10 @@ function totalupInvestors (investors) {
 
             //check if
             for (let j = 0; j < expandInvestors.length; j++) {
-                    console.log("about to check trans "+index+" and expand-own "+j+"");
+                    //console.log("about to check trans "+index+" and expand-own "+j+"");
                     if (expandInvestors[j].id === investors[index].id) {
                             expandInvestors[j].wired_date = "Multiple transactions"
-                            console.log("\nTUI - rolling trans row "+index+" up to own row: "+j+"  \n");
+                            console.log("\nTUI - rolling up transaction: "+index+" to ownership: "+j+"  \n");
                             alreadyExists = true
                     } //if
                     if (alreadyExists) break;
@@ -158,7 +158,7 @@ function totalupInvestors (investors) {
                     totalCapitalPct += investors[index].capital_pct;
                     newOwnRow.formattedAmount = formatCurrency(investors[index].amount)
                     expandInvestors.push(newOwnRow)
-                    console.log("\nin TUI NEW own_row from"+index+"  details:" +JSON.stringify(newOwnRow)+"  \n");
+                    console.log("\nTUI - NEW own_row: "+(expandInvestors.length-1)+" from transaction: "+index+"  :" +JSON.stringify(newOwnRow)+"  \n");
             } //if not a dupe
 
       }//for index --- all own rows with transactions
@@ -175,8 +175,12 @@ function totalupInvestors (investors) {
         for (let index = 0; index < transactions.length; index++) {
 
                 totalCashInDeal += expandTransactions[index].amount
-                expandTransactions[index].formatted_amount = formatCurrency(expandTransactions[index].amount)
-                //console.log ("\n\nAdded Cash "+totalCashInDeal+" for Trans "+JSON.stringify(expandTransactions[index])+"\n\n")
+                if(transactions[index].t_type === "Owner. Adjust." ) {
+                        expandTransactions[index].formatted_amount = transactions[index].own_adj+"%";
+                } else {
+                        expandTransactions[index].formatted_amount = formatCurrency(expandTransactions[index].amount)
+                }
+
         } //for
 
         console.log ("TotalCash remaininf for deal"+transactions[0].investment_name+" is "+ totalCashInDeal+"\n\n")
@@ -196,11 +200,11 @@ function totalupInvestors (investors) {
                if (investments[index].deal_id) {
                              let deal = await iraSQL.getDealById(investments[index].deal_id);
                              let expandDeal = calculateDeal(deal[0])
-                             console.log (index+") Investment for ENTITY_ID :"+investments[index].investment_id+" for investor: "+investments[index].investor_name+"")
-                             let transactionsForDeal = await iraSQL.getTransactionsForInvestorDeal(investments[index].investor_id, investments[index].investment_id,[1,3]);
-                             console.log ("TUIP - got "+transactionsForDeal.length+" transactions for deal "+index+"  : "+JSON.stringify(transactionsForDeal, null, 4)+"\n")
-                             let result = await totalupCashInDeal(transactionsForDeal);
+                             console.log (index+") Investment for ENTITY_ID :"+investments[index].investment_id+" - "+investments[index].investment_name+"\n")
+                             let transactionsForDeal = await iraSQL.getTransactionsForInvestorAndEntity(investments[index].investor_id, investments[index].investment_id,[1,3]);
+                             console.log ("TU Inv.Portfolio - got "+transactionsForDeal.length+" transactions for deal "+index+"  : "+JSON.stringify(transactionsForDeal, null, 4)+"\n")
 
+                             let result = await totalupCashInDeal(transactionsForDeal);
                              //first copy the deal basics
                              let newPortfolioDeal = investments[index];
                              newPortfolioDeal.expandDeal = expandDeal;
@@ -217,7 +221,49 @@ function totalupInvestors (investors) {
                              portfolioDeals.push(newPortfolioDeal);
               } else {
                             //dont add to array of portfolioDeals
-                            console.log ("\n"+index+") Investment for ENTITY_ID :"+investments[index].investment_id+" Not a DEAL \n")
+                            console.log ("\n"+index+") Investment for ENTITY_ID :"+investments[index].investment_id+" "+investments[index].investment_name+" is not a DEAL \n")
+                            let transactionsForEntity = await iraSQL.getTransactionsForInvestorAndEntity(investments[index].investor_id, investments[index].investment_id,[1,3,5]);
+                            console.log ("TUIP - got "+transactionsForEntity.length+" transactions for entity "+investments[index].investment_name+"  : "+JSON.stringify(transactionsForEntity, null, 4)+"\n")
+
+                            let result = await totalupCashInDeal(transactionsForEntity);
+                            let newPortfolioDeal = investments[index];
+
+                            let expandDeal =  {
+                                       "id": investments[index].id,
+                                       "name": investments[index].investment_name,
+                                       "aggregate_value": 0,
+                                       "cash_assets": 0,
+                                       "aggregate_debt": 0,
+                                       "deal_debt": 0,
+                                       "notes": "",
+                                       "equity_value": 0,
+                                       "total_value": 0,
+                                       "total_debt": 0,
+                                       "formatted_total_value": "$0",
+                                       "formatted_total_debt": "$0",
+                                       "formatted_aggregate_value": "$0",
+                                       "formatted_cash_assets": "$0",
+                                       "formatted_aggregate_debt": "$0",
+                                       "formatted_deal_debt": "$0",
+                                       "formatted_equity_value": "$0"
+                            };
+
+
+                            newPortfolioDeal.expandDeal = expandDeal;
+                            newPortfolioDeal.transactionsForDeal = result[0];
+                            newPortfolioDeal.totalCashInDeal = result[1];
+                            newPortfolioDeal.investor_equity_value = newPortfolioDeal.expandDeal.equity_value*(newPortfolioDeal.capital_pct/100);
+
+                            //add the sums
+                            totalPortfolioValue += newPortfolioDeal.investor_equity_value
+                            totalInvestmentValue += newPortfolioDeal.amount;
+                            newPortfolioDeal.formatted_amount = formatCurrency(newPortfolioDeal.amount)
+                            newPortfolioDeal.formatted_deal_equity_value = formatCurrency(newPortfolioDeal.expandDeal.equity_value)
+                            newPortfolioDeal.formatted_investor_equity_value = formatCurrency(newPortfolioDeal.investor_equity_value)
+                            portfolioDeals.push(newPortfolioDeal);
+
+
+
 
               }
 
