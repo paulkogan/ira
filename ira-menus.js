@@ -87,7 +87,7 @@ module.exports = router;
                userObj = req.session.passport.user;
 
              }
-            iraSQL.getEntitiesByOwnership(0).then(
+            iraSQL.getEntitiesByTypes([1,3,4]).then(
                   function(entities) {
                             //console.log("in get all ENTITIES, we got:   "+JSON.stringify(entities[0]))
                             var expandEntities = entities;
@@ -99,7 +99,7 @@ module.exports = router;
                                  } //
                             }//for
 
-
+                            console.log("\nEntities for Manage Owenership menu "+JSON.stringify(entities,null,4));
                             res.render('setown-entities', {
                                     userObj: userObj,
                                     sessioninfo: JSON.stringify(req.session),
@@ -276,10 +276,10 @@ router.get('/commitments', (req, res) => {
 
 
       let adminMenuOptions = []
-      adminMenuOptions[0] = {name:"New Transaction", link:"/add-transaction"}
-      adminMenuOptions[1] = {name:"New Deal", link:"/add-deal"}
+      adminMenuOptions[0] = {name:"Manage Ownership", link:"/setownership/"}
+      adminMenuOptions[1] = {name:"New Transaction", link:"/add-transaction"}
       adminMenuOptions[2] = {name:"New Entity", link:"/add-entity"}
-      adminMenuOptions[3] = {name:"Set Ownership", link:"/setownership/"}
+      adminMenuOptions[3] = {name:"New Deal", link:"/add-deal"}
 
 
 

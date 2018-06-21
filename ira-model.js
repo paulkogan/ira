@@ -13,7 +13,8 @@ if (env === 'ebawsira') {
           password: '',
           host: 'iradb.cdlgrjtshtb6.us-east-2.rds.amazonaws.com',
           database: 'iradb',
-          port: 3306
+          port: 3306,
+          multipleStatements: true
         };
 }
 
@@ -54,8 +55,8 @@ module.exports = {
   insertOwnership: insertOwnership,
   insertOwnTrans: insertOwnTrans,
   updateEntity: updateEntity,
-  updateDeal : updateDeal
-
+  updateDeal : updateDeal,
+  clearOwnershipForEntity: clearOwnershipForEntity
   //getTransactionsForInvestment: getTransactionsForInvestment
 
 };
@@ -581,4 +582,27 @@ function getTransactionsForInvestment (investment_entity) {
                       }
               }); //connection
       }); //promise
+} // function
+
+
+function clearOwnershipForEntity (entity_id, own_trans_array) {
+console.log("In Model, clearing Ownership: "+own_trans_array.toString())
+
+  let queryString =
+  'UPDATE entities SET ownership_status=0 where id ='+entity_id+";"
+  + ' DELETE FROM own_trans_lookup where own_id IN ('+own_trans_array.join()+');'
+  + ' DELETE FROM ownership where id IN ('+own_trans_array.join()+');';
+
+ //console.log("In Model, clearing Ownership, the query string is "+queryString)
+
+  return new Promise(function(succeed, fail) {
+        connection.query(queryString,
+          function(err, results) {
+                  if (err) {
+                        fail(err)
+                  } else {
+                        succeed(results)
+                  }
+          }); //connection
+  }); //promise
 } // function

@@ -4,7 +4,7 @@
 <table width = "100%" border = 0>
 
 <tr><td>
-  <font family = 'courier' size='5'><b>IRA</b> - Set Ownership for Entites</font>
+  <font family = 'courier' size='5'><b>IRA</b> - Manage Ownership</font>
 </td><td align = "right">
 <a href = '/home'>{{userObj.firstname}}</a>&emsp;<img width='50' src={{userObj.photo}}>
 </td></tr>
@@ -29,59 +29,45 @@
 
   <table width = "100%" border = 0>
         <colgroup>
-        <col width="5%"/>
+        <col width="10%"/>
+        <col width="10%"/>
         <col width="25%"/>
+        <col width="5%"/>
+        <col width="15%"/>
         <col width="15%"/>
         <col width="20%"/>
-        <col width="30%"/>
-
         </colgroup>
 
-
-        <tr>
-            <td></td>
-            <td></td>
-            <td></td>
-            <td></td>
-            <td></td>
-        </tr>
 
 
       <tr>
           <td align="center">{{id}}</td>
-          <td align="left"><b>{{name}}</b></td>
-
-
-
 
           <td>
                      {{entity_type}}
           </td>
+                    <td align="left"><b>{{name}}</b></td>
+          <td align="left"></td>
 
-          <td align="left">
-             <b>[ <a href = "/ownership/{{id}}">Set Ownership</a>]</b>
+          <td align="center">
+              {{#ifEqual own_status 0}}
+                      <b>[ <a href = "/ownership/{{id}}">Set</a>]</b>
+                    </td><td>
+
+              {{else}}
+                      <a href = "/ownership/{{id}}">View</a>
+                      </td><td align="center">
+                      <a href = "/clearownership/{{id}}">Clear</a>
+             {{/ifEqual}}
+
           </td>
+          <td align="left"></td>
 
 
-          <td align="left">
-            {{#ifEqual entity_type "Deal"}}
-            <a href = "/dealdetails/{{id}}">
-                Deal Info
-            </a>
-            {{else}}
-            {{/ifEqual}}
 
-
-                </td>
 
       </tr>
-      <tr>
-          <td></td>
-          <td></td>
-          <td></td>
-          <td></td>
-          <td></td>
-      </tr>
+
 
       </table>
 </div>

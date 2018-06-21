@@ -24,7 +24,7 @@ const nodePort = 8081
 //var router = express.Router();  then call router.post('/')
 
 
-const iraVersion = "0.13.3  +Ownership Adjustment +Entities in Portfolio"
+const iraVersion = "0.13.5  +Manage Ownership"
 
   app.set('trust proxy', true);
   app.use(flash());
@@ -334,14 +334,35 @@ function totalupInvestors (investors) {
 
 //============ ROUTES  ======================
 
+app.get('/clearownership/:id', (req, res) => {
+    if (req.session && req.session.passport) {
+       userObj = req.session.passport.user;
+     }
+
+     clearOwnership().catch(err => {
+           console.log("Clear Ownership problem: "+err);
+           req.flash('login', "Problems getting Ownership info for entity no. "+req.params.id+".  ")
+           res.redirect('/home')
+     })
+
+     async function clearOwnership() {
+           let foundEntity = await iraSQL.getEntityById(req.params.id);
+           let ownershipRows = await iraSQL.getOwnershipForEntity(foundEntity.id);
+           console.log("In /clearownership/id, got "+ownershipRows.length+ " ownership rows: "+JSON.stringify(ownershipRows,null,4)+"\n\n");
+           let own_ids = [];
+           for (let i=0; i<ownershipRows.length; i++) {
+                own_ids[i] = ownershipRows[i].id
+           }
+
+           let results = await iraSQL.clearOwnershipForEntity(foundEntity.id,own_ids);
+           console.log("Cleared ownership for "+foundEntity.name+"results : "+JSON.stringify(results,null,6)+"\n");
+           req.flash('login', "Cleared ownership for "+foundEntity.name+".  ");
+           res.redirect('/home/');
+
+     } //async function
+}); //route - ownership
 
 
-// {{#each by_width}}
-//     {{#each by_height}}
-//        w: {{../this}}
-//        h: {{this}}
-//     {{/each}}
-// {{/each}}
 
 
 app.get('/portfolio/:id', (req, res) => {
@@ -909,6 +930,14 @@ app.post('/process_add_entity', urlencodedParser, (req, res) => {
       let entity = req.body
       entity.deal_id = null;
       entity.investor_id = null;
+      if (parseInt(entity.type) === 2) {
+          entity.ownership_status = 2
+      } else {
+          entity.ownership_status = 0
+      }
+
+
+      console.log("From ADD Entity Form, we got: "+JSON.stringify(entity)+"\n\n");
       iraSQL.insertEntity(entity).then (
           function (savedData) {
               //console.log( "Added entity #: "+savedData.insertId);
