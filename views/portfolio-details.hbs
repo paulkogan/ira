@@ -96,7 +96,7 @@ Investment Summary for: <font family = 'courier' size='4'><b>{{investorName}}</b
 
 
     <td>{{wired_date}}</td>
-    <td align="left">{{t_type}}</td>
+    <td align="left">{{t_type_name}}</td>
     <td>{{t_notes}}</td>
     <td align="right">
       {{#ifIncludes formatted_amount '('}}
@@ -265,18 +265,16 @@ Investment Summary for: <font family = 'courier' size='4'><b>{{investorName}}</b
   <table width = "100%" border = 0>
 
     <colgroup>
+    <col width="10%"/>
+    <col width="10%"/>
+    <col width="40%"/>
     <col width="5%"/>
     <col width="15%"/>
-    <col width="10%"/>
-    <col width="30%"/>
-    <col width="15%"/>
-    <col width="14%"/>
-    <col width="15%"/>
+    <col width="20%"/>
     </colgroup>
 
 
     <tr>
-        <td></td>
         <td></td>
         <td></td>
         <td align="right">Total Portfolio Equity:</td>
@@ -286,22 +284,60 @@ Investment Summary for: <font family = 'courier' size='4'><b>{{investorName}}</b
     </tr>
 
     <tr>
-        <td></td>
+
         <td></td>
         <td></td>
         <td align="right">Total Cash Investment:</td>
         <td></td>
-        <td align="right">{{totalInvestmentValue}}</td>
+        <td align="right">-&nbsp;{{totalInvestmentValue}}</td>
         <td></td>
     </tr>
 
+
+
+
+
+
     <tr>
-        <td></td>
+
         <td></td>
         <td></td>
         <td align="right">Potential Growth in Portfolio Value:</td>
         <td></td>
-        <td align="right" style="border-top: thin solid">{{portfolioGain}}</td>
+        <td align="right" style="border-top: thin solid">{{portfolioValueGain}}</td>
+        <td></td>
+    </tr>
+
+
+
+
+    <tr>
+        <td></td>
+        <td>&nbsp;</td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+    </tr>
+
+
+    <tr>
+
+        <td></td>
+        <td></td>
+        <td align="right">Investor Distrubutions and Cash back:</td>
+        <td></td>
+        <td align="right">+&nbsp;{{totalDistributions}}</td>
+        <td></td>
+    </tr>
+
+    <tr>
+
+        <td></td>
+        <td></td>
+        <td align="right">Total Potential Return to Investor:</td>
+        <td></td>
+        <td align="right" style="border-top: thin solid"><b>{{portfolioCashGain}}</b></td>
         <td></td>
     </tr>
 
@@ -312,17 +348,14 @@ Investment Summary for: <font family = 'courier' size='4'><b>{{investorName}}</b
         <td></td>
         <td></td>
         <td></td>
-        <td></td>
     </tr>
-
 
     <tr>
         <td></td>
         <td></td>
+        <td align="right">Portfolio Rate on Equity (ROE):</td>
         <td></td>
-        <td align="right">Portfolio Rate of Return:</td>
-        <td></td>
-        <td align="right" ><b>{{portfolioIRR}}%</b></td>
+        <td align="right" ><i>{{portfolioIRR}}%</i></td>
         <td></td>
     </tr>
 
