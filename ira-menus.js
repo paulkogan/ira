@@ -99,7 +99,7 @@ module.exports = router;
                                  } //
                             }//for
 
-                            console.log("\nEntities for Manage Owenership menu "+JSON.stringify(entities,null,4));
+                            //console.log("\nEntities for Manage Owenership menu "+JSON.stringify(entities,null,4));
                             res.render('setown-entities', {
                                     userObj: userObj,
                                     sessioninfo: JSON.stringify(req.session),

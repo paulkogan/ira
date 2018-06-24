@@ -99,7 +99,8 @@ function updateDeal (updatedDeal) {
 //owneship: parent_entity_id, child_entity_id, capital_pct
 function updateEntity (updatedEntity) {
 
-  let queryString = 'UPDATE entities SET ownership_status = \''+updatedEntity.ownership_status+'\','
+  let queryString = 'UPDATE entities SET'
+  +' ownership_status = \''+updatedEntity.ownership_status+'\','
   +' name=\''+updatedEntity.name+'\','
   +' taxid=\''+updatedEntity.taxid+'\''
   +' WHERE id ='+updatedEntity.id+'';
@@ -111,7 +112,7 @@ function updateEntity (updatedEntity) {
                       if (err) {
                             fail(err)
                       } else {
-                            //console.log ("Success - Updated entity with "+JSON.stringify(results)+"\n")
+                            //console.log ("Model Success - Updated entity with "+JSON.stringify(results)+"\n")
                             succeed(results.affectedRows)
                       }
               }); //connection
@@ -121,7 +122,7 @@ function updateEntity (updatedEntity) {
 function getTransactionsForInvestorAndEntity (investorId, dealEntityId, transTypes) {
   let queryString = 'SELECT t.id, t.investor_entity_id as investor_entity_id,  t.investment_entity_id as investment_entity_id, t.passthru_entity_id as passthru_entity_id,'
   + ' investor.name as investor_name, investment.name as investment_name, passthru.name as passthru_name,'
-  + ' trans_types.name as t_type, t.notes as t_notes,'
+  + ' trans_types.name as t_type_name, t.trans_type as t_type, t.notes as t_notes,'
   + ' DATE_FORMAT(t.wired_date, "%b %d %Y") as wired_date, t.amount as amount, t.own_adj as own_adj'
   + ' FROM transactions as t'
   + ' JOIN transaction_types as trans_types ON t.trans_type = trans_types.type_num'
@@ -159,12 +160,13 @@ function getTransactionsForEntity (entityId, transTypes) {
 
   console.log("\nIn Model, TransTypes are: "+JSON.stringify(transTypes)+"\n\n")
 
-  let queryString = 'SELECT t.id, t.trans_type as trans_type, t.investor_entity_id as investor_entity_id,  t.investment_entity_id as investment_entity_id, t.passthru_entity_id as passthru_entity_id,'
+  let queryString = 'SELECT t.id, t.trans_type as trans_type, trans_types.name as tt_name, t.investor_entity_id as investor_entity_id,  t.investment_entity_id as investment_entity_id, t.passthru_entity_id as passthru_entity_id,'
   + ' investor.name as investor_name, investment.name as investment_name, passthru.name as passthru_name,'
   + ' DATE_FORMAT(t.wired_date, "%b %d %Y") as wired_date, t.amount as amount, t.own_adj as own_adj'
   + ' FROM transactions as t'
   + ' JOIN entities as investment ON investment.id = t.investment_entity_id'
   + ' JOIN entities as investor ON investor.id = t.investor_entity_id'
+  + ' JOIN transaction_types as trans_types ON t.trans_type = trans_types.type_num'
   + ' LEFT JOIN entities as passthru ON passthru.id = t.passthru_entity_id'
   + ' WHERE t.investment_entity_id ='+entityId
   //+ ' AND t.trans_type = 1'
@@ -393,12 +395,17 @@ function getOwnershipForInvestor (investor_id) {
                             console.log ("Cant find ownership "+err)
                             fail(err)
                       } else {
-                            console.log ("\n\nIn model: getOwnershipForInvestor, got "+results.length+" investments for "+results[0].investor_name)
-                            //console.log (JSON.stringify(results)+"\n\n")
-                            // if (results.length<1) {
-                            //           fail("no ownership data")
-                            // }
-                            succeed(results)
+                            if (results.length<1) {
+                                      fail("no ownership data")
+                            } else {
+
+                              console.log ("\n\nIn model: getOwnershipForInvestor, got "+results.length+" investments for "+results[0].investor_name)
+                              //console.log (JSON.stringify(results)+"\n\n")
+                              succeed(results)
+
+                            }
+
+
                       }
               }); //connection
       }); //promise
@@ -411,13 +418,13 @@ function getOwnershipForInvestor (investor_id) {
 //owneship: parent_entity_id, child_entity_id, capital_pct
 function getOwnershipForEntity (child_id) {
   let queryString = 'SELECT o.id, investor.name as investor_name, investment.name as investment_name, passthru.name as passthru_name,'
-  + ' DATE_FORMAT(t.wired_date, "%b %d %Y") as wired_date,'
+  + ' DATE_FORMAT(t.wired_date, "%b %d %Y") as wired_date, t.trans_type as t_type,'
   + ' o.amount as amount, ROUND(o.capital_pct,4) as capital_pct FROM ownership as o'
   + ' JOIN entities as investment ON investment.id = o.child_entity_id'
   + ' JOIN entities as investor ON investor.id = o.parent_entity_id'
   + ' LEFT JOIN entities as passthru ON passthru.id = o.passthru_entity_id'
   + ' LEFT JOIN own_trans_lookup as own_trans on own_trans.own_id = o.id'
-  + ' LEFT JOIN transactions as t on t.id = own_trans.trans_id'
+  + ' JOIN transactions as t on t.id = own_trans.trans_id'
   + ' WHERE o.child_entity_id ='+child_id+' ORDER BY amount DESC';
 
       return new Promise(function(succeed, fail) {
@@ -427,11 +434,12 @@ function getOwnershipForEntity (child_id) {
                             console.log ("Cant find ownership "+err)
                             fail(err)
                       } else {
-                            console.log ("Ownership query OK got "+results.length)
-                            //console.log ("The results are:"+JSON.stringify(results))
                             // if (results.length<1) {
                             //           fail("no ownership data")
                             // }
+
+                            console.log ("Ownership query OK got "+results.length)
+                            //console.log ("The results are:"+JSON.stringify(results, null,4))
                             succeed(results)
                       }
               }); //connection

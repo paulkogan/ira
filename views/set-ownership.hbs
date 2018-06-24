@@ -52,13 +52,14 @@
     <td align="center"><u>Tr.Id</u></td>
     <td align="center"><u>Investor Name</u></td>
     <td align="center"><u>Passthru Name</u></td>
+    <td align="center"><u>Tr. Type</u></td>
 
     <td align="center">
         <u>Trans.Amount or %</u></u>
     </td>
     <td align="center"><u>Trans. Date</u></td>
     <td align="center"><u>Result Deal %</u></td>
-    <td></td></td>
+
 </tr>
 </table>
 </div>
@@ -85,16 +86,27 @@
           <td align="center">{{id}}</td>
           <td align="center"><b>{{investor_name}}</b></td>
           <td align="center"> {{passthru_name}} </td>
+          <td align="center">{{tt_name}}</td>
           <td align="center">
               {{#ifGreaterThan own_adj 0}}
                     {{own_adj}}%
               {{else}}
-                   {{formattedAmount}}
+                             {{#ifLessThan amount 0}}
+                                 <font color = "red">
+                                        {{formattedAmount}}
+                                 </font>
+                             {{else}}
+                                        {{formattedAmount}}&nbsp;
+                             {{/ifLessThan}}
                 {{/ifGreaterThan}}
             </td>
           <td align="center">{{wired_date}}</td>
           <td align="center">{{formattedPercent}}</td>
-          <td></td>
+
+
+
+
+
       </tr>
       </table>
 </div>

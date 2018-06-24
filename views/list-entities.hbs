@@ -30,10 +30,10 @@
   <table width = "100%" border = 0>
         <colgroup>
         <col width="5%"/>
-        <col width="30%"/>
-        <col width="20%"/>
-        <col width="20%"/>
+        <col width="25%"/>
         <col width="15%"/>
+        <col width="10%"/>
+        <col width="10%"/>
         <col width="10%"/>
         </colgroup>
 
@@ -59,7 +59,7 @@
                      {{entity_type}}
           </td>
 
-          <td align="center">
+          <td align="left">
             {{#ifLessThan own_status 2}}
                 <a href = "/ownership/{{id}}">Ownership</a>
               {{/ifLessThan}}
@@ -67,15 +67,11 @@
 
 
           <td align="left">
-            {{#ifEqual entity_type "Deal"}}
-            <a href = "/dealdetails/{{id}}">
-                <img width="30" src = "../static/file-black-512.png">
-            </a>
-            {{else}}
-            {{/ifEqual}}
 
-
-                </td>
+                  <a href = "/updateentity/{{id}}">
+                      Update
+                  </a>
+          </td>
 
       </tr>
       <tr>
