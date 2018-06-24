@@ -10,7 +10,7 @@ let options = {};
 if (env === 'ebawsira') {
         options = {
           user: 'iraadmin',
-          password: '',
+          password: 'sqlschool2018',
           host: 'iradb.cdlgrjtshtb6.us-east-2.rds.amazonaws.com',
           database: 'iradb',
           port: 3306,
