@@ -26,7 +26,7 @@ const nodePort = 8081
 //var router = express.Router();  then call router.post('/')
 
 
-const iraVersion = "0.14.5  +New Transaction Page with Filter"
+const iraVersion = "0.14.6  +New Transaction Page with Filter"
 
   app.set('trust proxy', true);
   app.use(flash());
