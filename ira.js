@@ -2,8 +2,10 @@
 
 const path = require('path');
 const fs = require('fs');
+const vm = require('vm')
+//vm.runInThisContext(fs.readFileSync(__dirname + "/extfile.js"))
+
 const express = require('express');
-//const config = require('./prop3config');
 const app = express();
 const bodyParser = require('body-parser');
 const urlencodedParser = bodyParser.urlencoded({ extended: false })
@@ -24,7 +26,7 @@ const nodePort = 8081
 //var router = express.Router();  then call router.post('/')
 
 
-const iraVersion = "0.14.3  +Total Distributions  +Aquisition Offset +Trans Notes in Portfolio"
+const iraVersion = "0.14.5  +New Transaction Page with Filter"
 
   app.set('trust proxy', true);
   app.use(flash());
@@ -180,16 +182,6 @@ function totalupInvestors (investors) {
                     expandInvestors.push(newOwnRow)
                     console.log("\nTUI - NEW own_row: "+(expandInvestors.length-1)+" from transaction: "+index+"  :" +JSON.stringify(newOwnRow)+"  \n");
 
-// TUI - NEW own_row: 3 from transaction: 6  :{"id":493,"investor_name":"Alex Abrahms",
-// "investment_name":"Horizon LP",
-// "passthru_name":null,
-// "wired_date":"Apr 11 2018",
-// "t_type":5,
-// "amount":199000,
-// "capital_pct":38.5682,
-// "formattedAmount":"$199,000"}
-
-
             } //if not a dupe
 
       }//for index --- all own rows with transactions
@@ -206,14 +198,14 @@ function totalupInvestors (investors) {
 
         for (let index = 0; index < transactions.length; index++) {
 
-                totalCashInDeal += expandTransactions[index].amount
-                if(transactions[index].t_type === 5 ) {
-                        expandTransactions[index].formatted_amount = transactions[index].own_adj+"%";
+                totalCashInDeal += expandTransactions[index].t_amount
+                if(transactions[index].tt_id === 5 ) {
+                        expandTransactions[index].formatted_amount = transactions[index].t_own_adj+"%";
                 } else {
-                        expandTransactions[index].formatted_amount = formatCurrency(expandTransactions[index].amount)
+                        expandTransactions[index].formatted_amount = formatCurrency(expandTransactions[index].t_amount)
                 }
-                if(transactions[index].t_type === 3 ) {
-                      dealDistributions += expandTransactions[index].amount
+                if(transactions[index].tt_id === 3 ) {
+                      dealDistributions += expandTransactions[index].t_amount
                 }
 
         } //for
@@ -224,7 +216,7 @@ function totalupInvestors (investors) {
     } //function totalupCashInDeal
 
 
-
+// these are Ownership Rows
     async function totalupInvestorPortfolio (investments) {
           let portfolioDeals = []  //empty array - add only if its a deal
           let totalPortfolioValue = 0;
@@ -309,7 +301,6 @@ function totalupInvestors (investors) {
 
 
 
-
               }
 
                //console.log("IN validate ownership: "+ index +" lastname: "+expandInvestors[index].investor_name+" amount: "+expandInvestors[index].formattedAmount+" cap_pct: "+expandInvestors[index].capital_pct)
@@ -328,8 +319,8 @@ function totalupInvestors (investors) {
         console.log("In CalculateOwnership, here are "+transactionsFromEntity.length+" transcations :"+JSON.stringify(transactionsFromEntity,null,4)+"\n\n")
 
         for (let index = 0; index < inv_trans_Rows.length; index++) {
-               totalCapital += inv_trans_Rows[index].amount;
-               totalAdjOwnPct += inv_trans_Rows[index].own_adj;
+               totalCapital += inv_trans_Rows[index].t_amount;
+               totalAdjOwnPct += inv_trans_Rows[index].t_own_adj;
                //add each investor to a table. If he's there before,
 
         }
@@ -342,13 +333,13 @@ function totalupInvestors (investors) {
 
         // now calculate % for each
         for (let index = 0; index < inv_trans_Rows.length; index++) {
-                if(inv_trans_Rows[index].own_adj > 0) {  //if its an ownership adjustment (% only)
-                      inv_trans_Rows[index].percent = (inv_trans_Rows[index].own_adj)/100
+                if(inv_trans_Rows[index].t_own_adj > 0) {  //if its an ownership adjustment (% only)
+                      inv_trans_Rows[index].percent = (inv_trans_Rows[index].t_own_adj)/100
                 } else {
-                      // if (inv_trans_Rows[index].trans_type === 6) {  //its an offset
+                      // if (inv_trans_Rows[index].tt_id === 6) {  //its an offset
                       //           inv_trans_Rows[index].percent = 0
                       // }  else {
-                      inv_trans_Rows[index].percent = ((inv_trans_Rows[index].amount/totalCapital)*availPct_after_OwnAdj)
+                      inv_trans_Rows[index].percent = ((inv_trans_Rows[index].t_amount/totalCapital)*availPct_after_OwnAdj)
 
                       //} //if not a n offset
                 } //if its ownership %
@@ -356,7 +347,7 @@ function totalupInvestors (investors) {
                totalOwnPct += inv_trans_Rows[index].percent*100
               // console.log("\nIn CalculateOwnership, after: "+inv_trans_Rows[index].id + "the % total is "+  totalOwnPct+"\n");
                inv_trans_Rows[index].formattedPercent = (inv_trans_Rows[index].percent*100).toFixed(4)+"%"
-               inv_trans_Rows[index].formattedAmount = formatCurrency(inv_trans_Rows[index].amount)
+               inv_trans_Rows[index].formattedAmount = formatCurrency(inv_trans_Rows[index].t_amount)
                //console.log("IN validate ownership: "+ index +" lastname: "+expandInvestors[index].investor_name+" amount: "+expandInvestors[index].formattedAmount+" cap_pct: "+expandInvestors[index].capital_pct)
         }//for  total capital
 
@@ -387,6 +378,71 @@ function totalupInvestors (investors) {
 
 
 //============ ROUTES  ======================
+
+app.get('/transactions/:id', (req, res) => {
+    if (req.session && req.session.passport) {
+                 userObj = req.session.passport.user;
+    }
+
+    //call the async function
+    showTransForEntity().catch(err => {
+          console.log("Show trandsactions for entity problem: "+err);
+    })
+
+    async function showTransForEntity() {
+          try {
+                var entity = await iraSQL.getEntityById(req.params.id);
+                console.log("have Entity   "+ JSON.stringify(entity));
+                var transactions = await iraSQL.getTransactionsForInvestment(entity.id);
+                console.log("\nGot transactions for entity  "+JSON.stringify(transactions,null,5));
+
+          } catch (err ){
+                console.log(err+ " -- No entity for    "+ req.params.id);
+                var transactions = await iraSQL.getAllTransactions();
+                var entity = {
+                  id:0,
+                  name: "Select filter"
+                }
+          }
+
+          var expandTransactions = transactions.map(function(e) {
+                      e.formatted_amount = formatCurrency(e.t_amount);
+                      return e;
+          });
+
+
+          var entitiesForFilter = await iraSQL.getEntitiesByTypes([1,3,4]);
+          console.log("\nGot "+entitiesForFilter.length+" entities for Filter ");
+
+
+          res.render('list-transactions', {
+                  userObj: userObj,
+                  sessioninfo: JSON.stringify(req.session),
+                  message: req.flash('login') + "  Showing "+transactions.length+" transactions",
+                  transactions: expandTransactions,
+                  filterList: entitiesForFilter,
+                  selectedEntity: entity,
+                  postendpoint: '/process_transactions_filter'
+          });//render
+
+    } //async function
+}); //route - ownership
+
+app.post('/process_transactions_filter', urlencodedParser, (req, res) => {
+
+          if (req.session && req.session.passport) {
+             userObj = req.session.passport.user;
+           }
+
+           let filterEntity = req.body.filter_ent
+             console.log("\nGot Filter entity"+filterEntity)
+           res.redirect('/transactions/'+filterEntity);
+
+})
+
+
+
+
 
 app.get('/clearownership/:id', (req, res) => {
     if (req.session && req.session.passport) {
@@ -638,10 +694,10 @@ app.post('/process_set_ownership', urlencodedParser, (req, res) => {
                            child_entity_id: trans[0].investment_entity_id,
                            passthru_entity_id: trans[0].passthru_entity_id,
                            trans_id: transId,  //need this for lookup table!
-                           trans_amount: trans[0].amount,
+                           t_amount: trans[0].amount,
                            capital_pct: parseFloat(transPercent),
                            member_interest_pct: null,
-                           trans_type: trans[0].trans_type,
+                           tt_id: trans[0].trans_type,
                            ownRow_id:null
                     }
                     console.log("In processSetOwn, add inv_trans row to table: "+JSON.stringify(inv_trans_row, null, 4)+"")
@@ -650,12 +706,12 @@ app.post('/process_set_ownership', urlencodedParser, (req, res) => {
                     let found = false
                     for (let j=0;j<own_Rows.length;j++) {
                             //ROLL UP if its the same parent entity (investor) - including own adjust
-                              //if((own_Rows[j].parent_entity_id === inv_trans[i].parent_entity_id)  && (own_Rows[j].trans_type != 5) && (inv_trans[i].trans_type != 5 )    ) {
+                              //if((own_Rows[j].parent_entity_id === inv_trans[i].parent_entity_id)  && (own_Rows[j].tt_id != 5) && (inv_trans[i].tt_id != 5 )    ) {
                               if( own_Rows[j].parent_entity_id === inv_trans[i].parent_entity_id ) {
-                                    own_Rows[j].amount += inv_trans[i].trans_amount;
+                                    own_Rows[j].amount += inv_trans[i].t_amount;
                                     own_Rows[j].capital_pct += inv_trans[i].capital_pct*1;
                                     inv_trans[i].ownRow_id = j;
-                                    console.log("\nRolled up trans "+inv_trans[i].trans_id+"to existing own_row_id "+j+"\n")
+                                    console.log("\nRolled up trans "+inv_trans[i].trans_id+" to existing own_row_id "+j+"\n")
                                     found = true;
                                     break;
                             }
@@ -667,7 +723,7 @@ app.post('/process_set_ownership', urlencodedParser, (req, res) => {
                                      parent_entity_id: inv_trans[i].parent_entity_id,
                                      child_entity_id: inv_trans[i].child_entity_id,
                                      passthru_entity_id: inv_trans[i].passthru_entity_id,
-                                     amount: inv_trans[i].trans_amount,
+                                     amount: inv_trans[i].t_amount,
                                      capital_pct: inv_trans[i].capital_pct,
                                      member_interest_pct: null
 
@@ -677,8 +733,10 @@ app.post('/process_set_ownership', urlencodedParser, (req, res) => {
                               //note whoch own_Row this trasaction is part-of, so we can later add to own_trans table.
                               //this could be a problem!
 
+
                               inv_trans[i].ownRow_id = own_Rows.length-1;
-                              console.log("\nPushed NEW ownRow no."+own_Rows.length-1 +" into table for trans: "+inv_trans[i].trans_id+"\n");
+                              console.log("Pushed NEW ownRow into table for trans: "+inv_trans[i].trans_id+"\n");
+                              console.log("THE SIZE OF OWN_ROWS IS: "+own_Rows.length+"\n");
                               console.log("\nThe inv_trans looks like:"+ JSON.stringify(inv_trans[i],null,4)+"\n");
                    }// if !found
 
@@ -686,12 +744,12 @@ app.post('/process_set_ownership', urlencodedParser, (req, res) => {
             } //for - done creating own_rows
 
              console.log("\nDONE creating own_rows, now inserting...==================\n\n")
-             console.log("\nInvTrans looks like this: "+inv_trans.toString()+"\n\n")
+             //console.log("\nInvTrans looks like this: "+inv_trans.toString()+"\n\n")
             //now add all own_rows to ownsrhip table
 
             for (let k=0; k<own_Rows.length; k++) {
                     var insertOwnershipResults = await iraSQL.insertOwnership(own_Rows[k]);
-                    console.log("\nAdded new ownership row, id= "+insertOwnershipResults.insertId+"for "+own_Rows[k].parent_entity_id+"\n");
+                    console.log("\nAdded new ownership row, id= "+insertOwnershipResults.insertId+" for investor "+own_Rows[k].parent_entity_id+"");
 
                 //go through all transactions, and if they roll up to this own owmRow, insert into own_trans lookup table
                     for (let l=0;l<inv_trans.length;l++) {
@@ -791,7 +849,7 @@ app.get('/setownership/:id', (req, res) => {
     async function pullOwnershipTransactions() {
           var entity = await iraSQL.getEntityById(req.params.id);
           console.log("in set-ownership, got Entity   "+ JSON.stringify(entity,null,4)+"\n\n");
-          var rows = await iraSQL.getTransactionsForEntity(entity.id, [1,5,6]);
+          var rows = await iraSQL.getTransactionsForInvestment(entity.id, [1,5,6]);
           console.log("\nIn SetOwn - got "+rows.length+" transactions for "+ entity.name+" \n");
                   // screen transaction and calculate ownership
           if(entity.ownership_status===0 && (rows.length >0) ) {
@@ -964,7 +1022,7 @@ app.post('/process_add_transaction', urlencodedParser, (req, res) => {
     let transaction = req.body
     transaction.amount = parseFormAmountInput(transaction.amount)
     transaction.own_adj = parseFloat(transaction.own_adj)
-    if ((transaction.trans_type==3 || transaction.trans_type==6) && transaction.amount>0) transaction.amount*=-1
+    if ((transaction.tt_id==3 || transaction.tt_id==6) && transaction.amount>0) transaction.amount*=-1
     console.log("\nAbout to insert new transaction with "+JSON.stringify(transaction)+"\n");
     iraSQL.insertTransaction(transaction).then (
         function (savedData) {

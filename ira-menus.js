@@ -212,30 +212,14 @@ router.get('/deals', (req, res) => {
 }); //  entities route
 
 
-
-
-
-
 router.get('/transactions', (req, res) => {
-  if (req.session && req.session.passport) {
-     userObj = req.session.passport.user;
+   res.redirect('/transactions/000');
+}); 
 
-   }
-          iraSQL.getAllTransactions().then(
-                function(transactions) {
-                          res.render('list-transactions', {
-                                  userObj: userObj,
-                                  sessioninfo: JSON.stringify(req.session),
-                                  message: req.flash('login') + "  Showing "+transactions.length+" transactions",
-                                  transactions: transactions
-                          });//render
 
-                }, function(err) {   //failed
-                               console.log("Ledger problem: "+err);
-                               return;
-                } //  success function
-          ); //getAll Trandactions then
-}); //  /entities route
+
+
+
 
 
 router.get('/commitments', (req, res) => {
