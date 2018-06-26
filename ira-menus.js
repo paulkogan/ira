@@ -1,44 +1,5 @@
 'use strict';
 
-// const path = require('path');
-// const fs = require('fs');
-
-// //const config = require('./prop3config');
-
-// const bodyParser = require('body-parser');
-// const urlencodedParser = bodyParser.urlencoded({ extended: false })
-
-// //all the auth stuff
-
-// const crypto            = require('crypto');
-// const passport          = require('passport');
-// const LocalStrategy     = require('passport-local').Strategy;
-//
-// const cookieParser = require('cookie-parser')
-
-// const RedisStore = require('connect-redis')(session)
-// //const bcrypt = require('bcrypt');
-//
-
-
-
-// const iraVersion = "0.9.3 +investor portfolio+parse commas"
-// const nodePort = 8081
-// // then call router.post('/')
-//
-//
-//   app.set('trust proxy', true);
-
-//   app.use(cookieParser(secret));
-//   app.use(bodyParser.urlencoded({extended: true}))
-//   app.use(bodyParser.json());
-// //
-// app.set('view engine', 'hbs');
-// app.set('views', path.join(__dirname, '/views/'));
-// app.use('/static', express.static(__dirname + '/static'));
-//
-
-
 const flash   = require('connect-flash-plus');
 const session = require('express-session')
 let sessioninfo = "no session"
@@ -214,7 +175,7 @@ router.get('/deals', (req, res) => {
 
 router.get('/transactions', (req, res) => {
    res.redirect('/transactions/000');
-}); 
+});
 
 
 
