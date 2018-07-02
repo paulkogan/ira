@@ -3,6 +3,7 @@
 
 const hbs = require('hbs');
 const iraSQL =  require('./ira-model');
+const j2csvParser = require('json2csv').parse;
 
 module.exports = {
   formatCurrency:formatCurrency,
@@ -13,7 +14,8 @@ module.exports = {
   totalupInvestorPortfolio: totalupInvestorPortfolio,
   calculateOwnership : calculateOwnership,
   calculateDeal: calculateDeal,
-  getInvestorEquityValueInDeal
+  getInvestorEquityValueInDeal,
+  createCSVforDownload
 }
 
 
@@ -32,6 +34,7 @@ function parseFormAmountInput (fieldInput) {
 
 
 function doTransMatchForRollup (tt1,tt2) {
+       //acquisition and acquistion offset match
         if ( (tt1 === tt2) ||  (tt1 === 1 && tt2 ===5) ||(tt1 === 5 && tt2 ===1) ){
               return true;
         } else {
@@ -40,6 +43,20 @@ function doTransMatchForRollup (tt1,tt2) {
 
 }
 
+async function createCSVforDownload(responseArray) {
+
+        let fields = Object.keys(responseArray[0]);
+        console.log(" Fields are: " + fields +"\n")
+        let options = { fields };
+      //console.log("in create CSV - Trans JSON data has  " + JSON.stringify(responseArray,null,4) +"\n")
+        const csv = j2csvParser(responseArray, options);
+        console.log("\nTHE CSV is "+csv);
+        return csv;
+
+}
+
+
+//returns investment's value and %
 async function getInvestorEquityValueInDeal(investor_id, entity_id) {
     let foundEntity = await iraSQL.getEntityById(entity_id);
     let deal_id = foundEntity.deal_id
@@ -51,7 +68,6 @@ async function getInvestorEquityValueInDeal(investor_id, entity_id) {
     return [expandDeal.equity_value*(own_results[0].capital_pct/100), own_results[0].capital_pct];
 
 }
-
 
 
 

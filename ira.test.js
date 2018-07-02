@@ -1,20 +1,30 @@
 const assert = require('assert');
 const iraSQL =  require('./ira-model');
-const app =  require('./ira');
+const ira =  require('./ira');
+
 const calc =  require('./ira-calc');
 const menus = require('./ira-menus.js');
 var transactions = []
 
 beforeEach(async function () {
-        transactions = await iraSQL.getAllTransactions();
 
 });
 
+afterEach(async function () {
 
-describe("IRA - Tests: ..........", function () {
+});
+
+after( async function () {
+      // await ira.shutDownServer();
+      // console.log("Shut down OK \n")
+});
 
 
+
+
+describe("IRA - Tests: ..........", async function () {
       it("finds some transcations", async function(){
+           let transactions = await iraSQL.getAllTransactions();
            assert.ok(transactions.length >0)
       });
 
@@ -37,52 +47,53 @@ describe("IRA - Tests: ..........", function () {
       //
       // });
       //
-      //
-      //
-      //
-      //
-      // it("increases portfolioCashGain by amount of a distribution", async function(){
-      //      let investorID = 5
-      //      let testAmount = 36
-      //
-      //      //get the BEFORE data
-      //      let investments = await iraSQL.getOwnershipForInvestor(investorID);
-      //      let results = await calc.totalupInvestorPortfolio(investments)
-      //      let portfolioDeals = results[0]
-      //      let totalInvestmentValue =  results[1]
-      //      let totalPortfolioValue =  results[2]
-      //      let totalDistributions =  results[3]*-1 //make it positive here
-      //      let portfolioValueGain =  totalPortfolioValue-totalInvestmentValue
-      //
-      //      let portfolioCashGain1 = portfolioValueGain+ totalDistributions
-      //
-      //       var newTransaction = {
-      //                 "trans_type":"3",
-      //                 "investment_entity_id":"2",
-      //                 "investor_entity_id": investorID,
-      //                 "passthru_entity_id":"",
-      //                 "amount": testAmount*-1,
-      //                 "own_adj":0,
-      //                 "wired_date":"2018-07-01",
-      //                 "notes":"testing distribution with Noah"
-      //     };
-      //     let savedData = await iraSQL.insertTransaction(newTransaction);
-      //     console.log("\nin TEST Added transaction no. "+savedData.insertId);
-      //
-      //     //now get the AFTER data
-      //     investments = await iraSQL.getOwnershipForInvestor(investorID);
-      //     results = await calc.totalupInvestorPortfolio(investments)
-      //     portfolioDeals = results[0]
-      //     totalInvestmentValue =  results[1]
-      //     totalPortfolioValue =  results[2]
-      //     totalDistributions =  results[3]*-1 //make it positive here
-      //     portfolioValueGain =  totalPortfolioValue-totalInvestmentValue
-      //     let portfolioCashGain2 = portfolioValueGain+ totalDistributions
-      //
-      //     let changeInPortfolioCash = portfolioCashGain2 - portfolioCashGain1
-      //     assert.equal(changeInPortfolioCash,testAmount)
-      //
-      // });
+
+
+
+
+      it("increases portfolioCashGain by amount of a distribution", async function(){
+           let investorID = 5; //Noah
+           let testAmount = 36;
+           let investment_entityID = 2; //350 Broadway
+
+           //get the BEFORE data
+           let investments = await iraSQL.getOwnershipForInvestor(investorID);
+           let results = await calc.totalupInvestorPortfolio(investments)
+           let portfolioDeals = results[0]
+           let totalInvestmentValue =  results[1]
+           let totalPortfolioValue =  results[2]
+           let totalDistributions =  results[3]*-1 //make it positive here
+           let portfolioValueGain =  totalPortfolioValue-totalInvestmentValue
+
+           let portfolioCashGain1 = portfolioValueGain+ totalDistributions
+
+            var newTransaction = {
+                      "trans_type":"3", //distribution
+                      "investment_entity_id":investment_entityID,
+                      "investor_entity_id": investorID,
+                      "passthru_entity_id":"",
+                      "amount": testAmount*-1,
+                      "own_adj":0,
+                      "wired_date":"2018-07-01",
+                      "notes":"testing distribution with Noah"
+          };
+          let savedData = await iraSQL.insertTransaction(newTransaction);
+          console.log("\nin TEST Added transaction no. "+savedData.insertId);
+
+          //now get the AFTER data
+          investments = await iraSQL.getOwnershipForInvestor(investorID);
+          results = await calc.totalupInvestorPortfolio(investments)
+          portfolioDeals = results[0]
+          totalInvestmentValue =  results[1]
+          totalPortfolioValue =  results[2]
+          totalDistributions =  results[3]*-1 //make it positive here
+          portfolioValueGain =  totalPortfolioValue-totalInvestmentValue
+          let portfolioCashGain2 = portfolioValueGain+ totalDistributions
+
+          let changeInPortfolioCash = portfolioCashGain2 - portfolioCashGain1
+          assert.equal(changeInPortfolioCash,testAmount)
+
+      });
 
       it("returns good Ownership % ForInvestorAndEntity", async function ()  {
             let investor_id = 5;  //Noah getTransactionsForInvestment
@@ -95,7 +106,6 @@ describe("IRA - Tests: ..........", function () {
 
       });
 
-//let inv_equity_value =
 
 // it("returns good InvestorEquityValueInDeal", async function ()  {
 //         let investor_id = 5;  //Noah getTransactionsForInvestment
@@ -147,6 +157,5 @@ describe("IRA - Tests: ..........", function () {
         //get investor_equity_value AFTER for investor and deal ==> new function
         //assert (AFTER - BEFORE = cash_assets_increase * ownership stake)
       //  });
-
 
 }); //describe

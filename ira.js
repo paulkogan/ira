@@ -26,7 +26,7 @@ const nodePort = 8081
 //var router = express.Router();  then call router.post('/')
 
 
-const iraVersion = "0.15  +unit tests"
+const iraVersion = "0.15.6  +CSV download parts"
 
   app.set('trust proxy', true);
   app.use(flash());
@@ -76,11 +76,69 @@ const server = app.listen(nodePort, function() {
   console.log('IRA listening on port  ' + nodePort);
 });
 
-module.exports = app;
+
+function shutDownServer() {
+     server.close();
+     console.log("server is winding down... but terminal pro cess still up\n");
+
+}
+
+module.exports = {
+      app,
+      shutDownServer
+}
+
 exports.version = iraVersion;
+exports.nodeServer = server;
+
+
 
 
 //============ ROUTES  ======================
+
+app.get('/download_csv/:id', (req, res) => {
+      downloadCSVTransactions().catch(err => {
+            console.log("DownloadTransactions problem: "+err);
+      })
+
+      async function downloadCSVTransactions() {
+            try {
+                  var entity = await iraSQL.getEntityById(req.params.id);
+                  console.log("have Entity   "+ JSON.stringify(entity));
+                  var transactions = await iraSQL.getTransactionsForInvestment(entity.id);
+                  console.log("\nGot transactions for entity  "+JSON.stringify(transactions,null,5));
+
+            } catch (err ){
+                  console.log(err+ " -- No entity for    "+ req.params.id);
+                  var transactions = await iraSQL.getAllTransactions();
+                  var entity = {
+                    id:0,
+                    name: "Select filter"
+                  }
+            }
+
+            var expandTransactions = transactions.map(function(element) {
+                        element.formatted_amount = calc.formatCurrency(element.t_amount);
+                        return element;
+            });
+
+
+                  let transCSV = await calc.createCSVforDownload(expandTransactions);
+                  console.log("In ira, the CSV file is \n"+transCSV+"\n")
+                  res.send(transCSV);
+                  // res.setHeader('Content-disposition', 'attachment; filename=transactions.csv');
+                  // res.set('Content-Type', 'text/csv');
+                  // res.status(200).send(transCSV);
+
+
+
+
+
+
+    }; //async function
+
+}); //route
+
 
 app.get('/transactions/:id', (req, res) => {
     if (req.session && req.session.passport) {

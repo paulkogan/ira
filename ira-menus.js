@@ -238,6 +238,12 @@ router.get('/commitments', (req, res) => {
 
   });
 
+  router.get('/shutdown123', (req, res) => {
+          shutDownServer()
+          res.send("Good--bye!")
+  })
+
+
 
   router.get('/', function(req, res) {
         res.redirect('/home')
