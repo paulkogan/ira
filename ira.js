@@ -26,7 +26,7 @@ const nodePort = 8081
 //var router = express.Router();  then call router.post('/')
 
 
-const iraVersion = "0.14.7  +calc functions"
+const iraVersion = "0.15  +unit tests"
 
   app.set('trust proxy', true);
   app.use(flash());
@@ -115,7 +115,7 @@ app.get('/transactions/:id', (req, res) => {
 
 
           var entitiesForFilter = await iraSQL.getEntitiesByTypes([1,3,4]);
-          console.log("\nGot "+entitiesForFilter.length+" entities for Filter ");
+          //console.log("\nGot "+entitiesForFilter.length+" entities for Filter ");
 
 
           res.render('list-transactions', {
@@ -203,7 +203,7 @@ app.get('/portfolio/:id', (req, res) => {
                           let portfolioCashGain = portfolioValueGain+ totalDistributions
                           let portfolioIRR = parseFloat(portfolioCashGain/totalInvestmentValue)*100
                           console.log("\nRendering Investor Portfolio, totalDistrib is  : " + totalDistributions+"")
-                          console.log("\n1st Deal : " + JSON.stringify(portfolioDeals[0],null,6)+"\n\n")
+                          console.log("\n2nd Deal : " + JSON.stringify(portfolioDeals[1],null,6)+"\n\n")
                           res.render('portfolio-details', {
                                   userObj: userObj,
                                   message:  "Showing "+portfolioDeals.length+" investments ",
@@ -724,7 +724,7 @@ app.post('/process_add_transaction', urlencodedParser, (req, res) => {
     let transaction = req.body
     transaction.amount = calc.parseFormAmountInput(transaction.amount)
     transaction.own_adj = parseFloat(transaction.own_adj)
-    if ((transaction.tt_id==3 || transaction.tt_id==6) && transaction.amount>0) transaction.amount*=-1
+    if ((transaction.trans_type==3 || transaction.trans_type==6) && transaction.amount>0) transaction.amount*=-1
     console.log("\nAbout to insert new transaction with "+JSON.stringify(transaction)+"\n");
     iraSQL.insertTransaction(transaction).then (
         function (savedData) {

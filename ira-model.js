@@ -1,7 +1,7 @@
 
 'use strict';
 
-const extend = require('lodash').assign;
+//const extend = require('lodash').assign;
 const mysql = require('mysql');
 const env = 'ebawsira'
 
@@ -10,7 +10,7 @@ let options = {};
 if (env === 'ebawsira') {
         options = {
           user: 'iraadmin',
-          password: '',
+          password: 'sqlschool2018',
           host: 'iradb.cdlgrjtshtb6.us-east-2.rds.amazonaws.com',
           database: 'iradb',
           port: 3306,
@@ -34,29 +34,30 @@ connection.connect(function(err) {
 
 
 module.exports = {
-  getAllEntities: getAllEntities,
-  getAllTransactions: getAllTransactions,
-  getOwnershipForEntity: getOwnershipForEntity,
-  getOwnershipForInvestor: getOwnershipForInvestor,
-  getEntityById: getEntityById,
-  getEntityByDealId: getEntityByDealId,
-  getEntitiesByTypes: getEntitiesByTypes,
-  getEntitiesByOwnership: getEntitiesByOwnership,
-  getTransactionById: getTransactionById,
-  getTransactionsForInvestorAndEntity:getTransactionsForInvestorAndEntity,
-  getTransactionsByType: getTransactionsByType,
-  getTransactionsForInvestment: getTransactionsForInvestment,
-  getDealById: getDealById,
-  getEntityTypes: getEntityTypes,
-  getTransactionTypes: getTransactionTypes,
-  insertEntity: insertEntity,
-  insertTransaction: insertTransaction,
-  insertDeal: insertDeal,
-  insertOwnership: insertOwnership,
-  insertOwnTrans: insertOwnTrans,
-  updateEntity: updateEntity,
-  updateDeal : updateDeal,
-  clearOwnershipForEntity: clearOwnershipForEntity
+  getAllEntities,
+  getAllTransactions,
+  getOwnershipForEntity,
+  getOwnershipForInvestor,
+  getOwnershipForInvestorAndEntity,
+  getEntityById,
+  getEntityByDealId,
+  getEntitiesByTypes,
+  getEntitiesByOwnership,
+  getTransactionById,
+  getTransactionsForInvestorAndEntity,
+  getTransactionsByType,
+  getTransactionsForInvestment,
+  getDealById,
+  getEntityTypes,
+  getTransactionTypes,
+  insertEntity,
+  insertTransaction,
+  insertDeal,
+  insertOwnership,
+  insertOwnTrans,
+  updateEntity,
+  updateDeal,
+  clearOwnershipForEntity
 
 
 };
@@ -76,7 +77,7 @@ function updateDeal (updatedDeal) {
     +' notes=\''+updatedDeal.notes+'\''
     +' WHERE id ='+updatedDeal.id+'';
 
-   console.log ("in update deal, the query string is "+queryString+"\n\n")
+   //console.log ("in update deal, the query string is "+queryString+"\n\n")
 
       return new Promise(function(succeed, fail) {
             connection.query(queryString,
@@ -174,7 +175,7 @@ function getTransactionsForInvestment (invest_entityId, transTypes) {
   + ' WHERE t.investment_entity_id ='+invest_entityId
   //+ ' AND t.trans_type = 1'
   + ' AND t.trans_type IN ('+transTypes.join()+')'
-  + ' ORDER BY t.wired_date DESC';
+  + ' ORDER BY t.id DESC';
 
       return new Promise(function(succeed, fail) {
             connection.query(queryString,
@@ -207,7 +208,10 @@ function getAllTransactions () {
             + ' JOIN entities as investment ON investment.id = t.investment_entity_id'
             + ' JOIN entities as investor ON investor.id = t.investor_entity_id'
             + ' JOIN transaction_types as trans_types ON t.trans_type = trans_types.type_num'
-            + ' LEFT JOIN entities as passthru ON passthru.id = t.passthru_entity_id ORDER BY t_wired_date DESC';
+            + ' LEFT JOIN entities as passthru ON passthru.id = t.passthru_entity_id'
+            + ' ORDER BY t.id DESC';
+
+
 
           return new Promise(function(succeed, fail) {
                           connection.query(queryString,
@@ -408,6 +412,45 @@ function getDealById (deal_id) {
 } // function
 
 
+  //owneship: parent_entity_id, child_entity_id, capital_pct
+  function getOwnershipForInvestorAndEntity (child_id, investor_id) {
+    let queryString = 'SELECT o.id, investor.name as investor_name, investment.name as investment_name, passthru.name as passthru_name,'
+    + ' investment.id as investment_id, investor.id as investor_id,'
+    //' DATE_FORMAT(t.wired_date, "%b %d %Y") as wired_date, t.trans_type as tt_id,'
+    + ' o.amount as amount, ROUND(o.capital_pct,4) as capital_pct FROM ownership as o'
+    + ' JOIN entities as investment ON investment.id = o.child_entity_id'
+    + ' JOIN entities as investor ON investor.id = o.parent_entity_id'
+    + ' LEFT JOIN entities as passthru ON passthru.id = o.passthru_entity_id'
+    // ' LEFT JOIN own_trans_lookup as own_trans on own_trans.own_id = o.id'
+    //' JOIN transactions as t on t.id = own_trans.trans_id'
+    + ' WHERE o.child_entity_id ='+child_id
+    + ' AND o.parent_entity_id ='+investor_id+' ORDER BY investment_id ASC';
+
+
+        return new Promise(function(succeed, fail) {
+              connection.query(queryString,
+                function(err, results) {
+                        if (err) {
+                              console.log ("Cant find ownership "+err)
+                              fail(err)
+                        } else {
+                              // if (results.length<1) {
+                              //           fail("no ownership data")
+                              // }
+
+                              console.log ("Ownership query OK got "+results.length)
+                              //console.log ("The results are:"+JSON.stringify(results, null,4))
+                              succeed(results)
+                        }
+                }); //connection
+        }); //promise
+  } // function
+
+
+
+
+
+
 //owneship: parent_entity_id, child_entity_id, capital_pct
 function getOwnershipForInvestor (investor_id) {
   let queryString = 'SELECT o.id, investment.deal_id as deal_id, investor.name as investor_name,'
@@ -449,6 +492,7 @@ function getOwnershipForInvestor (investor_id) {
 //owneship: parent_entity_id, child_entity_id, capital_pct
 function getOwnershipForEntity (child_id) {
   let queryString = 'SELECT o.id, investor.name as investor_name, investment.name as investment_name, passthru.name as passthru_name,'
+  + ' investment.id as investment_id, investor.id as investor_id,'
   + ' DATE_FORMAT(t.wired_date, "%b %d %Y") as wired_date, t.trans_type as tt_id,'
   + ' o.amount as amount, ROUND(o.capital_pct,4) as capital_pct FROM ownership as o'
   + ' JOIN entities as investment ON investment.id = o.child_entity_id'

@@ -12,7 +12,8 @@ module.exports = {
   totalupCashInDeal:totalupCashInDeal,
   totalupInvestorPortfolio: totalupInvestorPortfolio,
   calculateOwnership : calculateOwnership,
-  calculateDeal: calculateDeal
+  calculateDeal: calculateDeal,
+  getInvestorEquityValueInDeal
 }
 
 
@@ -39,9 +40,22 @@ function doTransMatchForRollup (tt1,tt2) {
 
 }
 
+async function getInvestorEquityValueInDeal(investor_id, entity_id) {
+    let foundEntity = await iraSQL.getEntityById(entity_id);
+    let deal_id = foundEntity.deal_id
+    let deal = await iraSQL.getDealById(deal_id);
+    let expandDeal = calculateDeal(deal[0])
+    console.log ("In gIEVID - expandDeal "+JSON.stringify(expandDeal,null,4)+"\n");
+    let own_results = await iraSQL.getOwnershipForInvestorAndEntity (entity_id, investor_id);
+    console.log ("In gIEVID - own_results are: "+JSON.stringify(own_results,null,4)+"\n");
+    return [expandDeal.equity_value*(own_results[0].capital_pct/100), own_results[0].capital_pct];
+
+}
 
 
-//FOR DISPLAY - got wonership rows, mith multiples for each wire
+
+
+//FOR DISPLAY - got wonership rows for entity, mith multiples for each wire
 function totalupInvestors (investors) {
       console.log("\nTUI Found "+investors.length+" transaction rows")
       let expandInvestors = []
@@ -50,8 +64,8 @@ function totalupInvestors (investors) {
 
       for (let index = 0; index < investors.length; index++) {
             let alreadyExists = false
-
-            //check if
+            //console.log("\nTUI first looking at investor input: "+JSON.stringify(investors[index])+" \n")
+            //check existing rows
             for (let j = 0; j < expandInvestors.length; j++) {
                     //console.log("about to check trans "+index+" and expand-own "+j+"");
 
@@ -114,7 +128,7 @@ function totalupInvestors (investors) {
     } //function totalupCashInDeal
 
 
-// these are Ownership Rows
+// these are Ownership Rows for an investor
     async function totalupInvestorPortfolio (investments) {
           let portfolioDeals = []  //empty array - add only if its a deal
           let totalPortfolioValue = 0;
@@ -128,7 +142,7 @@ function totalupInvestors (investors) {
                              let expandDeal = calculateDeal(deal[0])
                              console.log (index+") Investment for ENTITY_ID :"+investments[index].investment_id+" - "+investments[index].investment_name+"\n")
                              let transactionsForDeal = await iraSQL.getTransactionsForInvestorAndEntity(investments[index].investor_id, investments[index].investment_id,[1,3,5,6]);
-                             console.log ("TU Inv.Portfolio - got "+transactionsForDeal.length+" transactions for deal "+index+"  : "+JSON.stringify(transactionsForDeal, null, 4)+"\n")
+                             //console.log ("TU Inv.Portfolio - got "+transactionsForDeal.length+" transactions for deal "+index+"  : "+JSON.stringify(transactionsForDeal, null, 4)+"\n")
 
                              let result = await totalupCashInDeal(transactionsForDeal);
                              //first copy the deal basics
@@ -154,7 +168,7 @@ function totalupInvestors (investors) {
                             //dont add to array of portfolioDeals
                             console.log ("\n"+index+") Investment for ENTITY_ID :"+investments[index].investment_id+" "+investments[index].investment_name+" is not a DEAL \n")
                             let transactionsForEntity = await iraSQL.getTransactionsForInvestorAndEntity(investments[index].investor_id, investments[index].investment_id,[1,3,5,6]);
-                            console.log ("TUIP - got "+transactionsForEntity.length+" transactions for entity "+investments[index].investment_name+"  : "+JSON.stringify(transactionsForEntity, null, 4)+"\n")
+                            //console.log ("TUIP - got "+transactionsForEntity.length+" transactions for entity "+investments[index].investment_name+"  : "+JSON.stringify(transactionsForEntity, null, 4)+"\n")
 
 
                             //adding a dummy deal
