@@ -45,7 +45,46 @@ function doTransMatchForRollup (tt1,tt2) {
 
 async function createCSVforDownload(responseArray) {
 
-        let fields = Object.keys(responseArray[0]);
+        let columns = Object.keys(responseArray[0]);
+        console.log(" Columns are: " + columns +"\n")
+        let fields = [
+            {
+              label:"Tr.ID",
+              value:columns[0]
+            },
+            {
+              label:"Investor Name",
+              value:columns[1]
+            },
+            {
+              label:"Invesment-Deal",
+              value:columns[2]
+            },
+            {
+              label:"Passthru Name",
+              value:columns[3]
+            },
+            {
+              label:"Transaction",
+              value:columns[4]
+            },
+            {
+              label:"Date",
+              value:columns[5]
+            },
+            {
+              label:"Amount",
+              value:columns[6]
+            },
+            {
+              label:"Adjust.to Ownership",
+              value:columns[7]
+            },
+            {
+              label:"Notes",
+              value:columns[8]
+            }
+        ]
         console.log(" Fields are: " + fields +"\n")
         let options = { fields };
       //console.log("in create CSV - Trans JSON data has  " + JSON.stringify(responseArray,null,4) +"\n")

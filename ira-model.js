@@ -34,6 +34,7 @@ connection.connect(function(err) {
 
 
 module.exports = {
+  searchEntities,
   getAllEntities,
   getAllTransactions,
   getOwnershipForEntity,
@@ -58,54 +59,25 @@ module.exports = {
   updateEntity,
   updateDeal,
   clearOwnershipForEntity
-
-
 };
 
+// request.query("SELECT * FROM Table WHERE name LIKE ?", '%' + name + '%',
+//     function(err, data) {
+//         // code here
+//     }
+// )
 
 
+function searchEntities (searchTerm) {
+    let queryString = "SELECT name, id FROM entities WHERE name LIKE '%"+searchTerm+"%'";
+    if (!searchTerm) {
+      queryString = "SELECT name, id FROM entities";
+    }
+//SELECT * FROM `my_table` WHERE CONTAINS(name, 'search')
 
+//'SELECT * from transactions WHERE id = ?', trans_id,
 
-
-function updateDeal (updatedDeal) {
-    let queryString = 'UPDATE deals SET'
-    +' name = \''+updatedDeal.name+'\','
-    +' aggregate_value = \''+updatedDeal.aggregate_value+'\','
-    +' aggregate_debt = \''+updatedDeal.aggregate_debt+'\','
-    +' cash_assets = \''+updatedDeal.cash_assets+'\','
-    +' deal_debt = \''+updatedDeal.deal_debt+'\','
-    +' notes=\''+updatedDeal.notes+'\''
-    +' WHERE id ='+updatedDeal.id+'';
-
-   //console.log ("in update deal, the query string is "+queryString+"\n\n")
-
-      return new Promise(function(succeed, fail) {
-            connection.query(queryString,
-              function(err, results) {
-                      if (err) {
-                            fail(err)
-                      } else {
-                            //console.log ("In Model, Success - Updated entity with "+JSON.stringify(results)+"\n")
-                            succeed(results.affectedRows)
-                      }
-              }); //connection
-      }); //promise
-} // function
-
-
-
-
-
-
-//owneship: parent_entity_id, child_entity_id, capital_pct
-function updateEntity (updatedEntity) {
-
-  let queryString = 'UPDATE entities SET'
-  +' ownership_status = \''+updatedEntity.ownership_status+'\','
-  +' name=\''+updatedEntity.name+'\','
-  +' taxid=\''+updatedEntity.taxid+'\''
-  +' WHERE id ='+updatedEntity.id+'';
-
+    console.log ("in searchEntities, the query string is "+queryString+"\n\n")
 
       return new Promise(function(succeed, fail) {
             connection.query(queryString,
@@ -113,12 +85,15 @@ function updateEntity (updatedEntity) {
                       if (err) {
                             fail(err)
                       } else {
-                            //console.log ("Model Success - Updated entity with "+JSON.stringify(results)+"\n")
-                            succeed(results.affectedRows)
+                            console.log ("In Model search - results are "+JSON.stringify(results)+"\n")
+                            succeed(results)
                       }
               }); //connection
       }); //promise
 } // function
+
+
+
 
 function getTransactionsForInvestorAndEntity (investorId, dealEntityId, transTypes) {
   let queryString = 'SELECT t.id, t.investor_entity_id as investor_entity_id,  t.investment_entity_id as investment_entity_id, t.passthru_entity_id as passthru_entity_id,'
@@ -225,101 +200,6 @@ function getAllTransactions () {
           }); //promise
 } // function
 
-
-
-
-
-
-function insertOwnTrans(own_id, trans_id) {
-      let queryString = "INSERT INTO own_trans_lookup (own_id, trans_id) VALUES"
-      + " ("+own_id+", "+trans_id+")"
-
-      //console.log ("in insert own_trans, the query string is "+queryString+"\n\n")
-         return new Promise(function(succeed, fail) {
-               connection.query(queryString,
-                 function(err, results) {
-                         if (err) {
-                               fail(err)
-                         } else {
-                                succeed(results.affectedRows)
-                         }
-                 }); //connection
-         }); //promise
-} // function
-
-
-
-function insertEntity (entity) {
-      console.log("In Model, adding new entity: "+JSON.stringify(entity))
-      return new Promise(function(succeed, fail) {
-            connection.query(
-            'INSERT INTO entities SET ?', entity,
-                function(err, results) {
-                          if (err) {
-                                console.log("Problem inserting Entity SQL"+err)
-                                fail(err)
-                          } else {
-                                //console.log("In model, results: "+JSON.stringify(results));
-                                succeed(results)
-                          }
-              }); //connection
-      }); //promise
-} // function
-
-
-
-function insertDeal(deal) {
-    console.log("In Model, adding new deal: "+JSON.stringify(deal))
-    return new Promise(function(succeed, fail) {
-          connection.query(
-          'INSERT INTO deals SET ?', deal,
-            function(err, results) {
-                    if (err) {
-                          console.log("Problem inserting Deal SQL"+err)
-                          fail(err)
-                    } else {
-                          //console.log("In model, results: "+JSON.stringify(results));
-                          succeed(results)
-                    }
-            }); //connection
-    }); //promise
-} // function
-
-
-function insertTransaction (transaction) {
-    console.log("In Model, adding new transaction: "+JSON.stringify(transaction))
-    return new Promise(function(succeed, fail) {
-          connection.query(
-          'INSERT INTO transactions SET ?', transaction,
-            function(err, results) {
-                    if (err) {
-                          console.log("Problem inserting transcation SQL"+err)
-                          fail(err)
-                    } else {
-                          //console.log("In model, results: "+JSON.stringify(results));
-                          succeed(results)
-                    }
-            }); //connection
-    }); //promise
-} // function
-
-
-function insertOwnership (ownershipRow) {
-    //console.log("In Model, adding new ownership row: "+JSON.stringify(ownershipRow))
-    return new Promise(function(succeed, fail) {
-          connection.query(
-          'INSERT INTO ownership SET ?', ownershipRow,
-            function(err, results) {
-                    if (err) {
-                          console.log("Problem inserting owmership SQL"+err)
-                          fail(err)
-                    } else {
-                          //console.log("In model, results: "+JSON.stringify(results));
-                          succeed(results)
-                    }
-            }); //connection
-    }); //promise
-} // function
 
 
 
@@ -629,6 +509,152 @@ function getTransactionById (trans_id) {
 
 
 
+
+
+
+
+function insertOwnTrans(own_id, trans_id) {
+      let queryString = "INSERT INTO own_trans_lookup (own_id, trans_id) VALUES"
+      + " ("+own_id+", "+trans_id+")"
+
+      //console.log ("in insert own_trans, the query string is "+queryString+"\n\n")
+         return new Promise(function(succeed, fail) {
+               connection.query(queryString,
+                 function(err, results) {
+                         if (err) {
+                               fail(err)
+                         } else {
+                                succeed(results.affectedRows)
+                         }
+                 }); //connection
+         }); //promise
+} // function
+
+
+
+function insertEntity (entity) {
+      console.log("In Model, adding new entity: "+JSON.stringify(entity))
+      return new Promise(function(succeed, fail) {
+            connection.query(
+            'INSERT INTO entities SET ?', entity,
+                function(err, results) {
+                          if (err) {
+                                console.log("Problem inserting Entity SQL"+err)
+                                fail(err)
+                          } else {
+                                //console.log("In model, results: "+JSON.stringify(results));
+                                succeed(results)
+                          }
+              }); //connection
+      }); //promise
+} // function
+
+
+
+function insertDeal(deal) {
+    console.log("In Model, adding new deal: "+JSON.stringify(deal))
+    return new Promise(function(succeed, fail) {
+          connection.query(
+          'INSERT INTO deals SET ?', deal,
+            function(err, results) {
+                    if (err) {
+                          console.log("Problem inserting Deal SQL"+err)
+                          fail(err)
+                    } else {
+                          //console.log("In model, results: "+JSON.stringify(results));
+                          succeed(results)
+                    }
+            }); //connection
+    }); //promise
+} // function
+
+
+function insertTransaction (transaction) {
+    console.log("In Model, adding new transaction: "+JSON.stringify(transaction))
+    return new Promise(function(succeed, fail) {
+          connection.query(
+          'INSERT INTO transactions SET ?', transaction,
+            function(err, results) {
+                    if (err) {
+                          console.log("Problem inserting transcation SQL"+err)
+                          fail(err)
+                    } else {
+                          //console.log("In model, results: "+JSON.stringify(results));
+                          succeed(results)
+                    }
+            }); //connection
+    }); //promise
+} // function
+
+
+function insertOwnership (ownershipRow) {
+    //console.log("In Model, adding new ownership row: "+JSON.stringify(ownershipRow))
+    return new Promise(function(succeed, fail) {
+          connection.query(
+          'INSERT INTO ownership SET ?', ownershipRow,
+            function(err, results) {
+                    if (err) {
+                          console.log("Problem inserting owmership SQL"+err)
+                          fail(err)
+                    } else {
+                          //console.log("In model, results: "+JSON.stringify(results));
+                          succeed(results)
+                    }
+            }); //connection
+    }); //promise
+} // function
+
+
+
+function updateDeal (updatedDeal) {
+    let queryString = 'UPDATE deals SET'
+    +' name = \''+updatedDeal.name+'\','
+    +' aggregate_value = \''+updatedDeal.aggregate_value+'\','
+    +' aggregate_debt = \''+updatedDeal.aggregate_debt+'\','
+    +' cash_assets = \''+updatedDeal.cash_assets+'\','
+    +' deal_debt = \''+updatedDeal.deal_debt+'\','
+    +' notes=\''+updatedDeal.notes+'\''
+    +' WHERE id ='+updatedDeal.id+'';
+
+   //console.log ("in update deal, the query string is "+queryString+"\n\n")
+
+      return new Promise(function(succeed, fail) {
+            connection.query(queryString,
+              function(err, results) {
+                      if (err) {
+                            fail(err)
+                      } else {
+                            //console.log ("In Model, Success - Updated entity with "+JSON.stringify(results)+"\n")
+                            succeed(results.affectedRows)
+                      }
+              }); //connection
+      }); //promise
+} // function
+
+
+
+//owneship: parent_entity_id, child_entity_id, capital_pct
+function updateEntity (updatedEntity) {
+
+  let queryString = 'UPDATE entities SET'
+  +' ownership_status = \''+updatedEntity.ownership_status+'\','
+  +' name=\''+updatedEntity.name+'\','
+  +' taxid=\''+updatedEntity.taxid+'\''
+  +' WHERE id ='+updatedEntity.id+'';
+
+
+      return new Promise(function(succeed, fail) {
+            connection.query(queryString,
+              function(err, results) {
+                      if (err) {
+                            fail(err)
+                      } else {
+                            //console.log ("Model Success - Updated entity with "+JSON.stringify(results)+"\n")
+                            succeed(results.affectedRows)
+                      }
+              }); //connection
+      }); //promise
+} // function
 
 
 

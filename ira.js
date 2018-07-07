@@ -26,13 +26,18 @@ const nodePort = 8081
 //var router = express.Router();  then call router.post('/')
 
 
-const iraVersion = "0.15.6  +CSV download parts"
+const iraVersion = "0.16  +CSV download +API"
 
   app.set('trust proxy', true);
   app.use(flash());
   app.use(cookieParser(secret));
   app.use(bodyParser.urlencoded({extended: true}))
   app.use(bodyParser.json());
+  app.use(function(req, res, next) {
+        res.header("Access-Control-Allow-Origin", "*");
+        res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+        next();
+  });
 
   const calc =  require('./ira-calc');
   const iraSQL =  require('./ira-model');
@@ -89,19 +94,61 @@ module.exports = {
 }
 
 exports.version = iraVersion;
-exports.nodeServer = server;
+//exports.nodeServer = server;
 
 
 
 
 //============ ROUTES  ======================
 
-app.get('/download_csv/:id', (req, res) => {
-      downloadCSVTransactions().catch(err => {
-            console.log("DownloadTransactions problem: "+err);
-      })
+app.get('/api/searchentities/:term', (req, res, next) => {
+          api_searchEntities().catch(err => {
+                console.log("API search Entity problem: "+err);
+          })
 
-      async function downloadCSVTransactions() {
+      async function api_searchEntities() {
+            try {
+
+                  var entList = await iraSQL.searchEntities (req.params.term);
+                  if (entList.length <1) {
+                              var entList = [{
+                                id:0,
+                                name: "Not found"
+                              }]
+
+                  }
+                  console.log("\nGot entities: "+JSON.stringify(entList,null,5));
+
+            } catch (err ){
+                  console.log(err+ " -- No entities for    "+ req.params.term);
+                  var entList = [{
+                    id:0,
+                    name: "Not found"
+                  }]
+
+            }
+
+
+            res.send(JSON.stringify(entList,null,3));
+
+    }; //async function
+
+}); //route
+
+app.get('/api/searchentities/', (req, res, next) => {
+
+          res.send("[]");
+}); //route
+
+
+
+
+app.get('/api/transforentity/:id', (req, res, next) => {
+          api_transactionsForEntity().catch(err => {
+                console.log("API trans for Entity problem: "+err);
+          })
+
+      async function api_transactionsForEntity() {
             try {
                   var entity = await iraSQL.getEntityById(req.params.id);
                   console.log("have Entity   "+ JSON.stringify(entity));
@@ -111,29 +158,83 @@ app.get('/download_csv/:id', (req, res) => {
             } catch (err ){
                   console.log(err+ " -- No entity for    "+ req.params.id);
                   var transactions = await iraSQL.getAllTransactions();
+
+            }
+
+            var cleanTransactions = transactions.map(function(element) {
+                        let cleanTransaction = {
+                            id :element.id,
+                            investor_name :element.investor_name,
+                            investment_name :element.investment_name,
+                            passthru_name :element.passthru_name,
+                            tt_name :element.tt_name,
+                            t_wired_date :element.t_wired_date,
+                            formatted_amount :calc.formatCurrency(element.t_amount),
+                            t_own_adj :element.t_own_adj,
+                            t_notes :element.t_notes
+                        }
+                        //res.json(cleanTransaction)
+
+                        return cleanTransaction;
+            });
+            res.send(JSON.stringify(cleanTransactions,null,3));
+
+    }; //async function
+
+}); //route
+
+
+
+
+
+
+
+app.get('/download_csv/:id', (req, res) => {
+      downloadCSVTransactions().catch(err => {
+            console.log("DownloadTransactions problem: "+err);
+      })
+      let fileName = "file";
+      async function downloadCSVTransactions() {
+            try {
+                  var entity = await iraSQL.getEntityById(req.params.id);
+                  console.log("have Entity   "+ JSON.stringify(entity));
+                  var transactions = await iraSQL.getTransactionsForInvestment(entity.id);
+                  console.log("\nGot transactions for entity  "+JSON.stringify(transactions,null,5));
+                  fileName = entity.name+"_IRA_Transactions.csv"
+
+            } catch (err ){
+                  console.log(err+ " -- No entity for    "+ req.params.id);
+                  var transactions = await iraSQL.getAllTransactions();
+                  fileName = "All_IRA_Transactions.csv"
                   var entity = {
                     id:0,
                     name: "Select filter"
                   }
             }
 
-            var expandTransactions = transactions.map(function(element) {
-                        element.formatted_amount = calc.formatCurrency(element.t_amount);
-                        return element;
+            var cleanTransactions = transactions.map(function(element) {
+                        let cleanTransaction = {
+                            id :element.id,
+                            investor_name :element.investor_name,
+                            investment_name :element.investment_name,
+                            passthru_name :element.passthru_name,
+                            tt_name :element.tt_name,
+                            t_wired_date :element.t_wired_date,
+                            formatted_amount :calc.formatCurrency(element.t_amount),
+                            t_own_adj :element.t_own_adj,
+                            t_notes :element.t_notes
+                        }
+
+                        return cleanTransaction;
             });
 
 
-                  let transCSV = await calc.createCSVforDownload(expandTransactions);
+                  let transCSV = await calc.createCSVforDownload(cleanTransactions);
                   console.log("In ira, the CSV file is \n"+transCSV+"\n")
-                  res.send(transCSV);
-                  // res.setHeader('Content-disposition', 'attachment; filename=transactions.csv');
-                  // res.set('Content-Type', 'text/csv');
-                  // res.status(200).send(transCSV);
 
-
-
-
-
+                  res.setHeader('Content-disposition', 'attachment; filename='+fileName);
+                  res.set('Content-Type', 'text/csv');
+                  res.status(200).send(transCSV);
 
     }; //async function
 
@@ -171,8 +272,14 @@ app.get('/transactions/:id', (req, res) => {
                       return e;
           });
 
+          //shorten names to 30 chars for display in pulldown
+          var rawEntities = await iraSQL.getEntitiesByTypes([1,3,4]);
+          var entitiesForFilter = rawEntities.map(function(plank) {
+                      plank.name = plank.name.substring(0,30);
+                      return plank;
+          });
+          entity.name = entity.name.substring(0,30);
 
-          var entitiesForFilter = await iraSQL.getEntitiesByTypes([1,3,4]);
           //console.log("\nGot "+entitiesForFilter.length+" entities for Filter ");
 
 
@@ -189,6 +296,8 @@ app.get('/transactions/:id', (req, res) => {
     } //async function
 }); //route - ownership
 
+
+//need this because we hit a submit button to send search
 app.post('/process_transactions_filter', urlencodedParser, (req, res) => {
 
           if (req.session && req.session.passport) {

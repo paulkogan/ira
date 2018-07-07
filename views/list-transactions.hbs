@@ -9,9 +9,9 @@
 <table width = "100%" border = 0>
 
   <colgroup>
-  <col width="40%"/>
+  <col width="30%"/>
   <col width="10%"/>
-  <col width="20%"/>
+  <col width="30%"/>
   <col width="10%"/>
   <col width="20%"/>
   </colgroup>
@@ -62,11 +62,14 @@
                   {{/each}}
                   </select>
         </td>
-        <td align = "right"><button type="submit" form="filter">Filter</button></td>
-        <td></td>
+        <td align = "left"><button type="submit" form="filter">Filter</button></td>
+        <td align = "center">
+                  <a href = '/download_csv/{{selectedEntity.id}}'><img width="45" src = "../static/excel-logo-icon.png"><br>Download</a>
+        </td>
 
 </tr>
 </table>
+<br>
 </div>
 
 
