@@ -443,7 +443,8 @@ function getEntitiesByOwnership(ownStatus) {
 function getAllEntities() {
       return new Promise(function(succeed, fail) {
             connection.query(
-              'SELECT e.id as id, t.name as entity_type, e.name as name, e.taxid as taxid, e.ownership_status as own_status FROM entities as e'
+              'SELECT e.id as id, t.name as entity_type, e.type as e_type_num, e.name as name, e.taxid as taxid, e.ownership_status as own_status'
+            + ' FROM entities as e'
             +' JOIN entity_types as t ON t.type_num = e.type ORDER BY entity_type ASC',
               function(err, results) {
                       if (err) {

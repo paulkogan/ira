@@ -96,6 +96,7 @@ async function createCSVforDownload(responseArray) {
 
 
 //returns investment's value and %
+//now just used in testing
 async function getInvestorEquityValueInDeal(investor_id, entity_id) {
     let foundEntity = await iraSQL.getEntityById(entity_id);
     let deal_id = foundEntity.deal_id
@@ -110,7 +111,7 @@ async function getInvestorEquityValueInDeal(investor_id, entity_id) {
 
 
 
-//FOR DISPLAY - got wonership rows for entity, mith multiples for each wire
+//FOR DISPLAY - got ownership rows for entity, mith multiples for each wire
 function totalupInvestors (investors) {
       console.log("\nTUI Found "+investors.length+" transaction rows")
       let expandInvestors = []
@@ -191,43 +192,19 @@ function totalupInvestors (investors) {
           let totalDistributions = 0;
 
           for (let index = 0; index < investments.length; index++) {
-
+               let expandDeal =  {}
                if (investments[index].deal_id) {
                              let deal = await iraSQL.getDealById(investments[index].deal_id);
-                             let expandDeal = calculateDeal(deal[0])
-                             console.log (index+") Investment for ENTITY_ID :"+investments[index].investment_id+" - "+investments[index].investment_name+"\n")
-                             let transactionsForDeal = await iraSQL.getTransactionsForInvestorAndEntity(investments[index].investor_id, investments[index].investment_id,[1,3,5,6]);
-                             //console.log ("TU Inv.Portfolio - got "+transactionsForDeal.length+" transactions for deal "+index+"  : "+JSON.stringify(transactionsForDeal, null, 4)+"\n")
+                             expandDeal = calculateDeal(deal[0])
 
-                             let result = await totalupCashInDeal(transactionsForDeal);
-                             //first copy the deal basics
-                             let newPortfolioDeal = investments[index];
-                             newPortfolioDeal.expandDeal = expandDeal;
-                             newPortfolioDeal.transactionsForDeal = result[0];
-                             newPortfolioDeal.totalCashInDeal = result[1];
-                             newPortfolioDeal.dealDistributions = result[2];
-                             newPortfolioDeal.investor_equity_value = newPortfolioDeal.expandDeal.equity_value*(newPortfolioDeal.capital_pct/100);
 
-                             //add the sums
-                             totalPortfolioValue += newPortfolioDeal.investor_equity_value
-                             totalInvestmentValue += newPortfolioDeal.amount;
-                             totalDistributions += newPortfolioDeal.dealDistributions;
-                             newPortfolioDeal.formatted_amount = formatCurrency(newPortfolioDeal.amount)
-                             newPortfolioDeal.formatted_deal_equity_value = formatCurrency(newPortfolioDeal.expandDeal.equity_value)
-                             newPortfolioDeal.formatted_investor_equity_value = formatCurrency(newPortfolioDeal.investor_equity_value)
-                             portfolioDeals.push(newPortfolioDeal);
+
               } else {
 
-
-                            // if its an ENTITY do it here
-                            //dont add to array of portfolioDeals
-                            console.log ("\n"+index+") Investment for ENTITY_ID :"+investments[index].investment_id+" "+investments[index].investment_name+" is not a DEAL \n")
-                            let transactionsForEntity = await iraSQL.getTransactionsForInvestorAndEntity(investments[index].investor_id, investments[index].investment_id,[1,3,5,6]);
-                            //console.log ("TUIP - got "+transactionsForEntity.length+" transactions for entity "+investments[index].investment_name+"  : "+JSON.stringify(transactionsForEntity, null, 4)+"\n")
-
-
-                            //adding a dummy deal
-                            let expandDeal =  {
+                      // if its an ENTITY - not a deal -- do it here
+                      //if you want to get fancy, calculate implied_value on th fly here
+                      //adding a stand-in expandDeal
+                            expandDeal =  {
                                        "id": investments[index].id,
                                        "name": investments[index].investment_name,
                                        "aggregate_value": 0,
@@ -235,46 +212,52 @@ function totalupInvestors (investors) {
                                        "aggregate_debt": 0,
                                        "deal_debt": 0,
                                        "notes": "",
-                                       "equity_value": 0,
-                                       "total_value": 0,
-                                       "total_debt": 0,
-                                       "formatted_total_value": "$0",
-                                       "formatted_total_debt": "$0",
-                                       "formatted_aggregate_value": "$0",
-                                       "formatted_cash_assets": "$0",
-                                       "formatted_aggregate_debt": "$0",
-                                       "formatted_deal_debt": "$0",
-                                       "formatted_equity_value": "$0"
+                                       "equity_value": 0, //yes! get this from implied_value
+                                       "total_value": 0, //component of EV
+                                       "total_debt": 0,  //component of EV
+                                       "formatted_total_value": "N/A FTV",  //show in portfolio
+                                       "formatted_total_debt": "N/A FTD",   //show in portfolio
+                                       "formatted_aggregate_value": "No AV",
+                                       "formatted_cash_assets": "No CA",
+                                       "formatted_aggregate_debt": "No AG",
+                                       "formatted_deal_debt": "No DD",  //why
+                                       "formatted_equity_value": "No EV"  //why
                             };
-                            let newPortfolioDeal = investments[index];
-                            newPortfolioDeal.expandDeal = expandDeal;
-
-
-                            let result = await totalupCashInDeal(transactionsForEntity);
-
-                            newPortfolioDeal.transactionsForDeal = result[0];
-                            newPortfolioDeal.totalCashInDeal = result[1];
-                            newPortfolioDeal.dealDistributions = result[2];
-                            newPortfolioDeal.investor_equity_value = newPortfolioDeal.expandDeal.equity_value*(newPortfolioDeal.capital_pct/100);
-
-                            //add the sums
-                            totalPortfolioValue += newPortfolioDeal.investor_equity_value
-                            totalInvestmentValue += newPortfolioDeal.amount;
-                            totalDistributions += newPortfolioDeal.dealDistributions;
-                            newPortfolioDeal.formatted_amount = formatCurrency(newPortfolioDeal.amount)
-                            newPortfolioDeal.formatted_deal_equity_value = formatCurrency(newPortfolioDeal.expandDeal.equity_value)
-                            newPortfolioDeal.formatted_investor_equity_value = formatCurrency(newPortfolioDeal.investor_equity_value)
-                            portfolioDeals.push(newPortfolioDeal);
 
 
 
-              }
+
+              } //else for entity_id
+
+              //this is common to both DEAL and ENTITY
+              console.log ("\n"+index+") Investment for ENTITY_ID :"+investments[index].investment_id+" "+investments[index].investment_name+" is not a DEAL \n")
+              let transactionsForEntity = await iraSQL.getTransactionsForInvestorAndEntity(investments[index].investor_id, investments[index].investment_id,[1,3,5,6]);
+              //console.log ("TUIP - got "+transactionsForEntity.length+" transactions for entity "+investments[index].investment_name+"  : "+JSON.stringify(transactionsForEntity, null, 4)+"\n")
+
+               //now newPortfolioDeal
+              let newPortfolioDeal = investments[index];
+              newPortfolioDeal.expandDeal = expandDeal;
+              let result = await totalupCashInDeal(transactionsForEntity);
+
+              newPortfolioDeal.transactionsForDeal = result[0];
+              newPortfolioDeal.totalCashInDeal = result[1];
+              newPortfolioDeal.dealDistributions = result[2];
+              newPortfolioDeal.investor_equity_value = newPortfolioDeal.expandDeal.equity_value*(newPortfolioDeal.capital_pct/100);
+
+              //add the sums
+              totalPortfolioValue += newPortfolioDeal.investor_equity_value  //save this as implied_value
+              totalInvestmentValue += newPortfolioDeal.amount;
+              totalDistributions += newPortfolioDeal.dealDistributions;
+              newPortfolioDeal.formatted_amount = formatCurrency(newPortfolioDeal.amount)
+              newPortfolioDeal.formatted_deal_equity_value = formatCurrency(newPortfolioDeal.expandDeal.equity_value)
+              newPortfolioDeal.formatted_investor_equity_value = formatCurrency(newPortfolioDeal.investor_equity_value)
+              portfolioDeals.push(newPortfolioDeal);
+
 
                //console.log("IN validate ownership: "+ index +" lastname: "+expandInvestors[index].investor_name+" amount: "+expandInvestors[index].formattedAmount+" cap_pct: "+expandInvestors[index].capital_pct)
         }//for
         return [portfolioDeals, totalInvestmentValue, totalPortfolioValue, totalDistributions];
     } //function
-
 
 
 

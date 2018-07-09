@@ -26,7 +26,7 @@ const nodePort = 8081
 //var router = express.Router();  then call router.post('/')
 
 
-const iraVersion = "0.16  +CSV download +API"
+const iraVersion = "0.16.3  +CSV download +clean up Total Investor Value +start Entity Value"
 
   app.set('trust proxy', true);
   app.use(flash());
@@ -370,7 +370,7 @@ app.get('/portfolio/:id', (req, res) => {
                           let portfolioCashGain = portfolioValueGain+ totalDistributions
                           let portfolioIRR = parseFloat(portfolioCashGain/totalInvestmentValue)*100
                           console.log("\nRendering Investor Portfolio, totalDistrib is  : " + totalDistributions+"")
-                          console.log("\n2nd Deal : " + JSON.stringify(portfolioDeals[1],null,6)+"\n\n")
+                          console.log("\nexample 2nd Deal : " + JSON.stringify(portfolioDeals[1],null,6)+"\n\n")
                           res.render('portfolio-details', {
                                   userObj: userObj,
                                   message:  "Showing "+portfolioDeals.length+" investments ",

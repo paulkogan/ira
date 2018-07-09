@@ -60,9 +60,12 @@
           </td>
 
           <td align="left">
-            {{#ifLessThan own_status 2}}
+            {{#ifEqual e_type_num 3}}
                 <a href = "/ownership/{{id}}">Ownership</a>
-              {{/ifLessThan}}
+            {{/ifEqual}}
+            {{#ifEqual e_type_num 4}}
+                <a href = "/ownership/{{id}}">Ownership</a>
+            {{/ifEqual}}
           </td>
 
 
