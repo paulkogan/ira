@@ -1,4 +1,3 @@
-
 <div class="w3-panel w3-pale-blue w3-leftbar
  w3-rightbar w3-topbar w3-border-blue w3-margin-right w3-margin-left">
 
@@ -88,8 +87,8 @@
         <col width="30%"/>
         <col width="14%"/>
         <col width="15%"/>
-        <col width="1%"/>
-        <col width="15%"/>
+        <col width="10%"/>
+        <col width="5%"/>
         </colgroup>
 
 
@@ -107,21 +106,26 @@
           <td align="center">
               {{t_wired_date}}
           </td>
-            <td></td>
-          <td align="center">
-              {{#ifGreaterThan t_own_adj 0}}
-                    {{t_own_adj}}%
-              {{else}}
-                                {{#ifIncludes formatted_amount '('}}
-                                    <font color = "red">
-                                          {{formatted_amount}}
-                                    </font>
-                                {{else}}
-                                          {{formatted_amount}}&nbsp;
-                                {{/ifIncludes}}
 
-                {{/ifGreaterThan}}
-            </td>
+            <td align="center">
+                {{#ifGreaterThan t_own_adj 0}}
+                      {{t_own_adj}}%
+                {{else}}
+                                  {{#ifIncludes formatted_amount '('}}
+                                      <font color = "red">
+                                            {{formatted_amount}}
+                                      </font>
+                                  {{else}}
+                                            {{formatted_amount}}&nbsp;
+                                  {{/ifIncludes}}
+
+                  {{/ifGreaterThan}}
+              </td>
+               <td>
+                 {{#if can_delete}}
+                      <a href = "/deletetransaction/{{id}}">Del.</a>
+                 {{/if}}
+               </td>
 
       </tr>
  </table>

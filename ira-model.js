@@ -10,7 +10,7 @@ let options = {};
 if (env === 'ebawsira') {
         options = {
           user: 'iraadmin',
-          password: 'sqlschool2018',
+          password: '',
           host: 'restored-iradb-0708.cdlgrjtshtb6.us-east-2.rds.amazonaws.com',
           database: 'iradb',
           port: 3306,
@@ -40,6 +40,7 @@ module.exports = {
   getOwnershipForEntity,
   getOwnershipForInvestor,
   getOwnershipForInvestorAndEntity,
+  getOwnTransByTransID,
   getEntityById,
   getEntityByDealId,
   getEntitiesByTypes,
@@ -58,14 +59,33 @@ module.exports = {
   insertOwnTrans,
   updateEntity,
   updateDeal,
-  clearOwnershipForEntity
+  clearOwnershipForEntity,
+  deleteTransaction
 };
 
-// request.query("SELECT * FROM Table WHERE name LIKE ?", '%' + name + '%',
-//     function(err, data) {
-//         // code here
-//     }
-// )
+
+
+//owneship: parent_entity_id, child_entity_id, capital_pct
+function getOwnTransByTransID (transaction_id) {
+  let queryString = 'SELECT * from own_trans_lookup WHERE trans_id='+transaction_id;
+  //console.log ("in getOwnTransByTransID, the query string is "+queryString+"\n\n")
+
+      return new Promise(   function(succeed, fail) {
+            connection.query(queryString,
+              function(err, results) {
+                      if (err) {
+                            fail(err)
+                      } else {
+                          //console.log ("in Moooodel, got own-trans records "+JSON.stringify(results)+"")
+                          succeed(results[0])
+                      }
+              }); //connection
+          }); //promise
+
+
+} // function
+
+
 
 
 function searchEntities (searchTerm) {
@@ -659,6 +679,24 @@ console.log ("In model, updating Entity, here is the payload"+JSON.stringify(upd
               }); //connection
       }); //promise
 } // function
+
+function deleteTransaction(transaction_id) {
+
+  let queryString = 'DELETE FROM transactions where id='+transaction_id+";"
+
+  console.log("In Model, deletng transaction, the query string is "+queryString)
+  return new Promise(function(succeed, fail) {
+        connection.query(queryString,
+          function(err, results) {
+                  if (err) {
+                        fail(err)
+                  } else {
+                        succeed(results)
+                  }
+          }); //connection
+  }); //promise
+} // function
+
 
 
 

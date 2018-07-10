@@ -26,7 +26,7 @@ const nodePort = 8081
 //var router = express.Router();  then call router.post('/')
 
 
-const iraVersion = "0.16.5  +fixed bugs 1 & 4 from akiko's 7/9 note"
+const iraVersion = "0.16.7  +delete transactons"
 
   app.set('trust proxy', true);
   app.use(flash());
@@ -100,6 +100,53 @@ exports.version = iraVersion;
 
 
 //============ ROUTES  ======================
+
+
+
+app.get('/deletetransaction/:id', (req, res) => {
+    if (req.session && req.session.passport) {
+       userObj = req.session.passport.user;
+     }
+
+    deleteTransaction().catch(err => {
+           console.log("Delete Transactions problem: "+err);
+           req.flash('login', "Problems deleting transaction Num: "+req.params.id+".  ")
+           res.redirect('/home')
+     })
+
+    async function deleteTransaction() {
+       let foundTransaction = []
+       //lets first see if this transaction exists
+          try {
+                foundTransaction = await iraSQL.getTransactionById(req.params.id);
+                console.log("Found Transaction and it is "+JSON.stringify(foundTransaction,null,4));
+
+              } catch (err){
+                    console.log(err+ " -- No transactions for    "+ req.params.term);
+                    req.flash('login', "No transactions for    "+ req.params.term+".  ");
+                    res.redirect('/home/');
+              }
+
+              //dont want to do this with Promises because any kind of error also generates a fail, where we would delete
+              let foundOwnTrans = await iraSQL.getOwnTransByTransID(foundTransaction[0].id);
+              if (foundOwnTrans) {
+                        console.log("NO GO on Delete - In /deleteTransaction, got own_trans row: "+JSON.stringify(foundOwnTrans,null,4)+"\n\n");
+                        req.flash('login', "Cannot delete transaction "+foundTransaction[0].id+" as it has ownership dependencies. Please clear ownership and try again.");
+                        res.redirect('/transactions/');
+
+              } else {
+                        console.log(" No Own-Trans - OK to delete ");
+                        let results = await iraSQL.deleteTransaction(foundTransaction[0].id);
+                        console.log("Deleted transaction - ffectedRows "+results.affectedRows+"\n");
+                        //  //+"results : "+JSON.stringify(results,null,6)+"\n");
+                        req.flash('login', "Deleted transaction"+foundTransaction[0].id+".  ");
+                        res.redirect('/transactions/');
+             } //if results
+     } //async function
+}); //route - delete transaction
+
+
+
 
 app.get('/api/searchentities/:term', (req, res, next) => {
           api_searchEntities().catch(err => {
@@ -256,24 +303,43 @@ app.get('/transactions/:id', (req, res) => {
                 var entity = await iraSQL.getEntityById(req.params.id);
                 console.log("have Entity   "+ JSON.stringify(entity));
                 var transactions = await iraSQL.getTransactionsForInvestment(entity.id);
-                console.log("\nGot transactions for entity  "+JSON.stringify(transactions,null,5));
+                //console.log("\nGot transactions for entity  "+JSON.stringify(transactions,null,5));
+
+                //add delete flag to each
+                for (let j=0; j<transactions.length; j++) {
+
+                            transactions[j].formatted_amount = calc.formatCurrency(transactions[j].t_amount);
+                            let hasOwnTrans = await iraSQL.getOwnTransByTransID(transactions[j].id);
+                            transactions[j].can_delete = (hasOwnTrans ? false : true);
+                            console.log ("for "+transactions[j].id+" can delete is: "+transactions[j].can_delete)
+                            //return e;
+                };
+
 
           } catch (err ){
                 console.log(err+ " -- No entity for    "+ req.params.id);
                 var transactions = await iraSQL.getAllTransactions();
+
+                for (let j=0; j<transactions.length; j++) {
+                            transactions[j].formatted_amount = calc.formatCurrency(transactions[j].t_amount);
+                            transactions[j].can_delete = false;
+                             //return e;
+                };
+
+
                 var entity = {
                   id:0,
                   name: "Select filter"
                 }
           }
 
-          var expandTransactions = transactions.map(function(e) {
-                      e.formatted_amount = calc.formatCurrency(e.t_amount);
-                      return e;
-          });
+          //var expandTransactions = transactions.map(function(e) {
+
+
 
           //shorten names to 30 chars for display in pulldown
           var rawEntities = await iraSQL.getEntitiesByTypes([1,3,4]);
+
           var entitiesForFilter = rawEntities.map(function(plank) {
                       plank.name = plank.name.substring(0,30);
                       return plank;
@@ -287,7 +353,7 @@ app.get('/transactions/:id', (req, res) => {
                   userObj: userObj,
                   sessioninfo: JSON.stringify(req.session),
                   message: req.flash('login') + "  Showing "+transactions.length+" transactions",
-                  transactions: expandTransactions,
+                  transactions: transactions,
                   filterList: entitiesForFilter,
                   selectedEntity: entity,
                   postendpoint: '/process_transactions_filter'
@@ -305,10 +371,14 @@ app.post('/process_transactions_filter', urlencodedParser, (req, res) => {
            }
 
            let filterEntity = req.body.filter_ent
-             console.log("\nGot Filter entity"+filterEntity)
+           console.log("\nGot Filter entity"+filterEntity)
            res.redirect('/transactions/'+filterEntity);
 
 })
+
+
+
+
 
 
 
