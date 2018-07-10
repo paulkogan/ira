@@ -30,12 +30,13 @@
 
 <input type="hidden" value="{{entity.id}}" name="id" />
 <input type="hidden" value="{{entity.ownership_status}}" name="ownership_status" />
+<input type="hidden" value="{{impliedValue}}" name="impliedValue" />
 
 <table width = "100%" border = 0>
       <colgroup>
       <col width="30%"/>
       <col width="20%"/>
-      <col width="5%"/>
+      <col width="20%"/>
       <col width="20%"/>
       <col width="20%"/>
       </colgroup>
@@ -61,6 +62,36 @@
         <td></td>
         <td></td>
 </tr>
+
+
+
+<tr>
+        <td><br></td>
+        <td></td>
+</tr>
+
+
+<tr>
+    	<td align="right">Implied Entity Value: </td>
+
+      <td align="left">
+              {{formattedImpliedValue}}
+      </td>
+
+        <td><a href = "/portfolio/{{entity.id}}">Review Portfolio</a></td>
+        <td></td>
+</tr>
+
+<tr>
+        <td></td>
+        <td></td>
+</tr>
+
+
+
+
+
+<a href = "/ownership/{{id}}">Entity Details</a>
 
 <tr>
   <td style="min-height:60px;">&nbsp;</td>

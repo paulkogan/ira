@@ -50,15 +50,23 @@ Investment Summary for: <font family = 'courier' size='4'><b>{{investorName}}</b
 
 
 
+
+
+
+
+
           <td align="left" style="border-bottom: thin solid"><font size = 4>
-            {{#if deal_id}}
-                <a href = "/dealdetails/{{deal_id}}">
-                    <b>{{investment_name}}</b>
-                </a>
-            {{else}}
-                <b>{{investment_name}}</b>
-            {{/if}}
-                  </font></td>
+
+                  {{#if deal_id}}
+                          <a href = "/dealdetails/{{investment_id}}">
+                              <b>{{investment_name}}</b>
+                          </a>
+                  {{else}}
+                          <a href = "/ownership/{{investment_id}}">
+                              <b>{{investment_name}}</b>
+                          </a>
+                  {{/if}}
+          </td>
           <td align="left">{{passthru_name}}</td>
           <td></td>
           <td></td>

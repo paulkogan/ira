@@ -4,7 +4,7 @@
 <table width = "100%" border = 0 >
 
 <tr><td>
-  <font family = 'courier' size='5'><b>IRA</b> - Deal Ownership</font>
+  <font family = 'courier' size='5'><b>IRA</b> - Entity Details</font>
 </td><td align = "right">
 
 <a href = '/home'>{{userObj.firstname}}</a>&emsp;<img width='50' src={{userObj.photo}}>
@@ -18,7 +18,11 @@
 
 <tr><td>
   <br>
-Ownership details for: <b>{{dealName}}</b>
+Entity details for: <b>{{entity.name}}</b>
+</td></tr>
+
+<tr><td>
+Implied Value: &emsp;<a href = "/portfolio/{{entity.id}}"><b>{{impliedValue}}</b></a>
 </td></tr>
 </table>
 </div>
@@ -78,7 +82,7 @@ Ownership details for: <b>{{dealName}}</b>
       <tr>
         <td></td>
         <td></td>
-        <td>Total Deal Value:</td>
+        <td>Total Invested Capital</td>
         <td><b>{{totalCapitalPct}}%</b></td>
         <td><b>{{totalCapital}}</b></td>
 

@@ -10,8 +10,8 @@ let options = {};
 if (env === 'ebawsira') {
         options = {
           user: 'iraadmin',
-          password: '',
-          host: 'iradb.cdlgrjtshtb6.us-east-2.rds.amazonaws.com',
+          password: 'sqlschool2018',
+          host: 'restored-iradb-0708.cdlgrjtshtb6.us-east-2.rds.amazonaws.com',
           database: 'iradb',
           port: 3306,
           multipleStatements: true
@@ -637,10 +637,13 @@ function updateDeal (updatedDeal) {
 //owneship: parent_entity_id, child_entity_id, capital_pct
 function updateEntity (updatedEntity) {
 
+console.log ("In model, updating Entity, here is the payload"+JSON.stringify(updatedEntity,null,4))
+
   let queryString = 'UPDATE entities SET'
   +' ownership_status = \''+updatedEntity.ownership_status+'\','
   +' name=\''+updatedEntity.name+'\','
-  +' taxid=\''+updatedEntity.taxid+'\''
+  +' taxid=\''+updatedEntity.taxid+'\','
+  +' implied_value=\''+updatedEntity.implied_value+'*1.000\''
   +' WHERE id ='+updatedEntity.id+'';
 
 

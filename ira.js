@@ -26,7 +26,7 @@ const nodePort = 8081
 //var router = express.Router();  then call router.post('/')
 
 
-const iraVersion = "0.16.3  +CSV download +clean up Total Investor Value +start Entity Value"
+const iraVersion = "0.16.5  +fixed bugs 1 & 4 from akiko's 7/9 note"
 
   app.set('trust proxy', true);
   app.use(flash());
@@ -357,12 +357,10 @@ app.get('/portfolio/:id', (req, res) => {
      })
 
      async function showInvestorPortfolio() {
-           let foundInvestor = await iraSQL.getEntityById(req.params.id);
-           let investments = await iraSQL.getOwnershipForInvestor(foundInvestor.id);
-           console.log("In /portfolio/id, got "+investments.length+ " investments: "+JSON.stringify(investments,null,4)+"\n\n");
-           if (investments.length > 0) {
-                          let results = await calc.totalupInvestorPortfolio(investments)
-                          let portfolioDeals = results[0]
+              let foundInvestor = await iraSQL.getEntityById(req.params.id);
+              let results = await calc.totalupInvestorPortfolio(foundInvestor.id)
+              let portfolioDeals = results[0]
+              if (portfolioDeals.length >0 ) {
                           let totalInvestmentValue =  results[1]
                           let totalPortfolioValue =  results[2]
                           let totalDistributions =  results[3]*-1 //make it positive here
@@ -374,7 +372,7 @@ app.get('/portfolio/:id', (req, res) => {
                           res.render('portfolio-details', {
                                   userObj: userObj,
                                   message:  "Showing "+portfolioDeals.length+" investments ",
-                                  investorName: investments[0].investor_name,
+                                  investorName: portfolioDeals[0].investor_name,
                                   investments: portfolioDeals,
                                   totalPortfolioValue: calc.formatCurrency(totalPortfolioValue),
                                   totalInvestmentValue: calc.formatCurrency(totalInvestmentValue),
@@ -536,25 +534,43 @@ app.post('/process_set_ownership', urlencodedParser, (req, res) => {
   })
 
   async function insertOwnershipAndUpdateEntity() {
-            let formTransIds = req.body.trans_ids
-            let formPercents = req.body.percents
+            let tempFormTransIds = req.body.trans_ids
+            let tempFormPercents = req.body.percents
+            let formTransIds = []
+            let formPercents = []
             let ownEntityId = 0
-            console.log("POST from Set Ownsership form we got: "+JSON.stringify(req.body)+"\n\n");
-            console.log("POST from Set Ownsership "+JSON.stringify(formTransIds)+"\n");
 
-            // get each transaction, total capital,
-            //calculate %,
-            //push new Ownership Row
-            //
+            //THE PROBLEM - when there is only ONE transaction to consider, its not an array.
+            //If there is only one element, it treats the first element as a STRING!!!
+            // so formTransIds[i] will be the first digit in the string
+
+            //if there is only one, and its not an array, force it into an array
+            if (!Array.isArray(tempFormTransIds)) {
+                    formTransIds[0] = tempFormTransIds
+                    formPercents[0] = tempFormPercents
+            } else {
+                    formTransIds = tempFormTransIds
+                    formPercents = tempFormPercents
+            }
+
+            console.log("POST from SetOwnership form we got body "+JSON.stringify(req.body)+"");
+            console.log("POST from SetOwnership formTransIds"+JSON.stringify(formTransIds)+"");
+            console.log("POST from SetOwnership NUMBER of formTransIds is "+formTransIds.length+"");
+            console.log("POST from SetOwnership percents"+JSON.stringify(formPercents)+"\n");
+
+            // Now, go throuugh each transactoon
+            // see if its the same investor as an existing ownership rows
+            // if same investor, merge them
+            // new investor, add a new ownRow
+
             let inv_trans = []
             let own_Rows = []
             for (let i=0;i<formTransIds.length;i++) {
                     let transId = parseInt(formTransIds[i]);
-                    console.log("====START Trans #"+i+" =======\nTrans ID="+transId+"")
+                    console.log("====START Trans #"+i+" =======\nTransaction ID="+transId+"")
                     let transPercent = (formPercents[i]*100).toFixed(4);
-                    console.log("Percent="+transPercent+"\n")
                     let trans = await iraSQL.getTransactionById(transId) //basic info
-
+                    console.log("Transcation came back ="+JSON.stringify(trans,null,4)+"\n")
                     //get the entity id
                     ownEntityId = trans[0].investment_entity_id
 
@@ -572,6 +588,8 @@ app.post('/process_set_ownership', urlencodedParser, (req, res) => {
                     console.log("In processSetOwn, add inv_trans row to table: "+JSON.stringify(inv_trans_row, null, 4)+"")
                     inv_trans.push(inv_trans_row);
 
+
+                    //here, check existing ownership rows
                     let found = false
                     for (let j=0;j<own_Rows.length;j++) {
                             //ROLL UP if its the same parent entity (investor) - including own adjust
@@ -678,10 +696,11 @@ app.get('/ownership/:id', (req, res) => {
 
 
                           console.log("rendering ownership")
-                          res.render('deal-ownership', {
+                          res.render('entity-details', {
                                   userObj: userObj,
                                   message:  "Showing "+expandInvestors.length+" investors ",
-                                  dealName: investors[0].investment_name,
+                                  entity: foundEntity,
+                                  impliedValue: calc.formatCurrency(foundEntity.implied_value),
                                   investors: expandInvestors,
                                   totalCapital: totalCapital,
                                   totalCapitalPct: totalCapitalPct
@@ -968,10 +987,23 @@ app.get('/updateentity/:id', (req, res) => {
     async function pullDealDetails() {
           var entity = await iraSQL.getEntityById(req.params.id);
           console.log("have Entity   "+ JSON.stringify(entity));
+         let totalPortfolioValue = 0.00
+         let results = await calc.totalupInvestorPortfolio(entity.id)
+         let portfolioDeals = results[0]
+
+         if (portfolioDeals.length >0 ) {
+                    totalPortfolioValue =  results[2]
+        } else { //no ownership data
+                      console.log("No investments for  "+ entity.name);
+
+        } //if ownership
+
           res.render('update-entity', {
                 userObj: userObj,
-                message: "Updating Entity: " + entity.id,
+                message: "Updating Entity: " + entity.name,
                 entity: entity,
+                impliedValue: totalPortfolioValue,
+                formattedImpliedValue: calc.formatCurrency(totalPortfolioValue),
                 postendpoint: '/process_update_entity'
           }); //  render
 
@@ -993,7 +1025,9 @@ app.post('/process_update_entity', urlencodedParser, (req, res) => {
               id:formEntity.id,
               name: formEntity.name,
               taxid: formEntity.taxid,
-              ownership_status: formEntity.ownership_status
+              ownership_status: formEntity.ownership_status,
+              implied_value: parseFloat(formEntity.impliedValue)*1.0000
+              //implied_value: 123.2
             }
             console.log("\nUpdated entity, ready to send to SQL  "+JSON.stringify(updatedEntity));
 
