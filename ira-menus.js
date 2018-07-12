@@ -19,6 +19,7 @@ const express = require('express');
 var router = express.Router();
 const iraSQL =  require('./ira-model');
 const ira =  require('./ira');
+const calc =  require('./ira-calc');
 const secret = "cat"
 
 router.use(flash());
@@ -86,15 +87,18 @@ router.get('/entities', (req, res) => {
            }
           iraSQL.getAllEntities().then(
                 function(entities) {
-                          //console.log("in get all ENTITIES, we got:   "+JSON.stringify(entities[0]))
-                          var expandEntities = entities;
+                          console.log("in get all ENTITIES #6  "+JSON.stringify(entities[5], null, 4))
 
-                          for (let index = 0; index < entities.length; index++) {
-                                 if(  (expandEntities[index].ownership===0) && (expandEntities[index].type === 1)    ) {
-                                            expandEntities[index].canSetOwnership = true
-                                 //console.log("IN validate ownership: "+ index +" lastname: "+expandInvestors[index].investor_name+" amount: "+expandInvestors[index].formattedAmount+" cap_pct: "+expandInvestors[index].capital_pct)
-                               } //
-                          }//for
+
+
+
+
+
+                          var expandEntities = entities.map((ent) => {
+                                      ent.formatted_implied_value = calc.formatCurrency(ent.implied_value);
+                                      return ent
+                          });
+
 
 
                           res.render('list-entities', {

@@ -64,6 +64,8 @@
 </table>
 </div>
 
+
+
 {{#if investors}}
 {{#each investors}}
 <div class="w3-panel w3-pale-blue w3-leftbar
@@ -87,18 +89,19 @@
           <td align="center"><b>{{investor_name}}</b></td>
           <td align="center"> {{passthru_name}} </td>
           <td align="center">{{tt_name}}</td>
+          <td align="center"></td>
           <td align="center">
-              {{#ifGreaterThan own_adj 0}}
-                    {{own_adj}}%
-              {{else}}
-                             {{#ifLessThan amount 0}}
-                                 <font color = "red">
-                                        {{formattedAmount}}
-                                 </font>
-                             {{else}}
-                                        {{formattedAmount}}&nbsp;
-                             {{/ifLessThan}}
-                {{/ifGreaterThan}}
+               {{#ifEqual t_own_adj 0}}
+                        {{#ifLessThan amount 0}}
+                            <font color = "red">
+                                   {{formattedAmount}}
+                            </font>
+                        {{else}}
+                                   {{formattedAmount}}&nbsp;
+                        {{/ifLessThan}}
+             {{/ifEqual}}
+
+
             </td>
           <td align="center">{{t_wired_date}}</td>
           <td align="center">{{formattedPercent}}</td>

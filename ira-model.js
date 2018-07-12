@@ -11,7 +11,8 @@ if (env === 'ebawsira') {
         options = {
           user: 'iraadmin',
           password: '',
-          host: 'restored-iradb-0708.cdlgrjtshtb6.us-east-2.rds.amazonaws.com',
+          //host: 'restored-iradb-0708.cdlgrjtshtb6.us-east-2.rds.amazonaws.com',
+          host: 'iradb-02-2018.cdlgrjtshtb6.us-east-2.rds.amazonaws.com',
           database: 'iradb',
           port: 3306,
           multipleStatements: true
@@ -38,6 +39,7 @@ module.exports = {
   getAllEntities,
   getAllTransactions,
   getOwnershipForEntity,
+  getOwnershipForEntityUpstreamUpdate,
   getOwnershipForInvestor,
   getOwnershipForInvestorAndEntity,
   getOwnTransByTransID,
@@ -58,6 +60,7 @@ module.exports = {
   insertOwnership,
   insertOwnTrans,
   updateEntity,
+  updateEntityImpliedValue,
   updateDeal,
   clearOwnershipForEntity,
   deleteTransaction
@@ -156,7 +159,7 @@ function getTransactionsForInvestment (invest_entityId, transTypes) {
 
   if (!transTypes) transTypes = [1,2,3,4,5,6]
 
-  console.log("\nIn Model, TransTypes are: "+JSON.stringify(transTypes)+"\n\n")
+  //console.log("\nIn Model, TransTypes are: "+JSON.stringify(transTypes)+"\n\n")
 
   let queryString = 'SELECT t.id as id,  t.investor_entity_id as investor_entity_id,  t.investment_entity_id as investment_entity_id, t.passthru_entity_id as passthru_entity_id,'
   + ' investor.name as investor_name, investment.name as investment_name, passthru.name as passthru_name,'
@@ -331,7 +334,7 @@ function getDealById (deal_id) {
               connection.query(queryString,
                 function(err, results) {
                         if (err) {
-                              console.log ("Cant find ownership "+err)
+                              console.log ("Problem in getOwnershipForInvestorAndEntity "+err)
                               fail(err)
                         } else {
                               // if (results.length<1) {
@@ -366,14 +369,14 @@ function getOwnershipForInvestor (investor_id) {
             connection.query(queryString,
               function(err, results) {
                       if (err) {
-                            console.log ("Cant find ownership "+err)
+                            console.log ("Problem in getOwnershipForInvestor "+err)
                             fail(err)
                       } else {
                             if (results.length<1) {
                                       fail("no ownership data")
                             } else {
 
-                              console.log ("\n\nIn model: getOwnershipForInvestor, got "+results.length+" investments for "+results[0].investor_name)
+                              //console.log ("\n\nIn model: getOwnershipForInvestor, got "+results.length+" investments for "+results[0].investor_name)
                               //console.log (JSON.stringify(results)+"\n\n")
                               succeed(results)
 
@@ -385,7 +388,35 @@ function getOwnershipForInvestor (investor_id) {
       }); //promise
 } // function
 
+//owneship: parent_entity_id, child_entity_id, capital_pct
+function getOwnershipForEntityUpstreamUpdate (child_id) {
+  let queryString = 'SELECT o.id, investor.name as investor_name, investment.name as investment_name,'
+  + ' investment.id as investment_id, investor.id as investor_id,'
+  + ' investor.type as investor_type_num, etypes.name as investor_type_name,'
+  + ' o.amount as amount, ROUND(o.capital_pct,4) as capital_pct FROM ownership as o'
+  + ' JOIN entities as investment ON investment.id = o.child_entity_id'
+  + ' JOIN entities as investor ON investor.id = o.parent_entity_id'
+  + ' JOIN entity_types as etypes ON etypes.type_num = investor.type'
+  + ' WHERE o.child_entity_id ='+child_id+' ORDER BY amount DESC';
 
+      return new Promise(function(succeed, fail) {
+            connection.query(queryString,
+              function(err, results) {
+                      if (err) {
+                            console.log ("problem in  getOwnershipForEntityUpstreamUpdate "+err)
+                            fail(err)
+                      } else {
+                            // if (results.length<1) {
+                            //           fail("no ownership data")
+                            // }
+
+                            console.log ("Ownership query OK got "+results.length)
+                            //console.log ("The results are:"+JSON.stringify(results, null,4))
+                            succeed(results)
+                      }
+              }); //connection
+      }); //promise
+} // function
 
 
 
@@ -406,7 +437,7 @@ function getOwnershipForEntity (child_id) {
             connection.query(queryString,
               function(err, results) {
                       if (err) {
-                            console.log ("Cant find ownership "+err)
+                            console.log ("Problem in getOwnershipForEntity "+err)
                             fail(err)
                       } else {
                             // if (results.length<1) {
@@ -463,7 +494,8 @@ function getEntitiesByOwnership(ownStatus) {
 function getAllEntities() {
       return new Promise(function(succeed, fail) {
             connection.query(
-              'SELECT e.id as id, t.name as entity_type, e.type as e_type_num, e.name as name, e.taxid as taxid, e.ownership_status as own_status'
+              'SELECT e.id as id, t.name as entity_type, e.type as e_type_num, e.name as name,'
+              + ' e.taxid as taxid, e.ownership_status as own_status, e.implied_value as implied_value'
             + ' FROM entities as e'
             +' JOIN entity_types as t ON t.type_num = e.type ORDER BY entity_type ASC',
               function(err, results) {
@@ -653,19 +685,12 @@ function updateDeal (updatedDeal) {
 } // function
 
 
-
-//owneship: parent_entity_id, child_entity_id, capital_pct
-function updateEntity (updatedEntity) {
-
-console.log ("In model, updating Entity, here is the payload"+JSON.stringify(updatedEntity,null,4))
+function updateEntityImpliedValue (updatedEntity) {
 
   let queryString = 'UPDATE entities SET'
-  +' ownership_status = \''+updatedEntity.ownership_status+'\','
-  +' name=\''+updatedEntity.name+'\','
-  +' taxid=\''+updatedEntity.taxid+'\','
-  +' implied_value=\''+updatedEntity.implied_value+'*1.000\''
+  +' implied_value=\''+updatedEntity.implied_value+'\''
   +' WHERE id ='+updatedEntity.id+'';
-
+ //console.log ("\n\nIn model, updateEntity, here is the query"+queryString+"\n")
 
       return new Promise(function(succeed, fail) {
             connection.query(queryString,
@@ -673,7 +698,31 @@ console.log ("In model, updating Entity, here is the payload"+JSON.stringify(upd
                       if (err) {
                             fail(err)
                       } else {
-                            //console.log ("Model Success - Updated entity with "+JSON.stringify(results)+"\n")
+                            //console.log ("Model Success - Updated entity"+updatedEntity.name+"\n")
+                            succeed(results.affectedRows)
+                      }
+              }); //connection
+      }); //promise
+} // function
+
+
+function updateEntity (updatedEntity) {
+
+  let queryString = 'UPDATE entities SET'
+  +' ownership_status = \''+updatedEntity.ownership_status+'\','
+  +' name=\''+updatedEntity.name+'\','
+  +' taxid=\''+updatedEntity.taxid+'\','
+  +' implied_value=\''+updatedEntity.implied_value+'\''
+  +' WHERE id ='+updatedEntity.id+'';
+ console.log ("\n\nIn model, updateEntity, here is the query"+queryString+"\n")
+
+      return new Promise(function(succeed, fail) {
+            connection.query(queryString,
+              function(err, results) {
+                      if (err) {
+                            fail(err)
+                      } else {
+                            console.log ("Model Success - Updated entity"+updatedEntity.name+"\n")
                             succeed(results.affectedRows)
                       }
               }); //connection

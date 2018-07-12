@@ -1,0 +1,72 @@
+
+
+<div class="w3-panel w3-pale-blue w3-leftbar
+ w3-rightbar w3-topbar w3-border-blue w3-margin-right w3-margin-left">
+<table width = "100%" border = 0 >
+
+<tr><td>
+  <font family = 'courier' size='5'><b>IRA</b> - Results from Update</font>
+</td><td align = "right">
+<a href = '/portfolio/{{userObj.id}}'>{{userObj.firstname}}</a>&emsp;<img width='50' src={{userObj.photo}}>
+</td></tr>
+
+<tr><td align = "left">
+  <a href = "/">Home</a>&emsp;
+</td><td>
+</td><td align = "right">
+</td></tr>
+
+<tr><td>
+<br>
+{{message}}
+</td></tr>
+
+
+<tr><td>
+  <br>
+Update for: <b>{{entity.name}}</b>
+</td></tr>
+
+<tr><td>
+Equity Value: &emsp;<b>{{entity.implied_value}}</b>
+</td></tr>
+</table>
+</div>
+
+<div class="w3-panel w3-pale-blue w3-leftbar
+ w3-rightbar w3-border-blue w3-margin-right w3-margin-left">
+{{#if logEntries}}
+{{#each logEntries}}
+
+
+
+<table width = "100%" border = 1>
+      <colgroup>
+      <col width="20%"/>
+      <col width="60%"/>
+      <col width="20%"/>
+
+      </colgroup>
+
+
+
+<tr>
+    	<td></td>
+      <td align="left" colspan="3">
+    	{{entry}}
+      </td>
+      <td></td>
+</tr>
+
+</table>
+
+{{/each}}
+{{/if}}
+</div>
+
+
+<div class="w3-panel w3-pale-blue w3-leftbar
+ w3-rightbar w3-bottombar w3-border-blue w3-margin-right w3-margin-left">
+<br>
+</div>
+&emsp;&emsp;

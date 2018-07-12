@@ -107,20 +107,23 @@
               {{t_wired_date}}
           </td>
 
-            <td align="center">
-                {{#ifGreaterThan t_own_adj 0}}
-                      {{t_own_adj}}%
-                {{else}}
-                                  {{#ifIncludes formatted_amount '('}}
-                                      <font color = "red">
-                                            {{formatted_amount}}
-                                      </font>
-                                  {{else}}
-                                            {{formatted_amount}}&nbsp;
-                                  {{/ifIncludes}}
 
-                  {{/ifGreaterThan}}
-              </td>
+          <td align="center">
+                   {{#ifEqual t_own_adj 0}}
+                            {{#ifLessThan t_amount 0}}
+                                <font color = "red">
+                                       {{formatted_amount}}
+                                </font>
+                            {{else}}
+                                       {{formatted_amount}}&nbsp;
+                            {{/ifLessThan}}
+                  {{else}}
+                        {{t_own_adj}}%
+                  {{/ifEqual}}
+
+
+            </td>
+
                <td>
                  {{#if can_delete}}
                       <a href = "/deletetransaction/{{id}}">Del.</a>

@@ -14,45 +14,102 @@ module.exports = {
   totalupInvestorPortfolio,
   calculateOwnership : calculateOwnership,
   calculateDeal: calculateDeal,
+  calcInvEntityImpliedValue,
+  updateValueofInvestorsUpstream,
   getInvestorEquityValueInDeal,
   createCSVforDownload
 }
 
 
+//returns implied_value
+async function updateValueofInvestorsUpstream (entity_id) {
+    try {
+               let updatedEntity = await iraSQL.getEntityById(entity_id);
+               console.log("======== NOW STARTING UPSTREAM UPDATE for "+updatedEntity.name+"\n")
+               let outputLog = []
+               // why in recusrion not getting investors
+               let investors = await iraSQL.getOwnershipForEntityUpstreamUpdate(updatedEntity.id)
+               console.log("In calc/UpdateUpstream, got "+investors.length+ " investors: "+JSON.stringify(investors,null,4)+"\n");
+               //outputLog.push({entry:"Updating Upstream Investors for : "+updatedEntity.name+"\n"})
+               outputLog.push({entry:"STARTING UPDATE CYCLE for "+updatedEntity.name+" using new Equity Value of "+formatCurrency(updatedEntity.implied_value)+"\n"})
+               outputLog.push({entry:"    Looking at "+investors.length+" investors for "+updatedEntity.name+"\n"})
+               for (var i in investors) {
+                      outputLog.push({entry:investors[i].investor_name+" is an "+investors[i].investor_type_name+" ("+investors[i].investor_type_num+ ") with "+investors[i].capital_pct+"% \n"})
 
+                      if(investors[i].investor_type_num === 4) { //entity Investor
+                                outputLog.push({entry:"Portfolio values for "+investors[i].investor_name + " need to by updated by: "})
+                                outputLog.push({entry:"(1) Re-calulating Equity Value and (2) Updating Upstream Investors"})
+                                console.log(investors[i].investor_name + " is an Entity Investor, so calulating Implied Entity Vlaue ")
+                                let newImpliedValue = await calcInvEntityImpliedValue(investors[i].investor_id);
+                                console.log("DONE --> with new ImpliedValue for  "+investors[i].investor_name+ " is "+formatCurrency(newImpliedValue)+"\n");
+                                //let oldEIEntity = await iraSQL.getEntityById(investors[i].id);
+                                let updatedEIEntity = {
+                                      implied_value: newImpliedValue,
+                                      id: investors[i].investor_id
+                                }
+                                //console.log( "\nin Upstream, updating entity Implied Value: "+JSON.stringify(updatedEIEntity));
+                                var updateEntityResults = await iraSQL.updateEntityImpliedValue(updatedEIEntity);
+                                //outputLog.push({entry:investors[i].investor_name + " new Entity Value is "+formatCurrency(newImpliedValue)+"\n"})
+                                //outputLog.push({entry:"========================now going upstream to update investors====\n"})
+                                let newoutputLog = await updateValueofInvestorsUpstream (investors[i].investor_id); //RECURSIVE CALL
+                                outputLog.push(...newoutputLog);
+                      }
+                      //outputLog.push({entry:"                             >------  done with "+investors[i].investor_name})
+                      console.log( "\n ======== in Upstream for "+updatedEntity.name+" done with "+investors[i].investor_name+"\n")
+
+                      //outputLog.push.apply(outputLog, newoutputLog)
+               } //for each investor
+
+
+
+               //console.log("Output Log: "+outputLog.toString()+"\n")
+               return outputLog
+
+
+    } catch (err) {
+              console.log("Err: Problem in updateUpstream : "+err);
+              return "No ownership found."
+    }
+} //function
 
 
 
 
 
 //returns implied_value
-async function calcEntityImpliedValue (entity_id) {
+async function calcInvEntityImpliedValue (entity_id) {
     try {
+              //console.log("======Launching TUIP from calcInvEntityImpliedValue for "+entity_id);
               let totalPortfolioValue = 0.00
-              let results = await calc.totalupInvestorPortfolio(entity.id)
+              let results = await totalupInvestorPortfolio(entity_id)
+              // return [portfolioDeals, totalInvestmentValue, totalPortfolioValue, totalDistributions];
               let portfolioDeals = results[0]
-              if (portfolioDeals.length >0 ) {
+              console.log("In Calc-ImpliedVal, found "+portfolioDeals.length+" investments for total PortValue of "+results[2])
+              if (portfolioDeals.length >0 ) {  //there are investments for this ent.
                          totalPortfolioValue =  results[2]
-                } else { //no ownership data
-                        console.log("No investments for  "+ entity.name);
+                } else { //if no deals
+                        console.log("No investments for  "+ entity_id);
                } //if ownership
                return totalPortfolioValue;
 
     } catch (err) {
-              console.log("Err: No Ownership in TUIP problem: "+err);
+              console.log("Err: calcInvEntityImpliedValue : "+err);
               return 0.00
     }
 } //function
 
 
 
+
+
+
 // these are Ownership Rows for an investor
-    async function totalupInvestorPortfolio (entity_id) {
-    try {
-      let foundInvestor = await iraSQL.getEntityById(entity_id);
-      let investments = await iraSQL.getOwnershipForInvestor(foundInvestor.id);
+async function totalupInvestorPortfolio (entity_id) {
+    let foundInvestor = await iraSQL.getEntityById(entity_id);
+    let investments = await iraSQL.getOwnershipForInvestor(foundInvestor.id);
+
       if (investments.length > 0) {
-          console.log("In calc/TUIP-2, got "+investments.length+ " investments: "+JSON.stringify(investments,null,4)+"\n\n");
+          console.log("In calc/TUIP, got "+investments.length+ " investments: "+JSON.stringify(investments,null,4)+"\n\n");
           let portfolioDeals = []  //empty array - add only if its a deal
           let totalPortfolioValue = 0;
           let totalInvestmentValue = 0;
@@ -64,7 +121,8 @@ async function calcEntityImpliedValue (entity_id) {
                              let deal = await iraSQL.getDealById(investments[index].deal_id);
                              expandDeal = calculateDeal(deal[0])
               } else {
-
+                      let investmentEntity = await iraSQL.getEntityById(investments[index].investment_id)
+                      console.log("Because "+investments[index].investment_name+" is not a DEAL, went to Entity to get "+formatCurrency(investmentEntity.implied_value));
                       // if its an ENTITY - not a deal -- do it here
                       //if you want to get fancy, calculate implied_value on th fly here
                       //adding a stand-in expandDeal
@@ -76,7 +134,7 @@ async function calcEntityImpliedValue (entity_id) {
                                        "aggregate_debt": 0,
                                        "deal_debt": 0,
                                        "notes": "",
-                                       "equity_value": 0, //yes!  get this from implied_value
+                                       "equity_value": investmentEntity.implied_value, //yes!  get this from implied_value
                                        "total_value": 0, //component of EV
                                        "total_debt": 0,  //component of EV
                                        "formatted_total_value": "N/A FTV",  //show in portfolio
@@ -91,20 +149,21 @@ async function calcEntityImpliedValue (entity_id) {
               } //else for entity_id
 
               //this is common to both DEAL and ENTITY
-              console.log ("\n"+index+") Investment for ENTITY_ID :"+investments[index].investment_id+" "+investments[index].investment_name+" is not a DEAL \n")
+              //console.log ("\n"+index+") Investment in ENTITY_ID :"+investments[index].investment_id+" "+investments[index].investment_name+" is not a DEAL \n")
               let transactionsForEntity = await iraSQL.getTransactionsForInvestorAndEntity(investments[index].investor_id, investments[index].investment_id,[1,3,5,6]);
               //console.log ("TUIP - got "+transactionsForEntity.length+" transactions for entity "+investments[index].investment_name+"  : "+JSON.stringify(transactionsForEntity, null, 4)+"\n")
 
                //now newPortfolioDeal
               let newPortfolioDeal = investments[index];
               newPortfolioDeal.expandDeal = expandDeal;
+              console.log("Adding portfolio contribution from  "+newPortfolioDeal.expandDeal.name+" and using Equity Value of  "+formatCurrency(newPortfolioDeal.expandDeal.equity_value));
               let result = await totalupCashInDeal(transactionsForEntity);
 
               newPortfolioDeal.transactionsForDeal = result[0];
               newPortfolioDeal.totalCashInDeal = result[1];
               newPortfolioDeal.dealDistributions = result[2];
               newPortfolioDeal.investor_equity_value = newPortfolioDeal.expandDeal.equity_value*(newPortfolioDeal.capital_pct/100);
-
+              console.log( " So with "+newPortfolioDeal.capital_pct/100+"% stake, "+newPortfolioDeal.investment_name+ " contributed "+formatCurrency(newPortfolioDeal.investor_equity_value)+" to  "+foundInvestor.name+"s  portfolio (TUIP) \n\n");
               //add the sums
               totalPortfolioValue += newPortfolioDeal.investor_equity_value  //save this as implied_value
               totalInvestmentValue += newPortfolioDeal.amount;
@@ -117,6 +176,7 @@ async function calcEntityImpliedValue (entity_id) {
 
                      //console.log("IN validate ownership: "+ index +" lastname: "+expandInvestors[index].investor_name+" amount: "+expandInvestors[index].formattedAmount+" cap_pct: "+expandInvestors[index].capital_pct)
               }//for
+              console.log("\n Portfolio for "+foundInvestor.name+" is DONE, Value is "+formatCurrency(totalPortfolioValue));
               return [portfolioDeals, totalInvestmentValue, totalPortfolioValue, totalDistributions];
 
             }  else {  //if no investors
@@ -124,10 +184,10 @@ async function calcEntityImpliedValue (entity_id) {
             }
 
 
-      } catch (err) {
-                    console.log("Err: No Ownership in TUIP problem: "+err);
-                    return [ [], null, null, null];
-      }
+      // } catch (err) {
+      //               console.log("Err: No Ownership in TUIP problem: "+err);
+      //               return [ [], null, null, null];
+      // }
 
     } //function totalupInvestorPortfolio
 
@@ -217,7 +277,7 @@ function totalupInvestors (investors) {
 
         } //for
 
-        console.log ("TotalUPCash -- for deal/entity "+transactions[0].investment_name+" is "+ totalCashInDeal+"and TotalDistributions is "+dealDistributions+"\n\n")
+        //console.log ("In TotalUPCash for "+transactions[0].investment_name+" is "+ totalCashInDeal+"and TotalDistributions is "+dealDistributions+"")
         return [expandTransactions, formatCurrency(totalCashInDeal), dealDistributions];
 
     } //function totalupCashInDeal
@@ -241,18 +301,20 @@ function totalupInvestors (investors) {
                //add each investor to a table. If he's there before,
 
         }
-        console.log("In CalculateOwnership, the TotaCap is "+totalCapital+"\n")
-
+        console.log("In CalculateOwnership, the TotaCap is "+totalCapital+"")
+        console.log("and TotalAdjPct is "+totalAdjOwnPct+"")
 
        //Math.round((totalAdjOwnPct*1000)/1000).toFixed(4)
        let availPct_after_OwnAdj = (100-totalAdjOwnPct)/100
+       console.log("and availPct_after_OwnAdj is "+availPct_after_OwnAdj+"\n")
        //console.log("\nIn CalculateOwnership, Adust Onership % is "+totalAdjOwnPct+" and remaining % as decimal is "+availPct_after_OwnAdj+" \n")
 
         // now calculate % for each
         for (let index = 0; index < inv_trans_Rows.length; index++) {
-                if(inv_trans_Rows[index].t_own_adj > 0) {  //if its an ownership adjustment (% only)
+                if(inv_trans_Rows[index].t_own_adj != 0) {  //if its an ownership adjustment (% only)
                       inv_trans_Rows[index].percent = (inv_trans_Rows[index].t_own_adj)/100
-                } else {
+                      console.log("Its an OWN ADJUST trans - percent="+inv_trans_Rows[index].percent);
+                } else {  //if its an acquisition
                       // if (inv_trans_Rows[index].tt_id === 6) {  //its an offset
                       //           inv_trans_Rows[index].percent = 0
                       // }  else {

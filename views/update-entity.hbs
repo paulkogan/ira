@@ -78,8 +78,15 @@
               {{formattedImpliedValue}}
       </td>
 
-        <td><a href = "/portfolio/{{entity.id}}">Review Portfolio</a></td>
-        <td></td>
+        <td>
+            {{#ifEqual entity.type 1}}
+
+            {{else}}
+                  <a href = "/portfolio/{{entity.id}}">Review Portfolio</a>
+            {{/ifEqual}}
+          </td>
+
+        <td>{{entity.type}}</td>
 </tr>
 
 <tr>

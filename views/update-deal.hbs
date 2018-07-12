@@ -28,6 +28,7 @@
           w3-rightbar w3-border-blue w3-margin-right w3-margin-left">
 <br>
 <table width = "100%" border = 0>
+
       <colgroup>
       <col width="30%"/>
       <col width="20%"/>
@@ -39,7 +40,6 @@
 
 
 <input type="hidden" value="{{deal.id}}" name="id" />
-
 
 <tr>
     	<td align="right">
@@ -84,15 +84,16 @@
 
   <tr>
 
-    <td align="right">Total Value:</td>
-    <td align="center">  </td>
+    <td align="right">Asset Value:</td>
+    <td align="left">{{deal.formatted_total_value}}</td>
     <td></td>
     <td align="right">Total Debt: </td>
-    <td align="center">  </td>
+    <td align="left">{{deal.formatted_total_debt}}</td>
   </tr>
 
   <tr>
-    <td style="min-height:60px;">&nbsp;</td>
+    <td align="right">Equity Value&nbsp;</td>
+    <td>{{deal.formatted_equity_value}}</td>
     <td></td>
   </tr>
 
@@ -102,7 +103,6 @@
       <td></td>
     </tr>
 
-
 <tr>
     	<td></td>
       <td></td>
@@ -111,8 +111,11 @@
          <input type = "submit" value = "Submit">
       </td>
 <tr>
+
 </form>
+
 </table>
+
 <br>
 </div>
 

@@ -26,7 +26,7 @@ const nodePort = 8081
 //var router = express.Router();  then call router.post('/')
 
 
-const iraVersion = "0.16.7  +delete transactons"
+const iraVersion = "0.17  +v.1 of recursive implied value calculation"
 
   app.set('trust proxy', true);
   app.use(flash());
@@ -303,7 +303,7 @@ app.get('/transactions/:id', (req, res) => {
                 var entity = await iraSQL.getEntityById(req.params.id);
                 console.log("have Entity   "+ JSON.stringify(entity));
                 var transactions = await iraSQL.getTransactionsForInvestment(entity.id);
-                //console.log("\nGot transactions for entity  "+JSON.stringify(transactions,null,5));
+                console.log("\nGot transactions for entity  "+JSON.stringify(transactions,null,5));
 
                 //add delete flag to each
                 for (let j=0; j<transactions.length; j++) {
@@ -333,7 +333,6 @@ app.get('/transactions/:id', (req, res) => {
                 }
           }
 
-          //var expandTransactions = transactions.map(function(e) {
 
 
 
@@ -509,7 +508,7 @@ app.post('/process_update_deal', urlencodedParser, (req, res) => {
 
   //call the async function
   updateDealAndEntity().catch(err => {
-        console.log("Deal and Entity problem: "+err);
+        console.log("Process Update Deal problem: "+err);
   })
 
   async function updateDealAndEntity() {
@@ -523,23 +522,37 @@ app.post('/process_update_deal', urlencodedParser, (req, res) => {
               deal_debt: calc.parseFormAmountInput(formDeal.deal_debt),
               notes: formDeal.notes
             }
-            console.log("\nUpdated deal, ready to send to SQL  "+JSON.stringify(updatedDeal));
+            console.log("UPDATE DEAL: \n   ready to send to SQL  "+JSON.stringify(updatedDeal));
 
             let updateDealResults = await iraSQL.updateDeal(updatedDeal);
             console.log( "Updated deal  no.: "+updatedDeal.id);
             req.flash('login', "UpdatedDeal: "+updatedDeal.id);
 
             let oldDealEntity = await iraSQL.getEntityByDealId(updatedDeal.id);
-            console.log( "OldEntity for deal: "+JSON.stringify(oldDealEntity));
+            let equity_value = Number(updatedDeal.aggregate_value)+Number(updatedDeal.cash_assets)-Number(updatedDeal.deal_debt)-Number(updatedDeal.aggregate_debt);
+            console.log( "\nNew Deal Equity value is : "+equity_value);
+            let newDealEntity = {
+                  name: updatedDeal.name,
+                  taxid: formDeal.taxid,
+                  implied_value: equity_value,
+                  ownership_status: oldDealEntity.ownership_status,
+                  id: oldDealEntity.id
+          }
 
-            let newDealEntity = oldDealEntity;
-            newDealEntity.name =  updatedDeal.name;
-            newDealEntity.taxid = formDeal.taxid;
 
+            console.log( "\nUpodating Deal -- here is NewEntity for deal: "+JSON.stringify(newDealEntity));
             var updateEntityResults = await iraSQL.updateEntity(newDealEntity);
             //req.flash('login', "In deals, added entity #: "+insertEntityResults.insertId);
 
-            res.redirect('/deals');
+            let outputLog = await calc.updateValueofInvestorsUpstream (newDealEntity.id);
+            console.log("Output Log on catch side is: "+outputLog.toString()+"\n")
+            res.render('show-results', {
+                  userObj: userObj,
+                  message: "Updated Deal: " + updatedDeal.name,
+                  deal: updatedDeal,
+                  entity: newDealEntity,
+                  logEntries: outputLog
+            }); //  render
 
    } //async function
 }); //process add-deal route
@@ -556,7 +569,7 @@ app.post('/process_add_deal', urlencodedParser, (req, res) => {
 
   //call the async function
   insertDealAndEntity().catch(err => {
-        console.log("Deal and Entity problem: "+err);
+        console.log("Process Add Deal problem: "+err);
   })
 
   async function insertDealAndEntity() {
@@ -811,6 +824,7 @@ app.get('/setownership/:id', (req, res) => {
           console.log("\nIn SetOwn - got "+rows.length+" transactions for "+ entity.name+" \n");
                   // screen transaction and calculate ownership
           if(entity.ownership_status===0 && (rows.length >0) ) {
+                            // do we adjust own.adjutment here? should already be in the ownership rows
                                 var results = calc.calculateOwnership(rows);
                                 let ownershipRows = results[0]
                                 let totalCapital =  results[1]
@@ -824,7 +838,7 @@ app.get('/setownership/:id', (req, res) => {
                                         entityName: entity.name,
                                         investors: ownershipRows,
                                         totalCapital: calc.formatCurrency(totalCapital),
-                                        totalAdjOwnPct: Math.round((totalAdjOwnPct*1000)/1000).toFixed(4),
+                                        totalAdjOwnPct: ((totalAdjOwnPct*10000)/10000).toFixed(4),
                                         totalOwnPct: Math.round((totalOwnPct*1000)/1000).toFixed(4),
                                         postendpoint: '/process_set_ownership'
 
@@ -935,7 +949,12 @@ app.get('/add-transaction', (req, res) => {
 
         iraSQL.getEntitiesByTypes([1,3,4]).then(
               async function(entities) {
-                       dealsToPick = entities;
+                    dealsToPick  = entities.map(function(plank) {
+                            plank.name = plank.name.substring(0,30);
+                            return plank;
+                });
+
+
               }, function(error) {   //failed
                        console.log("Getting deals problem: "+error);
                        return;
@@ -956,9 +975,13 @@ app.get('/add-transaction', (req, res) => {
         // investor entities
         iraSQL.getEntitiesByTypes([4,2]).then(
               async function(entities) {
-                    investorsToPick  = entities;
-                    //console.log("rendering add-transaction");
-                    res.render('add-transaction', {
+
+                  var investorsToPick   = entities.map(function(plank) {
+                              plank.name = plank.name.substring(0,30);
+                              return plank;
+                  });
+
+                  res.render('add-transaction', {
                             userObj: userObj,
                             postendpoint: '/process_add_transaction',
                             typeOptions: transactionTypesToPick,
@@ -992,7 +1015,6 @@ app.post('/process_add_transaction', urlencodedParser, (req, res) => {
                console.log("Process_add_transaction problem: "+error);
                return;
           }
-
     ); //try-catch
 }); //route
 
@@ -1050,30 +1072,40 @@ app.get('/updateentity/:id', (req, res) => {
                  userObj = req.session.passport.user;
     }
     //call the async function
-    pullDealDetails().catch(err => {
+    pullEntityDetails().catch(err => {
           console.log("Pull Deal Details problem: "+err);
     })
 
-    async function pullDealDetails() {
+    async function pullEntityDetails() {
           var entity = await iraSQL.getEntityById(req.params.id);
           console.log("have Entity   "+ JSON.stringify(entity));
-         let totalPortfolioValue = 0.00
+
          let results = await calc.totalupInvestorPortfolio(entity.id)
          let portfolioDeals = results[0]
+         let showImpliedValue = 0
 
-         if (portfolioDeals.length >0 ) {
-                    totalPortfolioValue =  results[2]
-        } else { //no ownership data
-                      console.log("No investments for  "+ entity.name);
+         //if its a deal, get it from the entity
+         if(entity.type ===1) {
+                  showImpliedValue = entity.implied_value
 
-        } //if ownership
+         } else {
+                //in InvEnt, get it from Portfolio
+                   if (portfolioDeals.length >0 ) {
+                              showImpliedValue =  results[2] //totalPortfolioValue
+                  } else { //no ownership data
+                              console.log("No investments for  "+ entity.name);
+                  } //if ownership
+
+         }
+
+
 
           res.render('update-entity', {
                 userObj: userObj,
                 message: "Updating Entity: " + entity.name,
                 entity: entity,
-                impliedValue: totalPortfolioValue,
-                formattedImpliedValue: calc.formatCurrency(totalPortfolioValue),
+                impliedValue: showImpliedValue,
+                formattedImpliedValue: calc.formatCurrency(showImpliedValue),
                 postendpoint: '/process_update_entity'
           }); //  render
 
