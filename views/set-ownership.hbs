@@ -40,12 +40,12 @@
  <table width = "100%" border = 0>
    <colgroup>
        <col width="5%"/>
+       <col width="15%"/>
+       <col width="15%"/>
+       <col width="15%"/>
+       <col width="15%"/>
+       <col width="15%"/>
        <col width="20%"/>
-       <col width="15%"/>
-       <col width="15%"/>
-       <col width="20%"/>
-       <col width="15%"/>
-       <col width="10%"/>
    </colgroup>
 
 <tr>
@@ -72,27 +72,26 @@
  w3-rightbar w3-border-blue w3-margin-right w3-margin-left">
 
   <table width = "100%" border = 0>
-        <colgroup>
+    <colgroup>
         <col width="5%"/>
+        <col width="15%"/>
+        <col width="15%"/>
+        <col width="15%"/>
+        <col width="15%"/>
+        <col width="15%"/>
         <col width="20%"/>
-        <col width="15%"/>
-        <col width="15%"/>
-        <col width="20%"/>
-        <col width="15%"/>
-        <col width="10%"/>
-        </colgroup>
+    </colgroup>
 
 
 
       <tr>
           <td align="center">{{id}}</td>
-          <td align="center"><b>{{investor_name}}</b></td>
+          <td align="left"><b>{{investor_name}}</b></td>
           <td align="center"> {{passthru_name}} </td>
           <td align="center">{{tt_name}}</td>
-          <td align="center"></td>
           <td align="center">
                {{#ifEqual t_own_adj 0}}
-                        {{#ifLessThan amount 0}}
+                        {{#ifLessThan t_amount 0}}
                             <font color = "red">
                                    {{formattedAmount}}
                             </font>

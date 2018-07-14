@@ -4,6 +4,8 @@
 const hbs = require('hbs');
 const iraSQL =  require('./ira-model');
 const j2csvParser = require('json2csv').parse;
+let logIndent = 0
+const indentChar = "___"
 
 module.exports = {
   formatCurrency:formatCurrency,
@@ -21,46 +23,81 @@ module.exports = {
 }
 
 
-//returns implied_value
+// Iterative function - writes to Log
 async function updateValueofInvestorsUpstream (entity_id) {
-    try {
+            let outputLog = [] //should be shareable
+            try {
                let updatedEntity = await iraSQL.getEntityById(entity_id);
-               console.log("======== NOW STARTING UPSTREAM UPDATE for "+updatedEntity.name+"\n")
-               let outputLog = []
-               // why in recusrion not getting investors
+               console.log("======== NOW STARTING UPDATE CYCLE for "+updatedEntity.name+"\n")
+               outputLog.push({entry:(indentChar.repeat(logIndent))+" === STARTING UPDATE CYCLE for "+updatedEntity.name+" ==="});
+
+               //this is for showing contributions
+               if (updatedEntity.type != 1) {  //if not a deal
+                        let results = await calcInvEntityImpliedValue(updatedEntity.id);
+                        let newImpliedValue = results[0];
+                        outputLog.push({entry: (indentChar.repeat(logIndent))+" updated entity Equity Value is: "+formatCurrency(newImpliedValue) })
+                        console.log("NewImpliedValue in calc/Upstream Results is  "+newImpliedValue);
+                        let portfolioDeals = results[1];
+                        //console.log("Showing value contributions for "+investors[i].investor_name + " here are the PortfolioDeals "+JSON.stringify(portfolioDeals,null,4))
+
+                        //if you have investments/contributors to the EV
+                        logIndent +=2
+                        if (isIterable(portfolioDeals)) {
+                        // show components of entity value
+                                for (let deal of portfolioDeals) {
+                                     outputLog.push({entry: (indentChar.repeat(logIndent))+" "+formatCurrency(deal.investor_equity_value)+ "  from a "+deal.capital_pct.toFixed(2)+"% interest in "+deal.investment_name })
+                                 }
+
+                         } else {
+                              console.log("portfolioDeals not Iterable");
+                         }
+                         logIndent -=2
+
+                 } else {
+                      // LAME ! - if its not a deal, then you assume the entity already has it.
+                      outputLog.push({entry:(indentChar.repeat(logIndent))+" updated deal Equity Value is:  "+formatCurrency(updatedEntity.implied_value) })
+                 } //if not a deal
+
+               console.log("= OK checking upstream for "+updatedEntity.name+"\n")
                let investors = await iraSQL.getOwnershipForEntityUpstreamUpdate(updatedEntity.id)
                console.log("In calc/UpdateUpstream, got "+investors.length+ " investors: "+JSON.stringify(investors,null,4)+"\n");
                //outputLog.push({entry:"Updating Upstream Investors for : "+updatedEntity.name+"\n"})
-               outputLog.push({entry:"STARTING UPDATE CYCLE for "+updatedEntity.name+" using new Equity Value of "+formatCurrency(updatedEntity.implied_value)+"\n"})
-               outputLog.push({entry:"    Looking at "+investors.length+" investors for "+updatedEntity.name+"\n"})
+               //outputLog.push({entry:"    Looking at "+investors.length+" investors for "+updatedEntity.name+"\n"})
+               outputLog.push({entry:(indentChar.repeat(logIndent))+" Checking upstream investors for "+updatedEntity.name+ "..."})
                for (var i in investors) {
-                      outputLog.push({entry:investors[i].investor_name+" is an "+investors[i].investor_type_name+" ("+investors[i].investor_type_num+ ") with "+investors[i].capital_pct+"% \n"})
-
+                      //outputLog.push({entry:investors[i].investor_name+" is an "+investors[i].investor_type_name+" ("+investors[i].investor_type_num+ ") with "+investors[i].capital_pct+"% \n"})
                       if(investors[i].investor_type_num === 4) { //entity Investor
-                                outputLog.push({entry:"Portfolio values for "+investors[i].investor_name + " need to by updated by: "})
-                                outputLog.push({entry:"(1) Re-calulating Equity Value and (2) Updating Upstream Investors"})
-                                console.log(investors[i].investor_name + " is an Entity Investor, so calulating Implied Entity Vlaue ")
-                                let newImpliedValue = await calcInvEntityImpliedValue(investors[i].investor_id);
-                                console.log("DONE --> with new ImpliedValue for  "+investors[i].investor_name+ " is "+formatCurrency(newImpliedValue)+"\n");
+                                logIndent+=2;
+                                outputLog.push({entry:(indentChar.repeat(logIndent))+" "+investors[i].investor_name+" being updated because of its interest in "+investors[i].investment_name})
+                                //outputLog.push({entry:"(1) Re-calulating Equity Value and (2) Updating Upstream Investors"})
+                                //console.log(investors[i].investor_name + " is an Entity Investor, so calulating Implied Entity Vlaue ")
+
+                                let results = await calcInvEntityImpliedValue(investors[i].investor_id);
+                                let newImpliedValue = results[0];
+                                console.log("DONE --> with new ImpliedValue (no contribs) for  "+investors[i].investor_name+ " is "+formatCurrency(newImpliedValue)+"\n");
                                 //let oldEIEntity = await iraSQL.getEntityById(investors[i].id);
                                 let updatedEIEntity = {
                                       implied_value: newImpliedValue,
                                       id: investors[i].investor_id
                                 }
-                                //console.log( "\nin Upstream, updating entity Implied Value: "+JSON.stringify(updatedEIEntity));
+                                console.log( "\nin Upstream, HERE Updating entity Implied Value: "+JSON.stringify(updatedEIEntity));
+                                //update the entity
                                 var updateEntityResults = await iraSQL.updateEntityImpliedValue(updatedEIEntity);
+
                                 //outputLog.push({entry:investors[i].investor_name + " new Entity Value is "+formatCurrency(newImpliedValue)+"\n"})
                                 //outputLog.push({entry:"========================now going upstream to update investors====\n"})
+                                logIndent+=2
                                 let newoutputLog = await updateValueofInvestorsUpstream (investors[i].investor_id); //RECURSIVE CALL
                                 outputLog.push(...newoutputLog);
+                                logIndent-=4
                       }
-                      //outputLog.push({entry:"                             >------  done with "+investors[i].investor_name})
+
                       console.log( "\n ======== in Upstream for "+updatedEntity.name+" done with "+investors[i].investor_name+"\n")
 
                       //outputLog.push.apply(outputLog, newoutputLog)
                } //for each investor
-
-
+                  outputLog.push({entry:(indentChar.repeat(logIndent))+" === DONE UPDATE CYCLE for "+updatedEntity.name+" ==="})
+                  outputLog.push({entry:(indentChar.repeat(logIndent))+"  "});
 
                //console.log("Output Log: "+outputLog.toString()+"\n")
                return outputLog
@@ -70,6 +107,15 @@ async function updateValueofInvestorsUpstream (entity_id) {
               console.log("Err: Problem in updateUpstream : "+err);
               return "No ownership found."
     }
+
+
+
+
+
+
+
+
+
 } //function
 
 
@@ -87,14 +133,16 @@ async function calcInvEntityImpliedValue (entity_id) {
               console.log("In Calc-ImpliedVal, found "+portfolioDeals.length+" investments for total PortValue of "+results[2])
               if (portfolioDeals.length >0 ) {  //there are investments for this ent.
                          totalPortfolioValue =  results[2]
+                         return [totalPortfolioValue, portfolioDeals];
                 } else { //if no deals
-                        console.log("No investments for  "+ entity_id);
+                        console.log("Its a Deal, so no investments for  "+ entity_id);
+                        return [totalPortfolioValue, null];
                } //if ownership
-               return totalPortfolioValue;
+
 
     } catch (err) {
               console.log("Err: calcInvEntityImpliedValue : "+err);
-              return 0.00
+              return [0.00, null]
     }
 } //function
 
@@ -122,6 +170,7 @@ async function totalupInvestorPortfolio (entity_id) {
                              expandDeal = calculateDeal(deal[0])
               } else {
                       let investmentEntity = await iraSQL.getEntityById(investments[index].investment_id)
+                      console.log("Going from Own to Entity, the entity is: "+JSON.stringify(investmentEntity,null,4))
                       console.log("Because "+investments[index].investment_name+" is not a DEAL, went to Entity to get "+formatCurrency(investmentEntity.implied_value));
                       // if its an ENTITY - not a deal -- do it here
                       //if you want to get fancy, calculate implied_value on th fly here
@@ -176,7 +225,7 @@ async function totalupInvestorPortfolio (entity_id) {
 
                      //console.log("IN validate ownership: "+ index +" lastname: "+expandInvestors[index].investor_name+" amount: "+expandInvestors[index].formattedAmount+" cap_pct: "+expandInvestors[index].capital_pct)
               }//for
-              console.log("\n Portfolio for "+foundInvestor.name+" is DONE, Value is "+formatCurrency(totalPortfolioValue));
+              console.log("\nPortfolio for "+foundInvestor.name+" is ready - in TUI - implied Ent Value is "+formatCurrency(totalPortfolioValue));
               return [portfolioDeals, totalInvestmentValue, totalPortfolioValue, totalDistributions];
 
             }  else {  //if no investors
@@ -435,7 +484,13 @@ function totalupInvestors (investors) {
 
 
 
-
+    function isIterable(obj) {
+      // checks for null and undefined
+      if (obj == null) {
+        return false;
+      }
+      return typeof obj[Symbol.iterator] === 'function';
+    }
 
 
 

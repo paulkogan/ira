@@ -30,41 +30,70 @@
   <table width = "100%" border = 0>
         <colgroup>
         <col width="5%"/>
+        <col width="30%"/>
+        <col width="10%"/>
+        <col width="5%"/>
+        <col width="15%"/>
+        <col width="15%"/>
         <col width="20%"/>
-        <col width="15%"/>
-        <col width="15%"/>
-        <col width="10%"/>
-        <col width="10%"/>
-        <col width="10%"/>
         </colgroup>
 
 
       <tr>
           <td align="center">{{id}}</td>
-          <td align="left"><b>{{name}}</b></td>
-
-          <td >{{taxid}}</td>
-          <td >{{formatted_implied_value}}</td>
+          <td align="left"><b>{{short_name}}</b></td>
 
           <td>
                      {{entity_type}}
           </td>
 
           <td align="left">
+            {{#ifEqual e_type_num 2}}
+
+            {{else}}
+                    {{#ifEqual e_type_num 3}}
+
+                    {{else}}
+
+
+
+                    {{/ifEqual}}
+            {{/ifEqual}}
+
+          </td>
+
+
+
+          <td align="left">
+            {{#ifEqual e_type_num 1}}
+                <a href = "/dealdetails/{{id}}">Deal Details</a>
+            {{/ifEqual}}
             {{#ifEqual e_type_num 3}}
-                <a href = "/ownership/{{id}}">Entity Details</a>
+                <a href = "/ownership/{{id}}">Ownership</a>
             {{/ifEqual}}
             {{#ifEqual e_type_num 4}}
-                <a href = "/ownership/{{id}}">Entity Details</a>
+                <a href = "/ownership/{{id}}">Ownership</a>
+            {{/ifEqual}}
+          </td>
+
+          <td align="left">
+            {{#ifEqual e_type_num 2}}
+                <a href = "/portfolio/{{id}}">Portfolio</a>
+            {{/ifEqual}}
+            {{#ifEqual e_type_num 4}}
+                <a href = "/portfolio/{{id}}">Portfolio</a>
             {{/ifEqual}}
           </td>
 
 
-          <td align="left">
 
-                  <a href = "/updateentity/{{id}}">
-                      Update
-                  </a>
+
+          <td align="left">
+                  {{#ifEqual e_type_num 1}}
+                      <a href = "/updatedeal/{{id}}">Update Deal</a>
+                  {{else}}
+                      <a href = "/updateentity/{{id}}">Update Entity</a>
+                  {{/ifEqual}}
           </td>
 
       </tr>

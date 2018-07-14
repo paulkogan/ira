@@ -30,7 +30,7 @@
 
 <input type="hidden" value="{{entity.id}}" name="id" />
 <input type="hidden" value="{{entity.ownership_status}}" name="ownership_status" />
-<input type="hidden" value="{{impliedValue}}" name="impliedValue" />
+<input type="hidden" value="{{entity.implied_value}}" name="implied_value" />
 
 <table width = "100%" border = 0>
       <colgroup>
@@ -45,7 +45,7 @@
 
 <tr>
     	<td align="right">
-        <b>Entity Name:&nbsp;</b>
+        Entity Name:&nbsp;
     	</td>
       <td align="left" colspan="2">
     	<input type = "text" size = "30"  name = "name" value="{{entity.name}}"><br>
@@ -66,30 +66,8 @@
 
 
 <tr>
-        <td><br></td>
         <td></td>
-</tr>
-
-
-<tr>
-    	<td align="right">Implied Entity Value: </td>
-
-      <td align="left">
-              {{formattedImpliedValue}}
-      </td>
-
-        <td>
-            {{#ifEqual entity.type 1}}
-
-            {{else}}
-                  <a href = "/portfolio/{{entity.id}}">Review Portfolio</a>
-            {{/ifEqual}}
-          </td>
-
-        <td>{{entity.type}}</td>
-</tr>
-
-<tr>
+        <td><a href = "/ownership/{{entity.id}}">Ownership Info</a></td>
         <td></td>
         <td></td>
 </tr>
@@ -98,10 +76,15 @@
 
 
 
-<a href = "/ownership/{{id}}">Entity Details</a>
+
+
+
+
 
 <tr>
-  <td style="min-height:60px;">&nbsp;</td>
+  <td>&nbsp;</td>
+  <td></td>
+  <td></td>
   <td></td>
 </tr>
 
@@ -111,10 +94,10 @@
 <tr>
     	<td></td>
       <td></td>
-      <td></td>
       <td align="right">
          <input type = "submit" value = "Submit">
       </td>
+      <td></td>
 <tr>
 </form>
 </table>

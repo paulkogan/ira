@@ -1,13 +1,19 @@
 <div class="w3-panel w3-pale-blue w3-leftbar
  w3-rightbar w3-topbar w3-border-blue w3-margin-right w3-margin-left">
-<table width = "100%" border = 0 >
 
+
+<table width = "100%" border = 0 >
 <tr>
 <td align="center">
-  <img width="45" src = "../static/GP_Prop_logo_1.png">
+  <img width="75" src = "../static/GP_Prop_logo_1.png">
 </td>
+
+
 <td>
-    <font family = 'courier' size='5'><b>IRA</b> - Home</font>&emsp;v.{{iraVersion}}
+<table width = "100%" border = 0 >
+<tr>
+<td>
+    &nbsp;<font family = 'courier' size='6'><b>IRA</b> - Home</font>&emsp;
 </td>
 
 <td align = "right">
@@ -16,18 +22,20 @@
 </tr>
 
 <tr>
-<td align = "left"></td>
-<td></td>
+
+<td>&nbsp;v.{{iraVersion}}</td>
 <td align = "right"></td>
 </tr>
 
 <tr>
+    <td align = "left">&nbsp;{{message}}</td>
     <td>
-        {{message}}
-    </td>
-    <td></td>
-    <td></td>
 
+    </td>
+
+</tr>
+</table>
+</td>
 </tr>
 </table>
 </div>

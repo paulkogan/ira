@@ -23,14 +23,24 @@ nconf
   .argv()
   // 2. Environment variables
   .env([
-    'DATA_BACKEND',
-    'GCLOUD_PROJECT',
-    'INSTANCE_CONNECTION_NAME',
-    'MYSQL_USER',
-    'MYSQL_PASSWORD',
+    'DEV_ENDPOINT',
+    'DEV_DBNAME',
+    'DEV_USER',
+    'DEV_PASSWORD',
+    'PROD_ENDPOINT',
+    'PROD_DBNAME',
+    'PROD_USER',
+    'PROD_PASSWORD',
     'NODE_ENV',
-    'PORT'
+    'PORT',
+    'DATA_BACKEND',
+    'GCLOUD_PROJECT'
   ])
+
+  /* user: deployConfig.get('MYSQL_USER'),
+  password: deployConfig.get('MYSQL_PASSWORD'),
+  host: deployConfig.get('MYSQL_ENDPOINT'),
+  database: deployConfig.get('MYSQL_DBNAME'),*/
 
 
   // 3. Config file
@@ -38,22 +48,21 @@ nconf
   // 4. Defaults
   .defaults({
 
-
   });
 
 // Check for required settings
-checkConfig('GCLOUD_PROJECT');
+checkConfig('NODE_ENV');
+console.log("in ira-config, the endpoint is "+nconf.get('DEV_ENDPOINT'))
 
-if (nconf.get('DATA_BACKEND') === 'cloudsql') {
-  checkConfig('MYSQL_USER');
-  checkConfig('MYSQL_PASSWORD');
+  if (nconf.get('NODE_ENV') === 'dev') {
+    checkConfig('DEV_ENDPOINT');
+    checkConfig('DEV_USER');
+    checkConfig('DEV_PASSWORD');
+    checkConfig('DEV_DBNAME');
 
-}
 
-  if (nconf.get('NODE_ENV') === 'production') {
-    checkConfig('INSTANCE_CONNECTION_NAME');
+
   }
-
 
 function checkConfig (setting) {
   if (!nconf.get(setting)) {

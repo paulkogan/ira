@@ -96,6 +96,7 @@ router.get('/entities', (req, res) => {
 
                           var expandEntities = entities.map((ent) => {
                                       ent.formatted_implied_value = calc.formatCurrency(ent.implied_value);
+                                      ent.short_name = ent.name.substring(0,30);
                                       return ent
                           });
 
@@ -217,11 +218,13 @@ router.get('/commitments', (req, res) => {
 
 
       let reportMenuOptions = []
-      reportMenuOptions[0] = {name:"Investors", link:"/investors"}
-      reportMenuOptions[1] = {name:"Deals", link:"/deals"}
+      reportMenuOptions[0] = {name:"All Entities", link:"/entities"}
+      reportMenuOptions[1] = {name:"Transactions with Filter", link:"/transactions"}
+      reportMenuOptions[2] = {name:"Investors", link:"/investors"}
+      reportMenuOptions[3] = {name:"Deals", link:"/deals"}
       //reportMenuOptions[2] = {name:"Commitments", link:"/commitments"}
-      reportMenuOptions[2] = {name:"All Transactions", link:"/transactions"}
-      reportMenuOptions[3] = {name:"All Entities", link:"/entities"}
+
+
 
 
       let adminMenuOptions = []

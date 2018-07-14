@@ -1,26 +1,47 @@
 
 'use strict';
 
-//const extend = require('lodash').assign;
+const extend = require('lodash').assign;
 const mysql = require('mysql');
-const env = 'ebawsira'
+const nconf = require('nconf');
+const deployConfig = require('./ira-config');
+//const bcrypt = require('bcrypt');
+
+//CHANGE ENV HERE
+const env = 'ebawsira-dev'
 
 let options = {};
 
-if (env === 'ebawsira') {
+// console.log("in ira-model, the endpoint is "+nconf.get('DEV_ENDPOINT'))
+// console.log("in ira-model, the dbuser is "+nconf.get('DEV_USER'))
+// console.log("in ira-model, the password is "+nconf.get('DEV_PASSWORD'))
+// console.log("in ira-model, the DBname is "+nconf.get('DEV_DBNAME'))
+
+
+if (env === 'ebawsira-dev') {
         options = {
-          user: 'iraadmin',
-          password: '',
-          //host: 'restored-iradb-0708.cdlgrjtshtb6.us-east-2.rds.amazonaws.com',
-          host: 'iradb-02-2018.cdlgrjtshtb6.us-east-2.rds.amazonaws.com',
-          database: 'iradb',
+          user: deployConfig.get('DEV_USER'),
+          password: deployConfig.get('DEV_PASSWORD'),
+          host: deployConfig.get('DEV_ENDPOINT'),
+          database: deployConfig.get('DEV_DBNAME'),
           port: 3306,
           multipleStatements: true
         };
 }
 
 
-//  options.socketPath = `/cloudsql/${config.get('INSTANCE_CONNECTION_NAME')}`;
+
+if (env === 'ebawsira-prod') {
+        options = {
+          user: deployConfig.get('PROD_USER'),
+          password: deployConfig.get('PROD_PASSWORD'),
+          host: deployConfig.get('PROD_ENDPOINT'),
+          database: deployConfig.get('PROD_DBNAME'),
+          port: 3306,
+          multipleStatements: true
+        };
+}
+
 
 const connection = mysql.createConnection(options);
 
@@ -397,7 +418,7 @@ function getOwnershipForEntityUpstreamUpdate (child_id) {
   + ' JOIN entities as investment ON investment.id = o.child_entity_id'
   + ' JOIN entities as investor ON investor.id = o.parent_entity_id'
   + ' JOIN entity_types as etypes ON etypes.type_num = investor.type'
-  + ' WHERE o.child_entity_id ='+child_id+' ORDER BY amount DESC';
+  + ' WHERE o.child_entity_id ='+child_id+' ORDER BY amount ASC';
 
       return new Promise(function(succeed, fail) {
             connection.query(queryString,

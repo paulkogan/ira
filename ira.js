@@ -26,7 +26,7 @@ const nodePort = 8081
 //var router = express.Router();  then call router.post('/')
 
 
-const iraVersion = "0.17  +v.1 of recursive implied value calculation"
+const iraVersion = "0.17.4  +recursive EI equity value + evie from set ownership +new menus"
 
   app.set('trust proxy', true);
   app.use(flash());
@@ -545,11 +545,10 @@ app.post('/process_update_deal', urlencodedParser, (req, res) => {
             //req.flash('login', "In deals, added entity #: "+insertEntityResults.insertId);
 
             let outputLog = await calc.updateValueofInvestorsUpstream (newDealEntity.id);
-            console.log("Output Log on catch side is: "+outputLog.toString()+"\n")
+            //console.log("Output Log on catch side is: "+outputLog.toString()+"\n")
             res.render('show-results', {
                   userObj: userObj,
-                  message: "Updated Deal: " + updatedDeal.name,
-                  deal: updatedDeal,
+                  message: "Deal Update Transaction",
                   entity: newDealEntity,
                   logEntries: outputLog
             }); //  render
@@ -732,18 +731,37 @@ app.post('/process_set_ownership', urlencodedParser, (req, res) => {
                     } //l loop, in case there are multiple trans
             } //for loop k, for each ownership row
 
-          //change entity status
+
           let entityWithOwnership =  await iraSQL.getEntityById(ownEntityId)
+          //change entity status
           entityWithOwnership.ownership_status = 1;
-          console.log("\nWant to update Entity Ownership status for "+JSON.stringify(entityWithOwnership)+"\n");
 
-          //entityWithOwnership.taxid = "EIN 444-7777";
+          //fingure out new Entity EV
+          let newImpliedValue = 0
+          if (entityWithOwnership.type != 1) { //not a deal get it from Portfolio
+                   let results = await calc.calcInvEntityImpliedValue(ownEntityId);
+                   newImpliedValue = results[0];
+          } else {   //its a deal, get it from Equity Value
+                  var deals = await iraSQL.getDealById(entityWithOwnership.deal_id);
+                  newImpliedValue = Number(deals[0].aggregate_value)+Number(deals[0].cash_assets)-Number(deals[0].deal_debt)-Number(deals[0].aggregate_debt);
+                  console.log("---getting EV from a deal, got "+newImpliedValue+"and Deal "+JSON.stringify(deals[0],null,4));
+          }
+          entityWithOwnership.implied_value = newImpliedValue;
+
+          console.log("\nUpdating Entity with implied_value and new Ownership status for "+JSON.stringify(entityWithOwnership)+"\n");
           var updateEntityResults = await iraSQL.updateEntity(entityWithOwnership);
-          //console.log("\nUpdated Ownership Status, here results: "+updateEntityResults+"\n\n")
-          res.redirect('/setownership');
+          console.log("\nUpdated Ownership Status, here results: "+updateEntityResults+"\n\n")
 
+          //let outputLog = [{entry: "EV is "+newImpliedValue}]
 
-
+          let outputLog = await calc.updateValueofInvestorsUpstream (ownEntityId);
+          //console.log("Output Log on catch side is: "+outputLog.toString()+"\n")
+          res.render('show-results', {
+                userObj: userObj,
+                message: "Set Ownership Transaction",
+                entity: entityWithOwnership,
+                logEntries: outputLog
+          }); //  render
 
 
     } //async function
@@ -1080,32 +1098,13 @@ app.get('/updateentity/:id', (req, res) => {
           var entity = await iraSQL.getEntityById(req.params.id);
           console.log("have Entity   "+ JSON.stringify(entity));
 
-         let results = await calc.totalupInvestorPortfolio(entity.id)
-         let portfolioDeals = results[0]
-         let showImpliedValue = 0
-
-         //if its a deal, get it from the entity
-         if(entity.type ===1) {
-                  showImpliedValue = entity.implied_value
-
-         } else {
-                //in InvEnt, get it from Portfolio
-                   if (portfolioDeals.length >0 ) {
-                              showImpliedValue =  results[2] //totalPortfolioValue
-                  } else { //no ownership data
-                              console.log("No investments for  "+ entity.name);
-                  } //if ownership
-
-         }
-
-
 
           res.render('update-entity', {
                 userObj: userObj,
                 message: "Updating Entity: " + entity.name,
                 entity: entity,
-                impliedValue: showImpliedValue,
-                formattedImpliedValue: calc.formatCurrency(showImpliedValue),
+                impliedValue: entity.implied_value,
+                formattedImpliedValue: calc.formatCurrency(entity.implied_value),
                 postendpoint: '/process_update_entity'
           }); //  render
 
