@@ -7,57 +7,56 @@ const vm = require('vm')
 
 const express = require('express');
 const app = express();
+const calc =  require('./ira-calc');
+const iraSQL =  require('./ira-model');
+const menus = require('./ira-menus');
+
 const bodyParser = require('body-parser');
 const urlencodedParser = bodyParser.urlencoded({ extended: false })
-
-//all the auth stuff
 const flash             = require('connect-flash-plus');
-const crypto            = require('crypto');
+const nodePort = 8081
+//const crypto            = require('crypto');
+//const bcrypt = require('bcrypt');
+
 const passport          = require('passport');
 const LocalStrategy     = require('passport-local').Strategy;
-
 const cookieParser = require('cookie-parser')
 const session = require('express-session')
 const RedisStore = require('connect-redis')(session)
-//const bcrypt = require('bcrypt');
 const secret = "cat"
 
-const nodePort = 8081
-//var router = express.Router();  then call router.post('/')
+
+const iraVersion = "0.18.2  +Auth +Entity Investor Equity Value"
 
 
-const iraVersion = "0.17.4  +recursive EI equity value + evie from set ownership +new menus"
-
-  app.set('trust proxy', true);
-  app.use(flash());
-  app.use(cookieParser(secret));
-  app.use(bodyParser.urlencoded({extended: true}))
-  app.use(bodyParser.json());
-  app.use(function(req, res, next) {
-        res.header("Access-Control-Allow-Origin", "*");
-        res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
-        next();
-  });
-
-  const calc =  require('./ira-calc');
-  const iraSQL =  require('./ira-model');
-  const menus = require('./ira-menus.js');
-  //require('./ira-menus')(app); //other approach
-  app.use(menus)
+app.use(cookieParser(secret));
+app.use(bodyParser.urlencoded({extended: true}))
+app.use(bodyParser.json());
+app.use(session({
+    cookieName: 'irasess',
+    secret: secret,
+    resave: true,
+    //store: RedisStore,
+    saveUninitialized: true,
+    cookie : { httpOnly: true, expires: 60*60*1000 }
+}));
 
 
-  app.use(session({
-      cookieName: 'irasess',
-      secret: secret,
-      resave: true,
-      //store: RedisStore,
-      saveUninitialized: true,
-      cookie : { httpOnly: true, expires: 60*60*1000 }
-  }));
-  app.use(passport.initialize());
-  app.use(passport.session());
-  app.use(passport.authenticate('session'));
-;
+app.use(passport.initialize());
+app.use(passport.session());
+app.use(passport.authenticate('session'));
+
+
+// consider adding alogger
+//app.use(express.logger('dev'));
+
+//to allow API access from React
+app.use(function(req, res, next) {
+      res.header("Access-Control-Allow-Origin", "*");
+      res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+      next();
+});
+app.set('trust proxy', true);
 
 
 app.set('view engine', 'hbs');
@@ -76,26 +75,21 @@ let userObj =
   "access":0
 }
 
-// Start the server
+  app.use(flash());
+//routes last
+  app.use(menus) //for extra routing
+
+
+// ========START THE SERVER ==============================
+
 const server = app.listen(nodePort, function() {
   console.log('IRA listening on port  ' + nodePort);
 });
 
 
-function shutDownServer() {
-     server.close();
-     console.log("server is winding down... but terminal pro cess still up\n");
-
-}
-
-module.exports = {
-      app,
-      shutDownServer
-}
-
+module.exports = app;
+module.exports = checkAuthentication;
 exports.version = iraVersion;
-//exports.nodeServer = server;
-
 
 
 
@@ -103,7 +97,103 @@ exports.version = iraVersion;
 
 
 
-app.get('/deletetransaction/:id', (req, res) => {
+app.get('/add-transaction', checkAuthentication, (req, res) => {
+        if (req.session && req.session.passport) {
+           userObj = req.session.passport.user;
+        }
+
+       //this is what we'll pass to the page to use in pulldowns
+       let transactionTypesToPick = []
+       let dealsToPick = []
+       let passthrusToPick = []
+       let investorsToPick = []
+
+        iraSQL.getTransactionTypes().then(
+              async function(transactiontypes) {
+                        transactionTypesToPick = transactiontypes;
+              }, function(error) {   //failed
+                        console.log("Getting deals problem: "+error);
+                        return;
+              } //try-catch
+           );
+
+
+        //deals
+
+        iraSQL.getEntitiesByTypes([1,3,4]).then(
+              async function(entities) {
+                    dealsToPick  = entities.map(function(plank) {
+                            plank.name = plank.name.substring(0,30);
+                            return plank;
+                });
+
+
+              }, function(error) {   //failed
+                       console.log("Getting deals problem: "+error);
+                       return;
+              } //try-catch
+          );//getallEnties then
+
+        //pass-thrus
+        iraSQL.getEntitiesByTypes([3]).then(
+              async function(entities) {
+                      passthrusToPick = entities;
+                  }, function(error) {   //failed
+                       console.log("Getting passthrus problem: "+error);
+                       return;
+                } //try-catch
+              )//getallEnties then
+
+
+        // investor entities
+        iraSQL.getEntitiesByTypes([4,2]).then(
+              async function(entities) {
+
+                  var investorsToPick   = entities.map(function(plank) {
+                              plank.name = plank.name.substring(0,30);
+                              return plank;
+                  });
+
+                  res.render('add-transaction', {
+                            userObj: userObj,
+                            postendpoint: '/process_add_transaction',
+                            typeOptions: transactionTypesToPick,
+                            deals: dealsToPick,
+                            investors: investorsToPick,
+                            passthrus: passthrusToPick
+                    });//render
+              }, function(error) {   //failed
+                    console.log("Getting entities problem: "+error);
+                    return;
+             } //try-catch
+     )//getallEnties then
+
+}); //route add transactions
+
+
+// insert the new transaction
+app.post('/process_add_transaction', urlencodedParser, (req, res) => {
+    let transaction = req.body
+    transaction.amount = calc.parseFormAmountInput(transaction.amount)
+    transaction.own_adj = parseFloat(transaction.own_adj)
+    if ((transaction.trans_type==3 || transaction.trans_type==6) && transaction.amount>0) transaction.amount*=-1
+    console.log("\nAbout to insert new transaction with "+JSON.stringify(transaction)+"\n");
+    iraSQL.insertTransaction(transaction).then (
+        function (savedData) {
+            //console.log( "Added entity #: "+savedData.insertId);
+            req.flash('login', "Added transaction no. "+savedData.insertId);
+            console.log("\nAdded transaction no. "+savedData.insertId);
+            res.redirect('/transactions');
+          }, function(error) {   //failed
+               console.log("Process_add_transaction problem: "+error);
+               return;
+          }
+    ); //try-catch
+}); //route
+
+
+
+app.get('/deletetransaction/:id', checkAuthentication, (req, res) => {
     if (req.session && req.session.passport) {
        userObj = req.session.passport.user;
      }
@@ -127,7 +217,7 @@ app.get('/deletetransaction/:id', (req, res) => {
                     res.redirect('/home/');
               }
 
-              //dont want to do this with Promises because any kind of error also generates a fail, where we would delete
+              //Is this transaction part of Ownership
               let foundOwnTrans = await iraSQL.getOwnTransByTransID(foundTransaction[0].id);
               if (foundOwnTrans) {
                         console.log("NO GO on Delete - In /deleteTransaction, got own_trans row: "+JSON.stringify(foundOwnTrans,null,4)+"\n\n");
@@ -141,471 +231,58 @@ app.get('/deletetransaction/:id', (req, res) => {
                         //  //+"results : "+JSON.stringify(results,null,6)+"\n");
                         req.flash('login', "Deleted transaction"+foundTransaction[0].id+".  ");
                         res.redirect('/transactions/');
-             } //if results
-     } //async function
-}); //route - delete transaction
+              } //if results
 
+   } //async function
+}) //route
 
 
-
-app.get('/api/searchentities/:term', (req, res, next) => {
-          api_searchEntities().catch(err => {
-                console.log("API search Entity problem: "+err);
-          })
-
-      async function api_searchEntities() {
-            try {
-
-                  var entList = await iraSQL.searchEntities (req.params.term);
-                  if (entList.length <1) {
-                              var entList = [{
-                                id:0,
-                                name: "Not found"
-                              }]
-
-                  }
-                  console.log("\nGot entities: "+JSON.stringify(entList,null,5));
-
-            } catch (err ){
-                  console.log(err+ " -- No entities for    "+ req.params.term);
-                  var entList = [{
-                    id:0,
-                    name: "Not found"
-                  }]
-
-            }
-
-
-            res.send(JSON.stringify(entList,null,3));
-
-    }; //async function
-
-}); //route
-
-app.get('/api/searchentities/', (req, res, next) => {
-
-          res.send("[]");
-}); //route
-
-
-
-
-app.get('/api/transforentity/:id', (req, res, next) => {
-          api_transactionsForEntity().catch(err => {
-                console.log("API trans for Entity problem: "+err);
-          })
-
-      async function api_transactionsForEntity() {
-            try {
-                  var entity = await iraSQL.getEntityById(req.params.id);
-                  console.log("have Entity   "+ JSON.stringify(entity));
-                  var transactions = await iraSQL.getTransactionsForInvestment(entity.id);
-                  console.log("\nGot transactions for entity  "+JSON.stringify(transactions,null,5));
-
-            } catch (err ){
-                  console.log(err+ " -- No entity for    "+ req.params.id);
-                  var transactions = await iraSQL.getAllTransactions();
-
-            }
-
-            var cleanTransactions = transactions.map(function(element) {
-                        let cleanTransaction = {
-                            id :element.id,
-                            investor_name :element.investor_name,
-                            investment_name :element.investment_name,
-                            passthru_name :element.passthru_name,
-                            tt_name :element.tt_name,
-                            t_wired_date :element.t_wired_date,
-                            formatted_amount :calc.formatCurrency(element.t_amount),
-                            t_own_adj :element.t_own_adj,
-                            t_notes :element.t_notes
-                        }
-                        //res.json(cleanTransaction)
-
-                        return cleanTransaction;
-            });
-            res.send(JSON.stringify(cleanTransactions,null,3));
-
-    }; //async function
-
-}); //route
-
-
-
-
-
-
-
-app.get('/download_csv/:id', (req, res) => {
-      downloadCSVTransactions().catch(err => {
-            console.log("DownloadTransactions problem: "+err);
-      })
-      let fileName = "file";
-      async function downloadCSVTransactions() {
-            try {
-                  var entity = await iraSQL.getEntityById(req.params.id);
-                  console.log("have Entity   "+ JSON.stringify(entity));
-                  var transactions = await iraSQL.getTransactionsForInvestment(entity.id);
-                  console.log("\nGot transactions for entity  "+JSON.stringify(transactions,null,5));
-                  fileName = entity.name+"_IRA_Transactions.csv"
-
-            } catch (err ){
-                  console.log(err+ " -- No entity for    "+ req.params.id);
-                  var transactions = await iraSQL.getAllTransactions();
-                  fileName = "All_IRA_Transactions.csv"
-                  var entity = {
-                    id:0,
-                    name: "Select filter"
-                  }
-            }
-
-            var cleanTransactions = transactions.map(function(element) {
-                        let cleanTransaction = {
-                            id :element.id,
-                            investor_name :element.investor_name,
-                            investment_name :element.investment_name,
-                            passthru_name :element.passthru_name,
-                            tt_name :element.tt_name,
-                            t_wired_date :element.t_wired_date,
-                            formatted_amount :calc.formatCurrency(element.t_amount),
-                            t_own_adj :element.t_own_adj,
-                            t_notes :element.t_notes
-                        }
-
-                        return cleanTransaction;
-            });
-
-
-                  let transCSV = await calc.createCSVforDownload(cleanTransactions);
-                  console.log("In ira, the CSV file is \n"+transCSV+"\n")
-
-                  res.setHeader('Content-disposition', 'attachment; filename='+fileName);
-                  res.set('Content-Type', 'text/csv');
-                  res.status(200).send(transCSV);
-
-    }; //async function
-
-}); //route
-
-
-app.get('/transactions/:id', (req, res) => {
-    if (req.session && req.session.passport) {
-                 userObj = req.session.passport.user;
-    }
-
-    //call the async function
-    showTransForEntity().catch(err => {
-          console.log("Show trandsactions for entity problem: "+err);
-    })
-
-    async function showTransForEntity() {
-          try {
-                var entity = await iraSQL.getEntityById(req.params.id);
-                console.log("have Entity   "+ JSON.stringify(entity));
-                var transactions = await iraSQL.getTransactionsForInvestment(entity.id);
-                console.log("\nGot transactions for entity  "+JSON.stringify(transactions,null,5));
-
-                //add delete flag to each
-                for (let j=0; j<transactions.length; j++) {
-
-                            transactions[j].formatted_amount = calc.formatCurrency(transactions[j].t_amount);
-                            let hasOwnTrans = await iraSQL.getOwnTransByTransID(transactions[j].id);
-                            transactions[j].can_delete = (hasOwnTrans ? false : true);
-                            console.log ("for "+transactions[j].id+" can delete is: "+transactions[j].can_delete)
-                            //return e;
-                };
-
-
-          } catch (err ){
-                console.log(err+ " -- No entity for    "+ req.params.id);
-                var transactions = await iraSQL.getAllTransactions();
-
-                for (let j=0; j<transactions.length; j++) {
-                            transactions[j].formatted_amount = calc.formatCurrency(transactions[j].t_amount);
-                            transactions[j].can_delete = false;
-                             //return e;
-                };
-
-
-                var entity = {
-                  id:0,
-                  name: "Select filter"
-                }
-          }
-
-
-
-
-          //shorten names to 30 chars for display in pulldown
-          var rawEntities = await iraSQL.getEntitiesByTypes([1,3,4]);
-
-          var entitiesForFilter = rawEntities.map(function(plank) {
-                      plank.name = plank.name.substring(0,30);
-                      return plank;
-          });
-          entity.name = entity.name.substring(0,30);
-
-          //console.log("\nGot "+entitiesForFilter.length+" entities for Filter ");
-
-
-          res.render('list-transactions', {
-                  userObj: userObj,
-                  sessioninfo: JSON.stringify(req.session),
-                  message: req.flash('login') + "  Showing "+transactions.length+" transactions",
-                  transactions: transactions,
-                  filterList: entitiesForFilter,
-                  selectedEntity: entity,
-                  postendpoint: '/process_transactions_filter'
-          });//render
-
-    } //async function
-}); //route - ownership
-
-
-//need this because we hit a submit button to send search
-app.post('/process_transactions_filter', urlencodedParser, (req, res) => {
-
-          if (req.session && req.session.passport) {
-             userObj = req.session.passport.user;
-           }
-
-           let filterEntity = req.body.filter_ent
-           console.log("\nGot Filter entity"+filterEntity)
-           res.redirect('/transactions/'+filterEntity);
-
-})
-
-
-
-
-
-
-
-
-app.get('/clearownership/:id', (req, res) => {
-    if (req.session && req.session.passport) {
-       userObj = req.session.passport.user;
-     }
-
-     clearOwnership().catch(err => {
-           console.log("Clear Ownership problem: "+err);
-           req.flash('login', "Problems getting Ownership info for entity no. "+req.params.id+".  ")
-           res.redirect('/home')
-     })
-
-     async function clearOwnership() {
-           let foundEntity = await iraSQL.getEntityById(req.params.id);
-           let ownershipRows = await iraSQL.getOwnershipForEntity(foundEntity.id);
-           console.log("In /clearownership/id, got "+ownershipRows.length+ " ownership rows: "+JSON.stringify(ownershipRows,null,4)+"\n\n");
-           let own_ids = [];
-           for (let i=0; i<ownershipRows.length; i++) {
-                own_ids[i] = ownershipRows[i].id
-           }
-
-           let results = await iraSQL.clearOwnershipForEntity(foundEntity.id,own_ids);
-           console.log("Cleared ownership for "+foundEntity.name+"\n");
-           //+"results : "+JSON.stringify(results,null,6)+"\n");
-           req.flash('login', "Cleared ownership for "+foundEntity.name+".  ");
-           res.redirect('/setownership/');
-
-     } //async function
-}); //route - ownership
-
-
-
-
-app.get('/portfolio/:id', (req, res) => {
-    if (req.session && req.session.passport) {
-       userObj = req.session.passport.user;
-     }
-
-     showInvestorPortfolio().catch(err => {
-           console.log("investor portfolio problem: "+err);
-           req.flash('login', "Problems getting Portfolio info for entity no. "+req.params.id+".  ")
-           res.redirect('/home')
-     })
-
-     async function showInvestorPortfolio() {
-              let foundInvestor = await iraSQL.getEntityById(req.params.id);
-              let results = await calc.totalupInvestorPortfolio(foundInvestor.id)
-              let portfolioDeals = results[0]
-              if (portfolioDeals.length >0 ) {
-                          let totalInvestmentValue =  results[1]
-                          let totalPortfolioValue =  results[2]
-                          let totalDistributions =  results[3]*-1 //make it positive here
-                          let portfolioValueGain =  totalPortfolioValue-totalInvestmentValue
-                          let portfolioCashGain = portfolioValueGain+ totalDistributions
-                          let portfolioIRR = parseFloat(portfolioCashGain/totalInvestmentValue)*100
-                          console.log("\nRendering Investor Portfolio, totalDistrib is  : " + totalDistributions+"")
-                          console.log("\nexample 2nd Deal : " + JSON.stringify(portfolioDeals[1],null,6)+"\n\n")
-                          res.render('portfolio-details', {
-                                  userObj: userObj,
-                                  message:  "Showing "+portfolioDeals.length+" investments ",
-                                  investorName: portfolioDeals[0].investor_name,
-                                  investments: portfolioDeals,
-                                  totalPortfolioValue: calc.formatCurrency(totalPortfolioValue),
-                                  totalInvestmentValue: calc.formatCurrency(totalInvestmentValue),
-                                  portfolioValueGain: calc.formatCurrency(portfolioValueGain),
-                                  totalDistributions: calc.formatCurrency(totalDistributions),
-                                  portfolioCashGain: calc.formatCurrency(portfolioCashGain),
-                                  portfolioIRR: portfolioIRR.toFixed(2)
-                          });
-
-                    } else { //no ownership data
-                          req.flash('login', "No portfolio info for "+foundInvestor.name+".  ")
-                          res.redirect('/home/')
-
-                } //if ownership
-     } //async function
-}); //route - ownership
-
-
-
-
-
-
-
-
-
-
-
-
-app.get('/updatedeal/:id', (req, res) => {
+// pulls together Ownesrhip information for a deal or Entity to be shown & approved by User
+app.get('/setownership/:id', checkAuthentication, (req, res) => {
 
     if (req.session && req.session.passport) {
                  userObj = req.session.passport.user;
     }
 
     //call the async function
-    pullDealDetails().catch(err => {
-          console.log("Pull Deal Details problem: "+err);
+    pullOwnershipTransactions().catch(err => {
+          console.log("SET ownership transactions problem: "+err);
     })
 
-    async function pullDealDetails() {
+    async function pullOwnershipTransactions() {
           var entity = await iraSQL.getEntityById(req.params.id);
-          console.log("have Entity   "+ JSON.stringify(entity));
-          var deals = await iraSQL.getDealById(entity.deal_id);
-          console.log("\nGot raw Deal to edit  "+JSON.stringify(deals));
+          console.log("in set-ownership, got Entity   "+ JSON.stringify(entity,null,4)+"\n\n");
+          var rows = await iraSQL.getTransactionsForInvestment(entity.id, [1,5,6]);
+          console.log("\nIn SetOwn - got "+rows.length+" transactions for "+ entity.name+" \n");
+                  // screen transaction and calculate ownership
+          if(entity.ownership_status===0 && (rows.length >0) ) {
+                            // do we adjust own.adjutment here? should already be in the ownership rows
+                                var results = calc.calculateOwnership(rows);
+                                let ownershipRows = results[0]
+                                let totalCapital =  results[1]
+                                let totalAdjOwnPct =  results[2]
+                                let totalOwnPct =  results[3]
 
-          let expandDeal = calc.calculateDeal(deals[0])
-          console.log("\nDeal ready to edit  "+JSON.stringify(expandDeal));
-          res.render('update-deal', {
-                userObj: userObj,
-                message: "Updating Deal: " + expandDeal.id,
-                dealEIN: entity.taxid,
-                deal: expandDeal,
-                postendpoint: '/process_update_deal'
-          }); //  render
+                                console.log("in Setown, Rendering proposed ownership for "+ownershipRows[0].investment_name+"  total capital is: "+totalCapital)
+                                res.render('set-ownership', {
+                                        userObj: userObj,
+                                        message:  "Showing "+ownershipRows.length+" transactions",
+                                        entityName: entity.name,
+                                        investors: ownershipRows,
+                                        totalCapital: calc.formatCurrency(totalCapital),
+                                        totalAdjOwnPct: ((totalAdjOwnPct*10000)/10000).toFixed(4),
+                                        totalOwnPct: Math.round((totalOwnPct*1000)/1000).toFixed(4),
+                                        postendpoint: '/process_set_ownership'
 
-      } //async function pullDealDetails
-}); //route - update deal
-
-
-
-
-// insert the new deal and corresponding entity
-app.post('/process_update_deal', urlencodedParser, (req, res) => {
-
-  //call the async function
-  updateDealAndEntity().catch(err => {
-        console.log("Process Update Deal problem: "+err);
-  })
-
-  async function updateDealAndEntity() {
-            let formDeal = req.body
-            let updatedDeal = {
-              id:formDeal.id,
-              name: formDeal.name,
-              aggregate_value: calc.parseFormAmountInput(formDeal.aggregate_value),
-              cash_assets: calc.parseFormAmountInput(formDeal.cash_assets),
-              aggregate_debt: calc.parseFormAmountInput(formDeal.aggregate_debt),
-              deal_debt: calc.parseFormAmountInput(formDeal.deal_debt),
-              notes: formDeal.notes
-            }
-            console.log("UPDATE DEAL: \n   ready to send to SQL  "+JSON.stringify(updatedDeal));
-
-            let updateDealResults = await iraSQL.updateDeal(updatedDeal);
-            console.log( "Updated deal  no.: "+updatedDeal.id);
-            req.flash('login', "UpdatedDeal: "+updatedDeal.id);
-
-            let oldDealEntity = await iraSQL.getEntityByDealId(updatedDeal.id);
-            let equity_value = Number(updatedDeal.aggregate_value)+Number(updatedDeal.cash_assets)-Number(updatedDeal.deal_debt)-Number(updatedDeal.aggregate_debt);
-            console.log( "\nNew Deal Equity value is : "+equity_value);
-            let newDealEntity = {
-                  name: updatedDeal.name,
-                  taxid: formDeal.taxid,
-                  implied_value: equity_value,
-                  ownership_status: oldDealEntity.ownership_status,
-                  id: oldDealEntity.id
-          }
+                                });
+           } else {
+            req.flash('login', "No ownership info or transactions found for "+entity.name);
+            res.redirect('/home');
 
 
-            console.log( "\nUpodating Deal -- here is NewEntity for deal: "+JSON.stringify(newDealEntity));
-            var updateEntityResults = await iraSQL.updateEntity(newDealEntity);
-            //req.flash('login', "In deals, added entity #: "+insertEntityResults.insertId);
-
-            let outputLog = await calc.updateValueofInvestorsUpstream (newDealEntity.id);
-            //console.log("Output Log on catch side is: "+outputLog.toString()+"\n")
-            res.render('show-results', {
-                  userObj: userObj,
-                  message: "Deal Update Transaction",
-                  entity: newDealEntity,
-                  logEntries: outputLog
-            }); //  render
-
-   } //async function
-}); //process add-deal route
-
-
-
-
-
-
-
-
-// insert the new deal and corresponding entity
-app.post('/process_add_deal', urlencodedParser, (req, res) => {
-
-  //call the async function
-  insertDealAndEntity().catch(err => {
-        console.log("Process Add Deal problem: "+err);
-  })
-
-  async function insertDealAndEntity() {
-            let formDeal = req.body
-            let newDeal = {
-              name: formDeal.name,
-              aggregate_value: calc.parseFormAmountInput(formDeal.aggregate_value),
-              cash_assets: calc.parseFormAmountInput(formDeal.cash_assets),
-              aggregate_debt: calc.parseFormAmountInput(formDeal.aggregate_debt),
-              deal_debt: calc.parseFormAmountInput(formDeal.deal_debt),
-              notes: formDeal.notes
-            }
-
-            var insertDealResults = await iraSQL.insertDeal(newDeal);
-            console.log( "Added deal #: "+insertDealResults.insertId);
-            req.flash('login', "Added Deal: "+insertDealResults.insertId);
-
-            let dealEntity = {
-              type:1,
-              deal_id: insertDealResults.insertId,
-              investor_id:null,
-              keyman_id: null,
-              name: newDeal.name,
-              taxid: formDeal.taxid,
-              ownership_status: 0
-            }
-            var insertEntityResults = await iraSQL.insertEntity(dealEntity);
-            req.flash('login', "In deals, added entity #: "+insertEntityResults.insertId);
-
-            res.redirect('/entities');
-
-   } //async function
-}); //process add-deal route
-
-
-
-
+      }  //if-else ownership status
+   } //async function pullDealComponents
+}); //route - deal details
 
 
 
@@ -769,113 +446,128 @@ app.post('/process_set_ownership', urlencodedParser, (req, res) => {
 
 
 
-
-
-//show existing ownership
-app.get('/ownership/:id', (req, res) => {
+app.get('/clearownership/:id', (req, res) => {
     if (req.session && req.session.passport) {
        userObj = req.session.passport.user;
      }
 
-     showOwnershipInfo().catch(err => {
-           console.log("ownership info problem: "+err);
-           req.flash('login', "Problems getting Ownership "+req.params.id+".  ")
+     clearOwnership().catch(err => {
+           console.log("Clear Ownership problem: "+err);
+           req.flash('login', "Problems getting Ownership info for entity no. "+req.params.id+".  ")
            res.redirect('/home')
      })
 
-     async function showOwnershipInfo() {
+     async function clearOwnership() {
            let foundEntity = await iraSQL.getEntityById(req.params.id);
-           //console.log("in OWN, have Entity   "+ JSON.stringify(foundEntity));
-           if (foundEntity.ownership_status === 1) {
-                          let investors = await iraSQL.getOwnershipForEntity(foundEntity.id);
-                          console.log("show-Ownership rows with DATE JOIN are: "+JSON.stringify(investors,null,4))
-                          let results = calc.totalupInvestors(investors)
-                          let expandInvestors = results[0]
-                          let totalCapital =  results[1]
-                          let totalCapitalPct = (results[2]*1).toFixed(2)
+           let ownershipRows = await iraSQL.getOwnershipForEntity(foundEntity.id);
+           console.log("In /clearownership/id, got "+ownershipRows.length+ " ownership rows: "+JSON.stringify(ownershipRows,null,4)+"\n\n");
+           let own_ids = [];
+           for (let i=0; i<ownershipRows.length; i++) {
+                own_ids[i] = ownershipRows[i].id
+           }
 
+           let results = await iraSQL.clearOwnershipForEntity(foundEntity.id,own_ids);
+           console.log("Cleared ownership for "+foundEntity.name+"\n");
+           //+"results : "+JSON.stringify(results,null,6)+"\n");
+           req.flash('login', "Cleared ownership for "+foundEntity.name+".  ");
+           res.redirect('/setownership/');
 
-
-                          console.log("rendering ownership")
-                          res.render('entity-details', {
-                                  userObj: userObj,
-                                  message:  "Showing "+expandInvestors.length+" investors ",
-                                  entity: foundEntity,
-                                  impliedValue: calc.formatCurrency(foundEntity.implied_value),
-                                  investors: expandInvestors,
-                                  totalCapital: totalCapital,
-                                  totalCapitalPct: totalCapitalPct
-                          });
-
-                    } else { //no ownership data
-                          res.redirect('/setownership/'+req.params.id)
-
-                } //if ownership
      } //async function
 }); //route - ownership
 
 
 
 
-
-
-
-
-
-
-
-app.get('/setownership/:id', (req, res) => {
+app.get('/updatedeal/:id', checkAuthentication, (req, res) => {
 
     if (req.session && req.session.passport) {
                  userObj = req.session.passport.user;
     }
 
     //call the async function
-    pullOwnershipTransactions().catch(err => {
-          console.log("SET ownership transactions problem: "+err);
+    pullDealDetails().catch(err => {
+          console.log("Pull Deal Details problem: "+err);
     })
 
-    async function pullOwnershipTransactions() {
+    async function pullDealDetails() {
           var entity = await iraSQL.getEntityById(req.params.id);
-          console.log("in set-ownership, got Entity   "+ JSON.stringify(entity,null,4)+"\n\n");
-          var rows = await iraSQL.getTransactionsForInvestment(entity.id, [1,5,6]);
-          console.log("\nIn SetOwn - got "+rows.length+" transactions for "+ entity.name+" \n");
-                  // screen transaction and calculate ownership
-          if(entity.ownership_status===0 && (rows.length >0) ) {
-                            // do we adjust own.adjutment here? should already be in the ownership rows
-                                var results = calc.calculateOwnership(rows);
-                                let ownershipRows = results[0]
-                                let totalCapital =  results[1]
-                                let totalAdjOwnPct =  results[2]
-                                let totalOwnPct =  results[3]
+          console.log("have Entity   "+ JSON.stringify(entity));
+          var deals = await iraSQL.getDealById(entity.deal_id);
+          console.log("\nGot raw Deal to edit  "+JSON.stringify(deals));
 
-                                console.log("in Setown, Rendering proposed ownership for "+ownershipRows[0].investment_name+"  total capital is: "+totalCapital)
-                                res.render('set-ownership', {
-                                        userObj: userObj,
-                                        message:  "Showing "+ownershipRows.length+" transactions",
-                                        entityName: entity.name,
-                                        investors: ownershipRows,
-                                        totalCapital: calc.formatCurrency(totalCapital),
-                                        totalAdjOwnPct: ((totalAdjOwnPct*10000)/10000).toFixed(4),
-                                        totalOwnPct: Math.round((totalOwnPct*1000)/1000).toFixed(4),
-                                        postendpoint: '/process_set_ownership'
+          let expandDeal = calc.calculateDeal(deals[0])
+          console.log("\nDeal ready to edit  "+JSON.stringify(expandDeal));
+          res.render('update-deal', {
+                userObj: userObj,
+                message: "Updating Deal: " + expandDeal.id,
+                dealEIN: entity.taxid,
+                deal: expandDeal,
+                postendpoint: '/process_update_deal'
+          }); //  render
 
-                                });
-           } else {
-            req.flash('login', "No ownership info or transactions found for "+entity.name);
-            res.redirect('/home');
+      } //async function pullDealDetails
+}); //route - update deal
 
 
-      }  //if-else ownership status
-   } //async function pullDealComponents
-}); //route - deal details
 
 
 // insert the new deal and corresponding entity
+app.post('/process_update_deal', urlencodedParser, (req, res) => {
+
+  //call the async function
+  updateDealAndEntity().catch(err => {
+        console.log("Process Update Deal problem: "+err);
+  })
+
+  async function updateDealAndEntity() {
+            let formDeal = req.body
+            let updatedDeal = {
+              id:formDeal.id,
+              name: formDeal.name,
+              aggregate_value: calc.parseFormAmountInput(formDeal.aggregate_value),
+              cash_assets: calc.parseFormAmountInput(formDeal.cash_assets),
+              aggregate_debt: calc.parseFormAmountInput(formDeal.aggregate_debt),
+              deal_debt: calc.parseFormAmountInput(formDeal.deal_debt),
+              notes: formDeal.notes
+            }
+            console.log("UPDATE DEAL: \n   ready to send to SQL  "+JSON.stringify(updatedDeal));
+
+            let updateDealResults = await iraSQL.updateDeal(updatedDeal);
+            console.log( "Updated deal  no.: "+updatedDeal.id);
+            req.flash('login', "UpdatedDeal: "+updatedDeal.id);
+
+            let oldDealEntity = await iraSQL.getEntityByDealId(updatedDeal.id);
+            let equity_value = Number(updatedDeal.aggregate_value)+Number(updatedDeal.cash_assets)-Number(updatedDeal.deal_debt)-Number(updatedDeal.aggregate_debt);
+            console.log( "\nNew Deal Equity value is : "+equity_value);
+            let newDealEntity = {
+                  name: updatedDeal.name,
+                  taxid: formDeal.taxid,
+                  implied_value: equity_value,
+                  ownership_status: oldDealEntity.ownership_status,
+                  id: oldDealEntity.id
+          }
 
 
+            console.log( "\nUpodating Deal -- here is NewEntity for deal: "+JSON.stringify(newDealEntity));
+            var updateEntityResults = await iraSQL.updateEntity(newDealEntity);
+            //req.flash('login', "In deals, added entity #: "+insertEntityResults.insertId);
 
-  app.get('/add-deal', (req, res) => {
+            let outputLog = await calc.updateValueofInvestorsUpstream (newDealEntity.id);
+            //console.log("Output Log on catch side is: "+outputLog.toString()+"\n")
+            res.render('show-results', {
+                  userObj: userObj,
+                  message: "Deal Update Transaction",
+                  entity: newDealEntity,
+                  logEntries: outputLog
+            }); //  render
+
+   } //async function
+}); //process add-deal route
+
+
+// insert the new deal and corresponding entity
+app.get('/add-deal', checkAuthentication, (req, res) => {
+  //app.get('/add-deal', (req, res) => {
           if (req.session && req.session.passport) {
              userObj = req.session.passport.user;
           }
@@ -889,156 +581,53 @@ app.get('/setownership/:id', (req, res) => {
   }); //route
 
 
+// insert the new deal and corresponding entity
+app.post('/process_add_deal', urlencodedParser, (req, res) => {
+
+  //call the async function
+  insertDealAndEntity().catch(err => {
+        console.log("Process Add Deal problem: "+err);
+  })
+
+  async function insertDealAndEntity() {
+            let formDeal = req.body
+            let newDeal = {
+              name: formDeal.name,
+              aggregate_value: calc.parseFormAmountInput(formDeal.aggregate_value),
+              cash_assets: calc.parseFormAmountInput(formDeal.cash_assets),
+              aggregate_debt: calc.parseFormAmountInput(formDeal.aggregate_debt),
+              deal_debt: calc.parseFormAmountInput(formDeal.deal_debt),
+              notes: formDeal.notes
+            }
+
+            var insertDealResults = await iraSQL.insertDeal(newDeal);
+            console.log( "Added deal #: "+insertDealResults.insertId);
+            req.flash('login', "Added Deal: "+insertDealResults.insertId);
+
+            let dealEntity = {
+              type:1,
+              deal_id: insertDealResults.insertId,
+              investor_id:null,
+              keyman_id: null,
+              name: newDeal.name,
+              taxid: formDeal.taxid,
+              ownership_status: 0
+            }
+            var insertEntityResults = await iraSQL.insertEntity(dealEntity);
+            req.flash('login', "In deals, added entity #: "+insertEntityResults.insertId);
+
+            res.redirect('/entities');
+
+   } //async function
+}); //process add-deal route
 
 
 
 
-
-app.get('/dealdetails/:id', (req, res) => {
-
-    if (req.session && req.session.passport) {
-                 userObj = req.session.passport.user;
-    }
-
-    //call the async function
-    pullDealComponents().catch(err => {
-          console.log("Deal Components problem: "+err);
-    })
-
-    async function pullDealComponents() {
-          var entity = await iraSQL.getEntityById(req.params.id);
-          console.log("have Entity   "+ JSON.stringify(entity));
-          var deals = await iraSQL.getDealById(entity.deal_id);
-          console.log("Before Ownership, have Entity   "+ entity.name+"   and Deal is  "+JSON.stringify(deals));
-          var investors = await iraSQL.getOwnershipForEntity(entity.id)
-          if (investors.length>0) {
-                                let results = calc.totalupInvestors(investors)
-                                let expandInvestors = results[0]
-                                let totalCapital =  results[1]
-                                let totalCapitalPct = results[2]
-                                let expandDeal = calc.calculateDeal(deals[0])
-                                console.log("\nrendering ownership and Deal is "+JSON.stringify(deals))
-                                res.render('deal-details', {
-                                        userObj: userObj,
-                                        message:  "Showing "+expandInvestors.length+" investors",
-                                        dealName: expandDeal.name,
-                                        investors: expandInvestors,
-                                        totalCapital: totalCapital,
-                                        totalCapitalPct: totalCapitalPct,
-                                        deal:expandDeal
-                                });
-
-            } else { //no ownership data
-                                let expandDeal = calc.calculateDeal(deals[0])
-                                res.render('deal-details', {
-                                      userObj: userObj,
-                                      message:  "No ownership information found ",
-                                      dealName: expandDeal.name,
-                                      deal:expandDeal
-                                }); //  render
-            }  //if-else  - no ownership get name of entity
-      } //async function pullDealComponents
-}); //route - deal details
-
-
-
-app.get('/add-transaction', (req, res) => {
-        if (req.session && req.session.passport) {
-           userObj = req.session.passport.user;
-        }
-
-       //this is what we'll pass to the page to use in pulldowns
-       let transactionTypesToPick = []
-       let dealsToPick = []
-       let passthrusToPick = []
-       let investorsToPick = []
-
-        iraSQL.getTransactionTypes().then(
-              async function(transactiontypes) {
-                        transactionTypesToPick = transactiontypes;
-              }, function(error) {   //failed
-                        console.log("Getting deals problem: "+error);
-                        return;
-              } //try-catch
-           );
-
-
-        //deals
-
-        iraSQL.getEntitiesByTypes([1,3,4]).then(
-              async function(entities) {
-                    dealsToPick  = entities.map(function(plank) {
-                            plank.name = plank.name.substring(0,30);
-                            return plank;
-                });
-
-
-              }, function(error) {   //failed
-                       console.log("Getting deals problem: "+error);
-                       return;
-              } //try-catch
-          );//getallEnties then
-
-        //pass-thrus
-        iraSQL.getEntitiesByTypes([3]).then(
-              async function(entities) {
-                      passthrusToPick = entities;
-                  }, function(error) {   //failed
-                       console.log("Getting passthrus problem: "+error);
-                       return;
-                } //try-catch
-              )//getallEnties then
-
-
-        // investor entities
-        iraSQL.getEntitiesByTypes([4,2]).then(
-              async function(entities) {
-
-                  var investorsToPick   = entities.map(function(plank) {
-                              plank.name = plank.name.substring(0,30);
-                              return plank;
-                  });
-
-                  res.render('add-transaction', {
-                            userObj: userObj,
-                            postendpoint: '/process_add_transaction',
-                            typeOptions: transactionTypesToPick,
-                            deals: dealsToPick,
-                            investors: investorsToPick,
-                            passthrus: passthrusToPick
-                    });//render
-              }, function(error) {   //failed
-                    console.log("Getting entities problem: "+error);
-                    return;
-             } //try-catch
-     )//getallEnties then
-
-}); //route add transactions
-
-
-// insert the new transaction
-app.post('/process_add_transaction', urlencodedParser, (req, res) => {
-    let transaction = req.body
-    transaction.amount = calc.parseFormAmountInput(transaction.amount)
-    transaction.own_adj = parseFloat(transaction.own_adj)
-    if ((transaction.trans_type==3 || transaction.trans_type==6) && transaction.amount>0) transaction.amount*=-1
-    console.log("\nAbout to insert new transaction with "+JSON.stringify(transaction)+"\n");
-    iraSQL.insertTransaction(transaction).then (
-        function (savedData) {
-            //console.log( "Added entity #: "+savedData.insertId);
-            req.flash('login', "Added transaction no. "+savedData.insertId);
-            console.log("\nAdded transaction no. "+savedData.insertId);
-            res.redirect('/transactions');
-          }, function(error) {   //failed
-               console.log("Process_add_transaction problem: "+error);
-               return;
-          }
-    ); //try-catch
-}); //route
 
 
 //route for add entity
-  app.get('/add-entity', (req, res) => {
+  app.get('/add-entity', checkAuthentication, (req, res) => {
           if (req.session && req.session.passport) {
              userObj = req.session.passport.user;
           }
@@ -1085,7 +674,7 @@ app.post('/process_add_entity', urlencodedParser, (req, res) => {
 }); //route
 
 
-app.get('/updateentity/:id', (req, res) => {
+app.get('/updateentity/:id', checkAuthentication, (req, res) => {
     if (req.session && req.session.passport) {
                  userObj = req.session.passport.user;
     }
@@ -1139,3 +728,299 @@ app.post('/process_update_entity', urlencodedParser, (req, res) => {
 
    } //async function
 }); //process add-deal route
+
+
+//========== AUTH ===================
+
+
+
+app.get('/updateuser/', checkAuthentication, (req, res) => {
+          if (req.session && req.session.passport) {
+             userObj = req.session.passport.user;
+           }
+
+          res.render('update-user', {
+                  userObj: userObj,
+                  sessionInfo: req.session,
+                  updateendpoint: '/process_user_update'
+          });
+   });  //end UPDATE request
+
+app.post('/process_user_update', urlencodedParser, (req, res) => {
+
+    //call the async function
+    updateUserInfo().catch(err => {
+          console.log("Problem updating User info: "+err);
+    })
+
+    async function updateUserInfo()  {
+             const data = req.body
+             console.log("Just got form: "+JSON.stringify(data)+"<br>")
+             //check if they entered the right old password
+             //function authUser (email, password, done) {
+             //pModel.authUser (username, password, (err, autheduser) => {
+
+              console.log("Session-Info-passport"+JSON.stringify(req.session.passport,null,4))
+
+             var updatedUser =
+             {
+               "id":userObj.id,
+               "firstname":data.firstname,
+               "lastname":data.lastname,
+               "email":data.email,
+               "photo":data.photo,
+               "password": data.newpass
+             }
+
+             if (data.newpass === "") {
+                 updatedUser.password = userObj.password;
+            }
+
+             console.log("\nHere is the New User v5 "+JSON.stringify(updatedUser,null,5))
+
+              let results = await iraSQL.updateUser (updatedUser);
+              req.flash('login', "Updated USER "+updatedUser.lastname+".  ")
+              console.log("Updated  "+updatedUser.lastname+" with " +JSON.stringify(results));
+              res.redirect('/home');
+
+
+
+          } //async function
+    }); // Route
+
+          //    //hash the NEW password - changing password
+          //     bcrypt.genSalt(10, function(err, salt) {
+          //            if (err) return err;
+          //            bcrypt.hash(data.newpass, salt, function(err, hash) {
+          //                   console.log("hashing "+err)
+          //                   if (err) return err;
+          //                   if (data.newpass === "") {
+          //                       updatedUser.password = userObj.password;
+          //                   } else {
+          //                        updatedUser.password = hash
+          //                   }
+          //                   console.log("\n\nHere is the New User v5 "+JSON.stringify(updatedUser))
+          //                   pModel.updateUser (updatedUser, (err, status) => {
+          //                          //err comes back but not results
+          //                          if (err) {
+          //                            console.log("\n\nModel Update problem "+JSON.stringify(err));
+          //                          } else {
+          //                          req.flash('login', "Updated USER "+updatedUser.lastname+".  ")
+          //                          console.log("Updated  "+updatedUser.lastname+" with " +JSON.stringify(status));
+          //                          res.redirect('/home');
+          //                          }
+          //                  });//updateuser
+          //          }); //hash
+          //  }); //getSalt
+
+
+
+
+
+
+app.get('/login', (req, res, next) => {
+        res.render('login', {
+                postendpoint: '/checklogin',
+                message: req.flash('login')
+        });
+});
+
+
+
+//grab info, call strategy
+app.post('/checklogin', function(req, res, next) {
+  passport.authenticate('local', function(err, user, info) {
+
+    if (err) { return next(err); }
+
+    //if you did not get a user back from Strategy
+    if (!user) {
+      req.flash('login', 'Credentials could not be verified, please try again.')
+      return res.redirect('/login');
+    }
+    //found user
+    req.logIn(user, function(err) {
+          if (err) {
+            req.flash('login', 'Login problem '+err)
+            return next(err);
+          }
+
+
+      console.log('START OF SESSION for user '+user.id+" sending to "+req.session.return_to)
+      req.flash('login', 'Login success: '+req.session.passport.user.email); //does not work yet
+      //req.session.user = user; //put user object in session - dont need this
+
+      //on first login, use this to redirect
+      if (req.session.return_to) {
+            return res.redirect(req.session.return_to);  //WORKS?
+      } else return res.redirect("/");
+
+      //return res.redirect(url);
+
+    });
+  })(req, res, next);
+});
+
+app.get('/logout', function(req, res, next){
+    req.logout();
+    userObj =
+    {
+      "id":0,
+      "firstname":"Log In",
+      "lastname":"",
+      "email":"",
+      "password":"",
+      "photo":"https://raw.githubusercontent.com/wilsonvargas/ButtonCirclePlugin/master/images/icon/icon.png",
+      "access":0
+    }
+    res.redirect('/login');
+  });
+
+
+
+
+// Passport Strategy
+passport.use(new LocalStrategy(
+  {
+    passReqToCallback: true
+  },
+  (req, username, password, done) => {
+         iraSQL.authUser (username, password, (err, autheduser) => {
+                 //err comes back but not results
+                 if (err) {
+                   console.log("call to model is err "+JSON.stringify(err));
+                   //req.flash('login', 'strategy: bad user name or password')
+                   return done(null, false);
+                 }
+                 if (!autheduser) {
+                        console.log("strategy: user "+ username +" not found ");
+                        return done(null, false);
+                 }
+                 console.log("OK autheduser is "+autheduser.firstname+"(in Local Strategy)");
+                 return done(null, autheduser);
+
+          }) //loginuser
+
+
+})) //localstrategy
+
+
+
+    passport.serializeUser(function(user, done){
+        done(null, user);  //save user or just user.id in session
+    });
+
+    passport.deserializeUser(function(user, done){
+        //connection.query("select * from tbl_users where id = "+ id, function (err, rows){
+            done(null, user);
+
+    });
+
+
+      // User found - check passwpord
+      // bcrypt.compare(checkpass, user.password, (err, isValid) => {
+      // }) //bcrypt
+
+//NOT FIRST TIME LOGIN
+function checkAuthentication(req,res,next){
+          if (userObj.id == 0) {
+               req.session.return_to = "/";
+          } else {
+               req.session.return_to = req.url;
+          }
+
+          if(req.isAuthenticated()){
+                 console.log("YES, authenticated"+req.url)
+                 //req.flash('login', 'checkAuth success')
+                 return next();
+                 //res.redirect(req.url);
+
+          } else {
+              console.log("NO, not authenticated"+req.url)
+              //req.flash('login', 'checkAuth failed, need to login')
+              res.redirect("/login");
+          }
+}
+
+// =============== API ===============
+app.get('/api/searchentities/:term', (req, res, next) => {
+          api_searchEntities().catch(err => {
+                console.log("API search Entity problem: "+err);
+          })
+
+      async function api_searchEntities() {
+            try {
+
+                  var entList = await iraSQL.searchEntities (req.params.term);
+                  if (entList.length <1) {
+                              var entList = [{
+                                id:0,
+                                name: "Not found"
+                              }]
+
+                  }
+                  console.log("\nGot entities: "+JSON.stringify(entList,null,5));
+
+            } catch (err ){
+                  console.log(err+ " -- No entities for    "+ req.params.term);
+                  var entList = [{
+                    id:0,
+                    name: "Not found"
+                  }]
+
+            }
+
+
+            res.send(JSON.stringify(entList,null,3));
+
+    }; //async function
+
+}); //route
+
+app.get('/api/searchentities/', (req, res, next) => {
+
+          res.send("[]");
+}); //route
+
+
+
+
+app.get('/api/transforentity/:id', (req, res, next) => {
+          api_transactionsForEntity().catch(err => {
+                console.log("API trans for Entity problem: "+err);
+          })
+
+      async function api_transactionsForEntity() {
+            try {
+                  var entity = await iraSQL.getEntityById(req.params.id);
+                  console.log("have Entity   "+ JSON.stringify(entity));
+                  var transactions = await iraSQL.getTransactionsForInvestment(entity.id);
+                  console.log("\nGot transactions for entity  "+JSON.stringify(transactions,null,5));
+
+            } catch (err ){
+                  console.log(err+ " -- No entity for    "+ req.params.id);
+                  var transactions = await iraSQL.getAllTransactions();
+
+            }
+
+            var cleanTransactions = transactions.map(function(element) {
+                        let cleanTransaction = {
+                            id :element.id,
+                            investor_name :element.investor_name,
+                            investment_name :element.investment_name,
+                            passthru_name :element.passthru_name,
+                            tt_name :element.tt_name,
+                            t_wired_date :element.t_wired_date,
+                            formatted_amount :calc.formatCurrency(element.t_amount),
+                            t_own_adj :element.t_own_adj,
+                            t_notes :element.t_notes
+                        }
+
+
+                        return cleanTransaction;
+            });
+            res.send(JSON.stringify(cleanTransactions,null,3));
+
+    }; //async function
+
+}); //route

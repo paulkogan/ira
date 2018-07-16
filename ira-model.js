@@ -84,8 +84,128 @@ module.exports = {
   updateEntityImpliedValue,
   updateDeal,
   clearOwnershipForEntity,
-  deleteTransaction
+  deleteTransaction,
+  findUser,
+  updateUser,
+  authUser
 };
+
+
+
+//without Bcrypt for now
+function authUser (email, password, done) {
+  connection.query(
+    'SELECT * FROM users WHERE email = ?', email,  (err, results) => {
+      if (!err && !results.length) {
+              done("Not found "+ email+" got "+err, null);
+              return;
+      }
+
+      if (err) {
+        done("Search error" +err, null);
+        return;
+      }
+
+     let checkPlainPW = (password === results[0].password)
+     //res is result of comparing encrypted apsswords
+      if (checkPlainPW) {
+        console.log(results[0].firstname+" has authed in authuser");
+        done(null, results[0]);
+
+      } else {
+          console.log("\nbad pw "+password+",  checkPlainPW is: "+checkPlainPW)
+          done("bad password", null)
+
+      }
+
+
+    //  bcrypt.compare(password, results[0].password, function(err, res) {
+    //                if (err) {
+    //                  console.log("PW auth error" +err)
+    //                  done("PW auth error" +err, null);
+    //                  return;
+    //                }
+    //               if (!(checkPlainPW) && !(res) ) {
+    //                   console.log("\nbad pw "+password+", res is: "+res+"   checkPlainPW is: "+checkPlainPW)
+    //                   done("bad password", null)
+    //                   return
+    //               }
+    //             console.log(results[0].firstname+" has authed in authuser");
+    //             done(null, results[0]);
+    // }); //bcrypt
+
+  } //cb function
+ ) //connection querty
+} //authuser
+
+//owneship: parent_entity_id, child_entity_id, capital_pct
+function getOwnTransByTransID (transaction_id) {
+  let queryString = 'SELECT * from own_trans_lookup WHERE trans_id='+transaction_id;
+  //console.log ("in getOwnTransByTransID, the query string is "+queryString+"\n\n")
+
+      return new Promise(   function(succeed, fail) {
+            connection.query(queryString,
+              function(err, results) {
+                      if (err) {
+                            fail(err)
+                      } else {
+                          //console.log ("in Moooodel, got own-trans records "+JSON.stringify(results)+"")
+                          succeed(results[0])
+                      }
+              }); //connection
+          }); //promise
+
+
+} // function
+
+
+
+function updateUser (updateuser) {
+    console.log("\n\nHere at update: email:"+ updateuser.email +" PW:"+updateuser.password+" ID:"+updateuser.id)
+
+    return new Promise(   function(succeed, fail) {
+          connection.query(
+          'UPDATE users SET email = ?, photo =?, password=? WHERE id=?',
+          [updateuser.email, updateuser.photo, updateuser.password, updateuser.id],
+          function(err, results) {
+                  if (err) {
+                        fail(err)
+                  } else {
+                      //console.log ("in Moooodel, got uodated user "+JSON.stringify(results)+"")
+                      succeed(results)
+                  }
+          }); //connection
+      }); //promise
+  } //updateuser
+
+
+
+
+
+function findUser (email, cb) {
+  connection.query(
+    'SELECT * FROM users WHERE email = ?', email,  (err, results) => {
+      if (!err && !results.length) {
+              cb("Not found "+ email+" got "+err);
+              return;
+      }
+
+      if (err) {
+        cb("Search error" +err);
+        return;
+      }
+      cb(null, results[0]);
+    });
+}
+
+
+
+
+
+
+
+
+
 
 
 

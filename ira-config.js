@@ -52,7 +52,7 @@ nconf
 
 // Check for required settings
 checkConfig('NODE_ENV');
-console.log("in ira-config, the endpoint is "+nconf.get('DEV_ENDPOINT'))
+//console.log("in ira-config, the endpoint is "+nconf.get('DEV_ENDPOINT'))
 
   if (nconf.get('NODE_ENV') === 'dev') {
     checkConfig('DEV_ENDPOINT');
