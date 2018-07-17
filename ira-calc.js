@@ -8,14 +8,14 @@ let logIndent = 0
 const indentChar = "___"
 
 module.exports = {
-  formatCurrency:formatCurrency,
-  parseFormAmountInput:parseFormAmountInput,
-  doTransMatchForRollup: doTransMatchForRollup,
-  totalupInvestors:totalupInvestors,
-  totalupCashInDeal:totalupCashInDeal,
+  formatCurrency,
+  parseFormAmountInput,
+  doTransMatchForRollup,
+  totalupInvestors,
+  totalupCashInDeal,
   totalupInvestorPortfolio,
-  calculateOwnership : calculateOwnership,
-  calculateDeal: calculateDeal,
+  calculateOwnership,
+  calculateDeal,
   calcInvEntityImpliedValue,
   updateValueofInvestorsUpstream,
   getInvestorEquityValueInDeal,
@@ -386,8 +386,6 @@ function totalupInvestors (investors) {
   function calculateDeal (deal) {
         //console.log("\nin CalculateDeal, Deal is  "+JSON.stringify(deal));
          let expandDeal = deal
-         //expandDeal.equity_value = 999
-         //expandDeal.equity_value = expandDeal.aggregate_value
          expandDeal.equity_value = expandDeal.aggregate_value+expandDeal.cash_assets-expandDeal.deal_debt-expandDeal.aggregate_debt
          expandDeal.total_value = expandDeal.aggregate_value + expandDeal.cash_assets
          expandDeal.total_debt = expandDeal.aggregate_debt + expandDeal.deal_debt

@@ -10,6 +10,8 @@ const app = express();
 const calc =  require('./ira-calc');
 const iraSQL =  require('./ira-model');
 const menus = require('./ira-menus');
+const nconf = require('nconf');
+const deployConfig = require('./ira-config');
 
 const bodyParser = require('body-parser');
 const urlencodedParser = bodyParser.urlencoded({ extended: false })
@@ -24,9 +26,56 @@ const cookieParser = require('cookie-parser')
 const session = require('express-session')
 const RedisStore = require('connect-redis')(session)
 const secret = "cat"
+const winston = require('winston')
+//const winston_mysql = require('winston-mysql')
+
+// var winstonSQL_options = {
+//   host     : deployConfig.get('DEV_ENDPOINT'),
+//   user     : deployConfig.get('DEV_USER'),
+//   password : deployConfig.get('DEV_USER'),
+//   database : deployConfig.get('DEV_DBNAME'),
+//   table    : 'activitylog'
+// };
 
 
-const iraVersion = "0.18.2  +Auth +Entity Investor Equity Value"
+
+// var iraLogger = new (winston.Logger)({
+// transports: [
+//   new winston_mysql(options_default)
+// ]
+// });
+
+
+
+let iraLogger = winston.createLogger({
+    level: 'info',  //or get from config.json
+    format: winston.format.combine(
+                winston.format.timestamp(),
+                winston.format.printf(info => {
+            return `<*${info.timestamp} ${info.level}: ${info.message}*>`;
+        })
+    ),
+    transports: [
+             new winston.transports.Console(),
+             //new winston_mysql(winstonSQL_options),
+ 		         new winston.transports.File({ filename: 'iralog2.log' })
+       ]
+
+    //    ,
+    // exceptionHandlers: [
+    // 		    new winston.transports.File({ filename: 'iralog.log' })
+    //   ]
+}); // iraLogger
+
+iraLogger.exceptions.handle(
+  //new winston.transports.File({ filename: 'iralog2.log' }),
+  new winston.transports.Console()
+);
+
+
+
+
+const iraVersion = "0.18.5  +Entity Investor Equity Value +Logging 2"
 
 
 app.use(cookieParser(secret));
@@ -88,12 +137,18 @@ const server = app.listen(nodePort, function() {
 
 
 module.exports = app;
-module.exports = checkAuthentication;
 exports.version = iraVersion;
+exports.logger = iraLogger;
 
-
+//const XMLHttpRequest = require('xhr2');
+//var xhr = new XMLHttpRequest();
 
 //============ ROUTES  ======================
+
+
+
+
+
 
 
 
@@ -178,11 +233,15 @@ app.post('/process_add_transaction', urlencodedParser, (req, res) => {
     transaction.own_adj = parseFloat(transaction.own_adj)
     if ((transaction.trans_type==3 || transaction.trans_type==6) && transaction.amount>0) transaction.amount*=-1
     console.log("\nAbout to insert new transaction with "+JSON.stringify(transaction)+"\n");
-    iraSQL.insertTransaction(transaction).then (
+
+        iraSQL.insertTransaction(transaction).then (
         function (savedData) {
             //console.log( "Added entity #: "+savedData.insertId);
             req.flash('login', "Added transaction no. "+savedData.insertId);
             console.log("\nAdded transaction no. "+savedData.insertId);
+            //iraLogger.log('info', '/add-transaction : '+savedData.insertId+":"+transaction.investor_entity_id+":"+transaction.investment_entity_id+":"+transaction.trans_type+":"+transaction.amount+" U:"+userObj.email);
+            iraLogger.log('info', '/add-transaction : '+savedData.insertId+" U:"+userObj.email);
+
             res.redirect('/transactions');
           }, function(error) {   //failed
                console.log("Process_add_transaction problem: "+error);
@@ -424,7 +483,7 @@ app.post('/process_set_ownership', urlencodedParser, (req, res) => {
                   console.log("---getting EV from a deal, got "+newImpliedValue+"and Deal "+JSON.stringify(deals[0],null,4));
           }
           entityWithOwnership.implied_value = newImpliedValue;
-
+          iraLogger.log('info', '/set-ownership   : '+entityWithOwnership.name+":"+calc.formatCurrency(entityWithOwnership.implied_value)+" U:"+userObj.email);
           console.log("\nUpdating Entity with implied_value and new Ownership status for "+JSON.stringify(entityWithOwnership)+"\n");
           var updateEntityResults = await iraSQL.updateEntity(entityWithOwnership);
           console.log("\nUpdated Ownership Status, here results: "+updateEntityResults+"\n\n")
@@ -738,7 +797,7 @@ app.get('/updateuser/', checkAuthentication, (req, res) => {
           if (req.session && req.session.passport) {
              userObj = req.session.passport.user;
            }
-
+          iraLogger.log('info', '/updateuser U:'+userObj.email);
           res.render('update-user', {
                   userObj: userObj,
                   sessionInfo: req.session,
@@ -894,9 +953,11 @@ passport.use(new LocalStrategy(
                  }
                  if (!autheduser) {
                         console.log("strategy: user "+ username +" not found ");
+                        iraLogger.log('info', '/login failure U:'+username);
                         return done(null, false);
                  }
                  console.log("OK autheduser is "+autheduser.firstname+"(in Local Strategy)");
+                 iraLogger.log('info', '/login success U:'+autheduser.email);
                  return done(null, autheduser);
 
           }) //loginuser

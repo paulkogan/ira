@@ -2,7 +2,8 @@
 
 const express = require('express');
 const router = express.Router();
-
+const path = require('path');
+const fs = require('fs');
 
 const bodyParser = require('body-parser');
 const urlencodedParser = bodyParser.urlencoded({ extended: false })
@@ -11,6 +12,7 @@ const calc =  require('./ira-calc');
 const iraSQL =  require('./ira-model');
 const iraApp =  require('./ira');
 const passport  = require('passport');
+const winston = require('winston')
 
 
 // const session = require('express-session')
@@ -63,6 +65,8 @@ module.exports = router;
 
 //NOT FIRST TIME LOGIN - Repeat of checkAuthentication from app.js
 function checkAuthentication(req,res,next){
+
+  try {
           if (userObj.id == 0) {
                req.session.return_to = "/";
           } else {
@@ -80,9 +84,99 @@ function checkAuthentication(req,res,next){
               //req.flash('login', 'checkAuth failed, need to login')
               res.redirect("/login");
           }
-}
 
-//==========
+    } catch (err){
+              console.log(err+ " -- Login   ");
+              req.flash('login', "Could not find user with err"+err);
+              res.redirect('/home/');
+   } //trycatch
+
+
+} //function
+
+//==========  ROUTES ===========================
+
+router.get('/showlogs',  (req, res) => {
+        if (req.session && req.session.passport) {
+           userObj = req.session.passport.user;
+        }
+
+        asyncShowFile().catch(err => {
+               console.log("readFile problem: "+err);
+               req.flash('login', "Problems getting file : "+filePath+".  ")
+               res.redirect('/home')
+         })
+
+
+        async function asyncShowFile() {
+              let fileName = "iralog2.log"
+              let filePath = path.resolve(__dirname, fileName)
+              console.log("FilePath is : "+filePath )
+
+              try {
+                        let fileContent = await fs.readFileSync(filePath, 'utf8')
+                        console.log("Got from file: "+fileContent)
+                        var logRows = []
+
+                        while (fileContent.length > 2) {
+                          let startLine = fileContent.indexOf("<*");
+                          let endLine = fileContent.indexOf("*>");
+                          let logLine = fileContent.slice(startLine, endLine+2);
+                          console.log("line is:  "+logLine)
+                          let user = logLine.slice(logLine.indexOf("U:")+2,logLine.indexOf("*>"))
+                          let message = logLine.slice(logLine.indexOf("Z ")+2,logLine.indexOf("U:")-1)
+                          //let dateTime = logLine.slice(2,logLine.indexOf("Z")
+                          let dateTime = (logLine.slice(2,logLine.indexOf("Z")-4)).replace(/T/," ")
+                          // message = message.replace(/(?<=7)T/g,"  ");
+
+                          // message = message.replace(/\.\d\d\dZ/g, "  ");
+                          // message = message.replace(/(?<=7)T/g,"  ");
+                          //message = message.replace(/\.(\d)(?=(\d\d\d)+(?!\d))/g, "$1,");
+                          let logRow = {
+                                  user:user,
+                                  message:message,
+                                  time:dateTime
+                          }
+                          logRows.push(logRow)
+                          //trim the row you just got
+                          fileContent = fileContent.slice(endLine+2)
+                        }
+
+
+
+
+
+                      //let content  = fileContent.replace(/2018/g, "***2018");
+                      //  console.log("now content is : "+content)
+                      //  var n = str.indexOf("welcome");
+                        //var res = str.substring(1, 4);
+                        res.render('show-logs', {
+                                userObj: userObj,
+                                sessioninfo: req.session,
+                                message: req.flash('login') + " ",
+                                logFilename: fileName,
+                                logRows:logRows
+
+                        });//render
+
+
+
+              } catch (err){
+                        console.log(err+ " -- File   ");
+                        req.flash('login', "Could not read log file "+ filePath +" with err"+err);
+                        res.redirect('/home/');
+             } //trycatch
+
+
+
+
+
+
+        } //asyncfunction
+}); //route add transactions
+
+
+
 
 
 router.get('/download_csv/:id', (req, res) => {
@@ -157,8 +251,9 @@ router.get('/download_csv/:id', (req, res) => {
             try {
                   var entity = await iraSQL.getEntityById(req.params.id);
                   console.log("have Entity   "+ JSON.stringify(entity));
+                  iraApp.logger.log('info', '/transactions/id : '+entity.name+"  U:"+userObj.email);
                   var transactions = await iraSQL.getTransactionsForInvestment(entity.id);
-                  console.log("\nGot transactions for entity  "+JSON.stringify(transactions,null,5));
+                  console.log("\nGot transactions for entity, here is 1st  "+JSON.stringify(transactions[0],null,5));
 
                   //add delete flag to each
                   for (let j=0; j<transactions.length; j++) {
@@ -166,7 +261,7 @@ router.get('/download_csv/:id', (req, res) => {
                               transactions[j].formatted_amount = calc.formatCurrency(transactions[j].t_amount);
                               let hasOwnTrans = await iraSQL.getOwnTransByTransID(transactions[j].id);
                               transactions[j].can_delete = (hasOwnTrans ? false : true);
-                              console.log ("for "+transactions[j].id+" can delete is: "+transactions[j].can_delete)
+                              //console.log ("for "+transactions[j].id+" can delete is: "+transactions[j].can_delete)
                               //return e;
                   };
 
@@ -389,6 +484,7 @@ router.get('/ownership/:id', checkAuthentication, (req, res) => {
                             let portfolioIRR = parseFloat(portfolioCashGain/totalInvestmentValue)*100
                             console.log("\nRendering Investor Portfolio, totalDistrib is  : " + totalDistributions+"")
                             console.log("\nexample 2nd Deal : " + JSON.stringify(portfolioDeals[1],null,6)+"\n\n")
+                            iraApp.logger.log('info', '/portfolio/id    : '+foundInvestor.name+"  U:"+userObj.email);
                             res.render('portfolio-details', {
                                     userObj: userObj,
                                     message:  "Showing "+portfolioDeals.length+" investments ",
@@ -562,7 +658,7 @@ router.get('/commitments', checkAuthentication, (req, res) => {
       adminMenuOptions[1] = {name:"New Transaction", link:"/add-transaction"}
       adminMenuOptions[2] = {name:"New Entity", link:"/add-entity"}
       adminMenuOptions[3] = {name:"New Deal", link:"/add-deal"}
-
+      
 
 
       res.render('home', {

@@ -5,6 +5,9 @@ const extend = require('lodash').assign;
 const mysql = require('mysql');
 const nconf = require('nconf');
 const deployConfig = require('./ira-config');
+const passport  = require('passport');
+const winston = require('winston')
+const iraApp =  require('./ira');
 //const bcrypt = require('bcrypt');
 
 //CHANGE ENV HERE
@@ -109,11 +112,12 @@ function authUser (email, password, done) {
      let checkPlainPW = (password === results[0].password)
      //res is result of comparing encrypted apsswords
       if (checkPlainPW) {
-        console.log(results[0].firstname+" has authed in authuser");
+        console.log(results[0].firstname+" has authed in model - authuser");
         done(null, results[0]);
 
       } else {
           console.log("\nbad pw "+password+",  checkPlainPW is: "+checkPlainPW)
+          iraApp.logger.log('info', '/login failure U:'+email);
           done("bad password", null)
 
       }

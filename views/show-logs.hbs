@@ -1,0 +1,73 @@
+
+
+<div class="w3-panel w3-pale-blue w3-leftbar
+ w3-rightbar w3-topbar w3-border-blue w3-margin-right w3-margin-left">
+<table width = "100%" border = 0 >
+
+<tr><td>
+  <font family = 'courier' size='5'><b>IRA</b> - Activity Logs</font>
+</td><td align = "right">
+<a href = '/updateuser'>{{userObj.firstname}}</a>&emsp;<img width='50' src={{userObj.photo}}>
+</td></tr>
+
+<tr><td align = "left">
+  <a href = "/">Home</a>&emsp;
+</td><td>
+</td><td align = "right">
+</td></tr>
+
+<tr><td>
+<br>
+{{message}}
+</td></tr>
+
+
+<tr><td>
+  <br>
+Logfile is: <b>{{logFilename}}</b>
+</td></tr>
+
+<tr><td>
+</td></tr>
+</table>
+</div>
+
+<div class="w3-panel w3-pale-blue w3-leftbar
+ w3-rightbar w3-border-blue w3-margin-right w3-margin-left">
+{{#if logRows}}
+{{#each logRows}}
+
+
+
+<table width = "100%" border = 0>
+      <colgroup>
+      <col width="20%"/>
+      <col width="25%"/>
+      <col width="55%"/>
+      <col width="5%"/>
+
+      </colgroup>
+
+
+
+<tr>
+    	<td>{{time}}</td>
+      <td align="left">
+    	{{user}}
+      </td>
+      <td align="left">{{message}}</td>
+      <td></td>
+</tr>
+
+</table>
+
+{{/each}}
+{{/if}}
+</div>
+
+
+<div class="w3-panel w3-pale-blue w3-leftbar
+ w3-rightbar w3-bottombar w3-border-blue w3-margin-right w3-margin-left">
+<br>
+</div>
+&emsp;&emsp;

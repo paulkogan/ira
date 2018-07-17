@@ -55,7 +55,11 @@
                     </td><td>
 
               {{else}}
-                      <a href = "/ownership/{{id}}">View</a>
+                    {{#ifEqual entity_type "Deal"}}
+                          <a href = "/dealdetails/{{id}}">View</a>
+                    {{else}}
+                          <a href = "/ownership/{{id}}">View</a>
+                    {{/ifEqual}}
                       </td><td align="center">
                       <a href = "/clearownership/{{id}}">Clear</a>
              {{/ifEqual}}

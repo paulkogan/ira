@@ -60,8 +60,6 @@ checkConfig('NODE_ENV');
     checkConfig('DEV_PASSWORD');
     checkConfig('DEV_DBNAME');
 
-
-
   }
 
 function checkConfig (setting) {
