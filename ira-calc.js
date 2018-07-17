@@ -199,25 +199,31 @@ async function totalupInvestorPortfolio (entity_id) {
 
               //this is common to both DEAL and ENTITY
               //console.log ("\n"+index+") Investment in ENTITY_ID :"+investments[index].investment_id+" "+investments[index].investment_name+" is not a DEAL \n")
-              let transactionsForEntity = await iraSQL.getTransactionsForInvestorAndEntity(investments[index].investor_id, investments[index].investment_id,[1,3,5,6]);
+              let transactionsForEntity = await iraSQL.getTransactionsForInvestorAndEntity(investments[index].investor_id, investments[index].investment_id,[1,3,5,6,7]);
               //console.log ("TUIP - got "+transactionsForEntity.length+" transactions for entity "+investments[index].investment_name+"  : "+JSON.stringify(transactionsForEntity, null, 4)+"\n")
 
                //now newPortfolioDeal
               let newPortfolioDeal = investments[index];
               newPortfolioDeal.expandDeal = expandDeal;
-              console.log("Adding portfolio contribution from  "+newPortfolioDeal.expandDeal.name+" and using Equity Value of  "+formatCurrency(newPortfolioDeal.expandDeal.equity_value));
+              console.log("\n\n*> Adding portfolio contribution from  "+newPortfolioDeal.expandDeal.name+" and using Equity Value of  "+formatCurrency(newPortfolioDeal.expandDeal.equity_value));
               let result = await totalupCashInDeal(transactionsForEntity);
 
               newPortfolioDeal.transactionsForDeal = result[0];
               newPortfolioDeal.totalCashInDeal = result[1];
               newPortfolioDeal.dealDistributions = result[2];
+              newPortfolioDeal.totalInvestments_noRollover = result[3];
+              newPortfolioDeal.rolloverTransactions = result[4];
               newPortfolioDeal.investor_equity_value = newPortfolioDeal.expandDeal.equity_value*(newPortfolioDeal.capital_pct/100);
-              console.log( " So with "+newPortfolioDeal.capital_pct/100+"% stake, "+newPortfolioDeal.investment_name+ " contributed "+formatCurrency(newPortfolioDeal.investor_equity_value)+" to  "+foundInvestor.name+"s  portfolio (TUIP) \n\n");
+              console.log("We have a newPortfolioDeal : "+JSON.stringify(newPortfolioDeal,null,4));
+              console.log( "So with "+newPortfolioDeal.capital_pct/100+"% stake, "+newPortfolioDeal.investment_name+ " contributed "+formatCurrency(newPortfolioDeal.investor_equity_value)+" to  "+foundInvestor.name+"s  portfolio (TUIP)");
               //add the sums
               totalPortfolioValue += newPortfolioDeal.investor_equity_value  //save this as implied_value
-              totalInvestmentValue += newPortfolioDeal.amount;
+              //this is already a total for that deal - how to exude 7's
+              //need to change this.
+              totalInvestmentValue += newPortfolioDeal.totalInvestments_noRollover;
               totalDistributions += newPortfolioDeal.dealDistributions;
               newPortfolioDeal.formatted_amount = formatCurrency(newPortfolioDeal.amount)
+              newPortfolioDeal.formatted_totalInvestments_noRollover = formatCurrency(newPortfolioDeal.totalInvestments_noRollover)
               newPortfolioDeal.formatted_deal_equity_value = formatCurrency(newPortfolioDeal.expandDeal.equity_value)
               newPortfolioDeal.formatted_investor_equity_value = formatCurrency(newPortfolioDeal.investor_equity_value)
               portfolioDeals.push(newPortfolioDeal);
@@ -308,26 +314,45 @@ function totalupInvestors (investors) {
 
 
   async function totalupCashInDeal (transactions) {
-        let expandTransactions = transactions
+        let standardTransactions = []
+        let rolloverTransactions = []
+
         let totalCashInDeal = 0.0;
         let dealDistributions = 0.0
+        let totalInvestments_noRollover = 0.0;
 
         for (let index = 0; index < transactions.length; index++) {
+                //console.log()
+                if(transactions[index].tt_id != 7) { //standardTransactions
+                          totalCashInDeal += transactions[index].t_amount
+                          totalInvestments_noRollover += transactions[index].t_amount
+                          //console.log("In tuCashinDeal adding "+transactions[index].t_amount+" to "+transactions[index].investor_name)
 
-                totalCashInDeal += expandTransactions[index].t_amount
-                if(transactions[index].tt_id === 5 ) {
-                        expandTransactions[index].formatted_amount = transactions[index].t_own_adj+"%";
-                } else {
-                        expandTransactions[index].formatted_amount = formatCurrency(expandTransactions[index].t_amount)
+                          if(transactions[index].tt_id === 5 ) { //ownership adjustment - use %
+                                  transactions[index].formatted_amount = transactions[index].t_own_adj+"%";
+                          } else {
+                                  transactions[index].formatted_amount = formatCurrency(transactions[index].t_amount)
+                          }
+                          standardTransactions.push(transactions[index])
+
+                } else {  //rollover
+                          
+                          transactions[index].formatted_amount = formatCurrency(transactions[index].t_amount)
+                          //totalInvestments_noRollover += transactions[index].t_amount
+                          //console.log("In tuCashinDeal adding "+transactions[index].t_amount+" to "+transactions[index].investor_name)
+                          rolloverTransactions.push(transactions[index])
                 }
+
+                //if its a distribution
                 if(transactions[index].tt_id === 3 ) {
-                      dealDistributions += expandTransactions[index].t_amount
+                      dealDistributions += transactions[index].t_amount
+                      totalInvestments_noRollover -= transactions[index].t_amount //ignore distribution - add it back in
                 }
 
         } //for
 
         //console.log ("In TotalUPCash for "+transactions[0].investment_name+" is "+ totalCashInDeal+"and TotalDistributions is "+dealDistributions+"")
-        return [expandTransactions, formatCurrency(totalCashInDeal), dealDistributions];
+        return [standardTransactions, formatCurrency(totalCashInDeal), dealDistributions, totalInvestments_noRollover, rolloverTransactions];
 
     } //function totalupCashInDeal
 

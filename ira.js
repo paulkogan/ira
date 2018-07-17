@@ -75,7 +75,7 @@ iraLogger.exceptions.handle(
 
 
 
-const iraVersion = "0.18.5  +Entity Investor Equity Value +Logging 2"
+const iraVersion = "0.18.7  +Rollover investments"
 
 
 app.use(cookieParser(secret));
@@ -133,12 +133,14 @@ let userObj =
 
 const server = app.listen(nodePort, function() {
   console.log('IRA listening on port  ' + nodePort);
+  console.log('winston logging IRA on level = ' + iraLogger.level)
 });
 
 
 module.exports = app;
 exports.version = iraVersion;
 exports.logger = iraLogger;
+
 
 //const XMLHttpRequest = require('xhr2');
 //var xhr = new XMLHttpRequest();
@@ -311,7 +313,7 @@ app.get('/setownership/:id', checkAuthentication, (req, res) => {
     async function pullOwnershipTransactions() {
           var entity = await iraSQL.getEntityById(req.params.id);
           console.log("in set-ownership, got Entity   "+ JSON.stringify(entity,null,4)+"\n\n");
-          var rows = await iraSQL.getTransactionsForInvestment(entity.id, [1,5,6]);
+          var rows = await iraSQL.getTransactionsForInvestment(entity.id, [1,5,6,7]);
           console.log("\nIn SetOwn - got "+rows.length+" transactions for "+ entity.name+" \n");
                   // screen transaction and calculate ownership
           if(entity.ownership_status===0 && (rows.length >0) ) {
@@ -407,6 +409,7 @@ app.post('/process_set_ownership', urlencodedParser, (req, res) => {
                     inv_trans.push(inv_trans_row);
 
 
+                    let trans_amount_to_add = (inv_trans[i].tt_id !=7)
                     //here, check existing ownership rows
                     let found = false
                     for (let j=0;j<own_Rows.length;j++) {

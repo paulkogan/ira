@@ -15,34 +15,6 @@ const passport  = require('passport');
 const winston = require('winston')
 
 
-// const session = require('express-session')
-// const flash   = require('connect-flash-plus');
-// const cookieParser = require('cookie-parser')
-
-// const LocalStrategy     = require('passport-local').Strategy;
-// const RedisStore = require('connect-redis')(session)
-// const secret = "cat"
-
-
-// app.use(cookieParser(secret));
-// app.use(bodyParser.urlencoded({extended: true}))
-// app.use(bodyParser.json());
-// app.use(session({
-//     cookieName: 'irasess',
-//     secret: secret,
-//     resave: true,
-//     //store: RedisStore,
-//     saveUninitialized: true,
-//     cookie : { httpOnly: true, expires: 60*60*1000 }
-// }));
-//
-//
-// app.use(passport.initialize());
-// app.use(passport.session());
-// app.use(passport.authenticate('session'));
-
-
-
 
 //default session info
 let sessioninfo = "no session"
@@ -57,44 +29,62 @@ let userObj =
   "access":0
 }
 
-
+module.exports = router;
 
 
 //============ FUNCTIONS ======================
-module.exports = router;
-
-//NOT FIRST TIME LOGIN - Repeat of checkAuthentication from app.js
-function checkAuthentication(req,res,next){
-
-  try {
-          if (userObj.id == 0) {
-               req.session.return_to = "/";
-          } else {
-               req.session.return_to = req.url;
-          }
-
-          if(req.isAuthenticated()){
-                 console.log("YES, authenticated"+req.url)
-                 //req.flash('login', 'checkAuth success')
-                 return next();
-                 //res.redirect(req.url);
-
-          } else {
-              console.log("NO, not authenticated"+req.url)
-              //req.flash('login', 'checkAuth failed, need to login')
-              res.redirect("/login");
-          }
-
-    } catch (err){
-              console.log(err+ " -- Login   ");
-              req.flash('login', "Could not find user with err"+err);
-              res.redirect('/home/');
-   } //trycatch
 
 
-} //function
 
 //==========  ROUTES ===========================
+
+router.get('/portfolio/:id', (req, res) => {
+    if (req.session && req.session.passport) {
+       userObj = req.session.passport.user;
+     }
+
+     showInvestorPortfolio().catch(err => {
+           console.log("investor portfolio problem: "+err);
+           req.flash('login', "Problems getting Portfolio info for entity no. "+req.params.id+".  ")
+           res.redirect('/home')
+     })
+
+     async function showInvestorPortfolio() {
+              let foundInvestor = await iraSQL.getEntityById(req.params.id);
+              let results = await calc.totalupInvestorPortfolio(foundInvestor.id)
+              let portfolioDeals = results[0]
+              if (portfolioDeals.length >0 ) {
+                          let totalInvestmentValue =  results[1]
+                          let totalPortfolioValue =  results[2]
+                          let totalDistributions =  results[3]*-1 //make it positive here
+                          let portfolioValueGain =  totalPortfolioValue-totalInvestmentValue
+                          let portfolioCashGain = portfolioValueGain+ totalDistributions
+                          let portfolioIRR = parseFloat(portfolioCashGain/totalInvestmentValue)*100
+                          console.log("\nRendering Investor Portfolio, totalDistrib is  : " + totalDistributions+"")
+                          console.log("\nexample 2nd Deal : " + JSON.stringify(portfolioDeals[1],null,6)+"\n\n")
+                          iraApp.logger.log('info', '/portfolio/id    : '+foundInvestor.name+"  U:"+userObj.email);
+                          res.render('portfolio-details', {
+                                  userObj: userObj,
+                                  message:  "Showing "+portfolioDeals.length+" investments ",
+                                  investorName: portfolioDeals[0].investor_name,
+                                  investments: portfolioDeals, //including rollover transactions
+                                  totalPortfolioValue: calc.formatCurrency(totalPortfolioValue),
+                                  totalInvestmentValue: calc.formatCurrency(totalInvestmentValue),
+                                  portfolioValueGain: calc.formatCurrency(portfolioValueGain),
+                                  totalDistributions: calc.formatCurrency(totalDistributions),
+                                  portfolioCashGain: calc.formatCurrency(portfolioCashGain),
+                                  portfolioIRR: portfolioIRR.toFixed(2)
+                          });
+
+                    } else { //no ownership data
+                          req.flash('login', "No portfolio info for "+foundInvestor.name+".  ")
+                          res.redirect('/home/')
+
+                } //if ownership
+     } //async function
+}); //route - ownership
+
+
 
 router.get('/showlogs',  (req, res) => {
         if (req.session && req.session.passport) {
@@ -115,23 +105,20 @@ router.get('/showlogs',  (req, res) => {
 
               try {
                         let fileContent = await fs.readFileSync(filePath, 'utf8')
-                        console.log("Got from file: "+fileContent)
+                        //console.log("Got from file: "+fileContent)
                         var logRows = []
 
                         while (fileContent.length > 2) {
                           let startLine = fileContent.indexOf("<*");
                           let endLine = fileContent.indexOf("*>");
                           let logLine = fileContent.slice(startLine, endLine+2);
-                          console.log("line is:  "+logLine)
+                          //console.log("line is:  "+logLine)
                           let user = logLine.slice(logLine.indexOf("U:")+2,logLine.indexOf("*>"))
                           let message = logLine.slice(logLine.indexOf("Z ")+2,logLine.indexOf("U:")-1)
                           //let dateTime = logLine.slice(2,logLine.indexOf("Z")
                           let dateTime = (logLine.slice(2,logLine.indexOf("Z")-4)).replace(/T/," ")
-                          // message = message.replace(/(?<=7)T/g,"  ");
+                          // message = message.replace(/(?<=7)T/g,"  "); //JS does not support look behind!!
 
-                          // message = message.replace(/\.\d\d\dZ/g, "  ");
-                          // message = message.replace(/(?<=7)T/g,"  ");
-                          //message = message.replace(/\.(\d)(?=(\d\d\d)+(?!\d))/g, "$1,");
                           let logRow = {
                                   user:user,
                                   message:message,
@@ -142,14 +129,6 @@ router.get('/showlogs',  (req, res) => {
                           fileContent = fileContent.slice(endLine+2)
                         }
 
-
-
-
-
-                      //let content  = fileContent.replace(/2018/g, "***2018");
-                      //  console.log("now content is : "+content)
-                      //  var n = str.indexOf("welcome");
-                        //var res = str.substring(1, 4);
                         res.render('show-logs', {
                                 userObj: userObj,
                                 sessioninfo: req.session,
@@ -159,21 +138,13 @@ router.get('/showlogs',  (req, res) => {
 
                         });//render
 
-
-
               } catch (err){
                         console.log(err+ " -- File   ");
                         req.flash('login', "Could not read log file "+ filePath +" with err"+err);
                         res.redirect('/home/');
              } //trycatch
-
-
-
-
-
-
         } //asyncfunction
-}); //route add transactions
+}); //route showlogs
 
 
 
@@ -187,13 +158,13 @@ router.get('/download_csv/:id', (req, res) => {
       async function downloadCSVTransactions() {
             try {
                   var entity = await iraSQL.getEntityById(req.params.id);
-                  console.log("have Entity   "+ JSON.stringify(entity));
+                  //console.log("have Entity   "+ JSON.stringify(entity));
                   var transactions = await iraSQL.getTransactionsForInvestment(entity.id);
                   console.log("\nGot transactions for entity  "+JSON.stringify(transactions,null,5));
                   fileName = entity.name+"_IRA_Transactions.csv"
 
             } catch (err ){
-                  console.log(err+ " -- No entity for    "+ req.params.id);
+                  //console.log(err+ " -- No entity for    "+ req.params.id);
                   var transactions = await iraSQL.getAllTransactions();
                   fileName = "All_IRA_Transactions.csv"
                   var entity = {
@@ -220,7 +191,7 @@ router.get('/download_csv/:id', (req, res) => {
 
 
                   let transCSV = await calc.createCSVforDownload(cleanTransactions);
-                  console.log("In ira, the CSV file is \n"+transCSV+"\n")
+                  //console.log("In ira, the CSV file is \n"+transCSV+"\n")
 
                   res.setHeader('Content-disposition', 'attachment; filename='+fileName);
                   res.set('Content-Type', 'text/csv');
@@ -262,9 +233,8 @@ router.get('/download_csv/:id', (req, res) => {
                               let hasOwnTrans = await iraSQL.getOwnTransByTransID(transactions[j].id);
                               transactions[j].can_delete = (hasOwnTrans ? false : true);
                               //console.log ("for "+transactions[j].id+" can delete is: "+transactions[j].can_delete)
-                              //return e;
-                  };
 
+                  };
 
             } catch (err ){
                   console.log(err+ " -- No entity for    "+ req.params.id);
@@ -275,7 +245,6 @@ router.get('/download_csv/:id', (req, res) => {
                               transactions[j].can_delete = false;
                                //return e;
                   };
-
 
                   var entity = {
                     id:0,
@@ -460,51 +429,6 @@ router.get('/ownership/:id', checkAuthentication, (req, res) => {
 
 
 
-  router.get('/portfolio/:id', (req, res) => {
-      if (req.session && req.session.passport) {
-         userObj = req.session.passport.user;
-       }
-
-       showInvestorPortfolio().catch(err => {
-             console.log("investor portfolio problem: "+err);
-             req.flash('login', "Problems getting Portfolio info for entity no. "+req.params.id+".  ")
-             res.redirect('/home')
-       })
-
-       async function showInvestorPortfolio() {
-                let foundInvestor = await iraSQL.getEntityById(req.params.id);
-                let results = await calc.totalupInvestorPortfolio(foundInvestor.id)
-                let portfolioDeals = results[0]
-                if (portfolioDeals.length >0 ) {
-                            let totalInvestmentValue =  results[1]
-                            let totalPortfolioValue =  results[2]
-                            let totalDistributions =  results[3]*-1 //make it positive here
-                            let portfolioValueGain =  totalPortfolioValue-totalInvestmentValue
-                            let portfolioCashGain = portfolioValueGain+ totalDistributions
-                            let portfolioIRR = parseFloat(portfolioCashGain/totalInvestmentValue)*100
-                            console.log("\nRendering Investor Portfolio, totalDistrib is  : " + totalDistributions+"")
-                            console.log("\nexample 2nd Deal : " + JSON.stringify(portfolioDeals[1],null,6)+"\n\n")
-                            iraApp.logger.log('info', '/portfolio/id    : '+foundInvestor.name+"  U:"+userObj.email);
-                            res.render('portfolio-details', {
-                                    userObj: userObj,
-                                    message:  "Showing "+portfolioDeals.length+" investments ",
-                                    investorName: portfolioDeals[0].investor_name,
-                                    investments: portfolioDeals,
-                                    totalPortfolioValue: calc.formatCurrency(totalPortfolioValue),
-                                    totalInvestmentValue: calc.formatCurrency(totalInvestmentValue),
-                                    portfolioValueGain: calc.formatCurrency(portfolioValueGain),
-                                    totalDistributions: calc.formatCurrency(totalDistributions),
-                                    portfolioCashGain: calc.formatCurrency(portfolioCashGain),
-                                    portfolioIRR: portfolioIRR.toFixed(2)
-                            });
-
-                      } else { //no ownership data
-                            req.flash('login', "No portfolio info for "+foundInvestor.name+".  ")
-                            res.redirect('/home/')
-
-                  } //if ownership
-       } //async function
-  }); //route - ownership
 
 
 
@@ -658,7 +582,7 @@ router.get('/commitments', checkAuthentication, (req, res) => {
       adminMenuOptions[1] = {name:"New Transaction", link:"/add-transaction"}
       adminMenuOptions[2] = {name:"New Entity", link:"/add-entity"}
       adminMenuOptions[3] = {name:"New Deal", link:"/add-deal"}
-      
+
 
 
       res.render('home', {
@@ -683,3 +607,36 @@ router.get('/commitments', checkAuthentication, (req, res) => {
         res.redirect('/home')
 
  })
+
+
+
+ //NOT FIRST TIME LOGIN - Repeat of checkAuthentication from app.js
+ function checkAuthentication(req,res,next){
+
+   try {
+           if (userObj.id == 0) {
+                req.session.return_to = "/";
+           } else {
+                req.session.return_to = req.url;
+           }
+
+           if(req.isAuthenticated()){
+                  console.log("YES, authenticated"+req.url)
+                  //req.flash('login', 'checkAuth success')
+                  return next();
+                  //res.redirect(req.url);
+
+           } else {
+               console.log("NO, not authenticated"+req.url)
+               //req.flash('login', 'checkAuth failed, need to login')
+               res.redirect("/login");
+           }
+
+     } catch (err){
+               console.log(err+ " -- Login   ");
+               req.flash('login', "Could not find user with err"+err);
+               res.redirect('/home/');
+    } //trycatch
+
+
+ } //function
