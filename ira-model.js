@@ -62,7 +62,9 @@ module.exports = {
   searchEntities,
   getAllEntities,
   getAllTransactions,
+  getCapitalCallsForDeal,
   getOwnershipForEntity,
+  getUniqueOwnershipForEntity,
   getOwnershipForEntityUpstreamUpdate,
   getOwnershipForInvestor,
   getOwnershipForInvestorAndEntity,
@@ -75,6 +77,7 @@ module.exports = {
   getTransactionsForInvestorAndEntity,
   getTransactionsByType,
   getTransactionsForInvestment,
+  getCapitalCallById,
   getDealById,
   getEntityTypes,
   getTransactionTypes,
@@ -83,6 +86,7 @@ module.exports = {
   insertDeal,
   insertOwnership,
   insertOwnTrans,
+  insertCapitalCall,
   updateEntity,
   updateEntityImpliedValue,
   updateDeal,
@@ -92,6 +96,39 @@ module.exports = {
   updateUser,
   authUser
 };
+
+
+
+
+
+//owneship: parent_entity_id, child_entity_id, capital_pct
+function getCapitalCallsForDeal(dealEntityID) {
+    let queryString = ""
+    if(dealEntityID) {
+          queryString = 'SELECT * from capital_calls WHERE deal_entity_id='+dealEntityID;
+      //console.log ("in getOwnTransByTransID, the query string is "+queryString+"\n\n")
+    } else {
+          queryString = 'SELECT * from capital_calls'
+
+    }
+
+    return new Promise(   function(succeed, fail) {
+          connection.query(queryString,
+            function(err, results) {
+                    if (err) {
+                          fail(err)
+                    } else {
+                        //console.log ("in Moooodel, got records "+JSON.stringify(results)+"")
+                        succeed(results)
+                    }
+            }); //connection
+        }); //promise
+
+
+} // function
+
+
+
 
 
 
@@ -141,6 +178,8 @@ function authUser (email, password, done) {
   } //cb function
  ) //connection querty
 } //authuser
+
+
 
 //owneship: parent_entity_id, child_entity_id, capital_pct
 function getOwnTransByTransID (transaction_id) {
@@ -563,7 +602,34 @@ function getOwnershipForEntityUpstreamUpdate (child_id) {
       }); //promise
 } // function
 
+//owneship: parent_entity_id, child_entity_id, capital_pct
+function getUniqueOwnershipForEntity (child_id) {
+  let queryString = 'SELECT o.id, investor.name as investor_name, investment.name as investment_name, passthru.name as passthru_name,'
+  + ' investment.id as investment_id, investor.id as investor_id,'
+  + ' o.amount as amount, ROUND(o.capital_pct,4) as capital_pct FROM ownership as o'
+  + ' JOIN entities as investment ON investment.id = o.child_entity_id'
+  + ' JOIN entities as investor ON investor.id = o.parent_entity_id'
+  + ' LEFT JOIN entities as passthru ON passthru.id = o.passthru_entity_id'
+  + ' WHERE o.child_entity_id ='+child_id+' ORDER BY amount DESC';
 
+      return new Promise(function(succeed, fail) {
+            connection.query(queryString,
+              function(err, results) {
+                      if (err) {
+                            console.log ("Problem in getOwnershipForEntity "+err)
+                            fail(err)
+                      } else {
+                            // if (results.length<1) {
+                            //           fail("no ownership data")
+                            // }
+
+                            console.log ("Ownership query OK got "+results.length)
+                            //console.log ("The results are:"+JSON.stringify(results, null,4))
+                            succeed(results)
+                      }
+              }); //connection
+      }); //promise
+} // function
 
 //owneship: parent_entity_id, child_entity_id, capital_pct
 function getOwnershipForEntity (child_id) {
@@ -706,6 +772,21 @@ function getTransactionById (trans_id) {
 } // function
 
 
+function getCapitalCallById (cc_id) {
+      return new Promise(function(succeed, fail) {
+            connection.query(
+              'SELECT * from capital_calls WHERE id = ?', cc_id,
+              function(err, results) {
+                      if (err) {
+                          console.log ("in Model: CCByID problem "+err)
+                            fail(err)
+                      } else {
+                            //console.log ("in Model: TransByID "+JSON.stringify(results))
+                            succeed(results[0])
+                      }
+              }); //connection
+      }); //promise
+} // function
 
 
 
@@ -727,6 +808,29 @@ function insertOwnTrans(own_id, trans_id) {
                  }); //connection
          }); //promise
 } // function
+
+
+
+
+
+function insertCapitalCall (capitalCall) {
+      console.log("In Model, adding new Capital Call: "+JSON.stringify(capitalCall))
+      return new Promise(function(succeed, fail) {
+            connection.query(
+            'INSERT INTO capital_calls SET ?', capitalCall,
+                function(err, results) {
+                          if (err) {
+                                console.log("Problem inserting capital_calls SQL"+err)
+                                fail(err)
+                          } else {
+                                //console.log("In model, results: "+JSON.stringify(results));
+                                succeed(results)
+                          }
+              }); //connection
+      }); //promise
+} // function
+
+
 
 
 

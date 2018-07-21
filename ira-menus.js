@@ -580,8 +580,10 @@ router.get('/commitments', checkAuthentication, (req, res) => {
       let adminMenuOptions = []
       adminMenuOptions[0] = {name:"Manage Ownership", link:"/setownership/"}
       adminMenuOptions[1] = {name:"New Transaction", link:"/add-transaction"}
-      adminMenuOptions[2] = {name:"New Entity", link:"/add-entity"}
-      adminMenuOptions[3] = {name:"New Deal", link:"/add-deal"}
+      adminMenuOptions[2] = {name:"New Capital-Call Transaction", link:"/add-capital-call-transaction"}
+      adminMenuOptions[3] = {name:"New Entity", link:"/add-entity"}
+      adminMenuOptions[4] = {name:"New Deal", link:"/add-deal"}
+      adminMenuOptions[5] = {name:"Create a Capital Call", link:"/add-capital-call"}
 
 
 
