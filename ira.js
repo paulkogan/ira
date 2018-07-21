@@ -75,7 +75,7 @@ iraLogger.exceptions.handle(
 
 
 
-const iraVersion = "0.18.7  +Rollover investments"
+const iraVersion = "0.19  +Capital Call v1"
 
 
 app.use(cookieParser(secret));
@@ -148,6 +148,164 @@ exports.logger = iraLogger;
 //============ ROUTES  ======================
 
 
+app.get('/add-capital-call-transaction', (req, res) => {
+        if (req.session && req.session.passport) {
+           userObj = req.session.passport.user;
+        }
+
+
+addCapitalCallTrans().catch(err => {
+               console.log("Add CapCall Transacaton Problem problem: "+err);
+               req.flash('login', "Problems adding Capcall Transaction ")
+               res.redirect('/home')
+         })
+
+
+  async function addCapitalCallTrans() {
+
+      let capitalCalls =  await iraSQL.getCapitalCallsForDeal();
+      console.log("Got bacck Capital Calls "+JSON.stringify(capitalCalls, null, 4))
+      // let dealsToPick  = deals.map(function(plank) {
+      //         plank.name = plank.name.substring(0,30);
+      //         return plank;
+      // });
+
+      res.render('add-capital-call-trans', {
+                userObj: userObj,
+                postendpoint: '/process_add_capital_call_trans',
+                phase: 1,
+                capitalcalls: capitalCalls,
+                investors: null,
+                chosen_cap_call_id: null,
+        });//render
+  } //async function
+}); //route add capital call
+
+
+// insert the new transaction
+app.post('/process_add_capital_call_trans', urlencodedParser, (req, res) => {
+    //call the async function
+    processNewCapCall().catch(err => {
+          console.log("Process Add Capital Call Transaction problem: "+err);
+    })
+
+    async function processNewCapCall() {
+              let formCapCallTrans = req.body
+              console.log("Back from the CapCall FORM "+JSON.stringify(formCapCallTrans, null, 4))
+              //you just have te id of the capCall - you should have capCall.entity_id
+
+              if (formCapCallTrans.phase === "1") {
+                    //console.log("Back from the CapCall FORM "+JSON.stringify(formCapCallTrans, null, 4))
+                    // console.log("ARRAY is = "+formCapCallTrans.choiceA+"\n")
+                    // console.log("Array as JSON  "+JSON.parse(formCapCallTrans.choiceA))
+                    // console.log("2nd element in Array as JSON  "+JSON.parse(formCapCallTrans.choiceA)[1])
+                    let cc_id = JSON.parse(formCapCallTrans.choiceA)[0];
+                    let capCallObj = await iraSQL.getCapitalCallById(cc_id);
+                    let deal_entity_id = JSON.parse(formCapCallTrans.choiceA)[1];
+                    //let cc_name = JSON.parse(formCapCallTrans.choiceA)[2];
+                    let investors =  await iraSQL.getUniqueOwnershipForEntity(deal_entity_id);
+                    let per_investor = calc.formatCurrency(capCallObj.target_amount/investors.length)
+
+                    //transform ownership rows into investor rows
+                    console.log("In processCapCall, got "+investors.length+ " investors: "+JSON.stringify(investors,null,4)+"\n");
+
+                    res.render('add-capital-call-trans', {
+                              userObj: userObj,
+                              postendpoint: '/process_add_capital_call_trans',
+                              phase: 2,
+                              investors: investors,
+                              capCall: capCallObj,
+                              per_investor: per_investor,
+                              deal_name:investors[0].investment_name
+                      });//render
+
+            } else {  //phase = 2
+                      let capCallObj = await iraSQL.getCapitalCallById(formCapCallTrans.cc_id);
+                      console.log("In processCapCall- Phase 2, got "+JSON.stringify(capCallObj,null,4)+"\n");
+
+
+                      let newTransaction = {
+                                investor_entity_id: formCapCallTrans.investor_entity_id,
+                                //investment_entity_id: capCallObj.deal_entity_id,
+                                investment_entity_id: formCapCallTrans.investment_entity_id,
+                                passthru_entity_id: null,
+                                amount: calc.parseFormAmountInput(formCapCallTrans.amount),
+                                wired_date: formCapCallTrans.wired_date,
+                                own_adj:0.00,
+                                trans_type:8,
+                                notes: formCapCallTrans.notes,
+                                capital_call_id: formCapCallTrans.cc_id
+                        }
+
+
+              console.log("\nAbout to insert new Cap Call transaction with "+JSON.stringify(newTransaction, null, 4)+"\n");
+
+              let insertTransResults = await iraSQL.insertTransaction(newTransaction);
+              iraLogger.log('info', '/add-capital-call-transaction : '+insertTransResults.insertId+" U:"+userObj.email);
+              req.flash('login', "Added capital-call transaction no. "+insertTransResults.insertId);
+              console.log("\nAdded CapCall transaction no. "+insertTransResults.insertId);
+              res.redirect('/transactions');
+          }
+
+
+     } //async function
+  }); //process add-deal route
+
+
+
+
+
+app.get('/add-capital-call', (req, res) => {
+        if (req.session && req.session.passport) {
+           userObj = req.session.passport.user;
+        }
+
+
+  addCapitalCall().catch(err => {
+               console.log("Add CapCall Problem problem: "+err);
+               req.flash('login', "Problems adding Capcall ")
+               res.redirect('/home')
+         })
+
+
+  async function addCapitalCall() {
+      let deals = await iraSQL.getEntitiesByTypes([1]);
+
+      let dealsToPick  = deals.map(function(plank) {
+              plank.name = plank.name.substring(0,30);
+              return plank;
+      });
+
+      res.render('add-capital-call', {
+                userObj: userObj,
+                postendpoint: '/process_add_capital_call',
+                deals: dealsToPick
+        });//render
+  } //async function
+}); //route add capital call
+
+
+
+// insert the new transaction
+app.post('/process_add_capital_call', urlencodedParser, (req, res) => {
+
+    //call the async function
+    processNewCapCall().catch(err => {
+          console.log("Process Add Capital Call problem: "+err);
+    })
+
+    async function processNewCapCall() {
+
+              let readyCapCall = req.body;
+              readyCapCall.target_amount = calc.parseFormAmountInput(readyCapCall.target_amount)
+              //readyCapCall.target_amount = parseFloat(calc.parseFormAmountInput(readyCapCall.target_amount)).toFixed(2)
+              let insertCapCallResults = await iraSQL.insertCapitalCall(readyCapCall);
+              console.log( "Added CapCall #: "+insertCapCallResults.insertId);
+              req.flash('login', "Added Capital Call no. "+insertCapCallResults.insertId+"  ");
+              res.redirect('/home');
+
+     } //async function
+  }); //process add-deal route
 
 
 
@@ -168,6 +326,8 @@ app.get('/add-transaction', checkAuthentication, (req, res) => {
         iraSQL.getTransactionTypes().then(
               async function(transactiontypes) {
                         transactionTypesToPick = transactiontypes;
+                        //remove Capital Call for now
+                        transactionTypesToPick.splice(6,1)
               }, function(error) {   //failed
                         console.log("Getting deals problem: "+error);
                         return;
