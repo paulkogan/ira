@@ -165,9 +165,11 @@ async function totalupInvestorPortfolio (entity_id) {
 
           for (let index = 0; index < investments.length; index++) {
                let expandDeal =  {}
+               //if its a deal
                if (investments[index].deal_id) {
                              let deal = await iraSQL.getDealById(investments[index].deal_id);
                              expandDeal = calculateDeal(deal[0])
+              //if its an entity
               } else {
                       let investmentEntity = await iraSQL.getEntityById(investments[index].investment_id)
                       console.log("Going from Own to Entity, the entity is: "+JSON.stringify(investmentEntity,null,4))
@@ -199,7 +201,7 @@ async function totalupInvestorPortfolio (entity_id) {
 
               //this is common to both DEAL and ENTITY
               //console.log ("\n"+index+") Investment in ENTITY_ID :"+investments[index].investment_id+" "+investments[index].investment_name+" is not a DEAL \n")
-              let transactionsForEntity = await iraSQL.getTransactionsForInvestorAndEntity(investments[index].investor_id, investments[index].investment_id,[1,3,5,6,7]);
+              let transactionsForEntity = await iraSQL.getTransactionsForInvestorAndEntity(investments[index].investor_id, investments[index].investment_id,[1,3,5,6,7,8]);
               //console.log ("TUIP - got "+transactionsForEntity.length+" transactions for entity "+investments[index].investment_name+"  : "+JSON.stringify(transactionsForEntity, null, 4)+"\n")
 
                //now newPortfolioDeal
@@ -336,7 +338,7 @@ function totalupInvestors (investors) {
                           standardTransactions.push(transactions[index])
 
                 } else {  //rollover
-                          
+
                           transactions[index].formatted_amount = formatCurrency(transactions[index].t_amount)
                           //totalInvestments_noRollover += transactions[index].t_amount
                           //console.log("In tuCashinDeal adding "+transactions[index].t_amount+" to "+transactions[index].investor_name)

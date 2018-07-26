@@ -62,7 +62,8 @@ module.exports = {
   searchEntities,
   getAllEntities,
   getAllTransactions,
-  getCapitalCallsForDeal,
+  getCapitalCallsForEntity,
+  getCapitalCallById,
   getOwnershipForEntity,
   getUniqueOwnershipForEntity,
   getOwnershipForEntityUpstreamUpdate,
@@ -77,7 +78,7 @@ module.exports = {
   getTransactionsForInvestorAndEntity,
   getTransactionsByType,
   getTransactionsForInvestment,
-  getCapitalCallById,
+  getTransactionsForCapitalCall,
   getDealById,
   getEntityTypes,
   getTransactionTypes,
@@ -97,12 +98,49 @@ module.exports = {
   authUser
 };
 
+function getTransactionsForCapitalCall (cc_id, transTypes) {
+
+  if (!transTypes) transTypes = [8]
+
+  //console.log("\nIn Model, TransTypes are: "+JSON.stringify(transTypes)+"\n\n")
+
+  let queryString = 'SELECT t.id as id,  t.investor_entity_id as investor_entity_id,  t.investment_entity_id as investment_entity_id, t.passthru_entity_id as passthru_entity_id,'
+  + ' investor.name as investor_name, investment.name as investment_name, passthru.name as passthru_name,'
+  + ' t.trans_type as tt_id, trans_types.name as tt_name, t.capital_call_id as cc_id,'
+  + ' DATE_FORMAT(t.wired_date, "%b %d %Y") as t_wired_date, t.amount as t_amount, t.own_adj as t_own_adj, t.notes as t_notes'
+  + ' FROM transactions as t'
+  + ' JOIN entities as investment ON investment.id = t.investment_entity_id'
+  + ' JOIN entities as investor ON investor.id = t.investor_entity_id'
+  + ' JOIN transaction_types as trans_types ON t.trans_type = trans_types.type_num'
+  + ' LEFT JOIN entities as passthru ON passthru.id = t.passthru_entity_id'
+  + ' WHERE t.capital_call_id ='+cc_id
+  //+ ' AND t.trans_type = 1'
+  + ' AND t.trans_type IN ('+transTypes.join()+')'
+  + ' ORDER BY t.id DESC';
+
+      return new Promise(function(succeed, fail) {
+            connection.query(queryString,
+              function(err, results) {
+                      if (err) {
+                            console.log ("Cant find transcations "+err)
+                            fail(err)
+                      } else {
+                            console.log ("In Model: for CC found "+results.length+" transactions \n")
+                            //console.log ("The results are:"+JSON.stringify(results))
+                            // if (results.length<1) {
+                            //           fail("no ownership data")
+                            // }
+                            succeed(results)
+                      }
+              }); //connection
+      }); //promise
+} // function
 
 
 
 
 //owneship: parent_entity_id, child_entity_id, capital_pct
-function getCapitalCallsForDeal(dealEntityID) {
+function getCapitalCallsForEntity(dealEntityID) {
     let queryString = ""
     if(dealEntityID) {
           queryString = 'SELECT * from capital_calls WHERE deal_entity_id='+dealEntityID;
@@ -341,7 +379,7 @@ function getTransactionsForInvestorAndEntity (investorId, dealEntityId, transTyp
 
 function getTransactionsForInvestment (invest_entityId, transTypes) {
 
-  if (!transTypes) transTypes = [1,2,3,4,5,6]
+  if (!transTypes) transTypes = [1,2,3,4,5,6,7,8]
 
   //console.log("\nIn Model, TransTypes are: "+JSON.stringify(transTypes)+"\n\n")
 
@@ -463,17 +501,20 @@ function getEntityByDealId (deal_id) {
 //owneship: parent_entity_id, child_entity_id, capital_pct
 function getEntityById (entity_id) {
   let queryString = 'SELECT * from entities WHERE id ='+entity_id;
+  console.log ("in getEntiyById, the query string is "+queryString+"\n\n")
       return new Promise(function(succeed, fail) {
             connection.query(queryString,
               function(err, results) {
-                      if (err) {
+                console.log ("Searching Entity the resukts are "+results +"\n")
+                    if (!results || results === undefined || results.length < 1) {
+                         fail("No such entity, sorry")
+                         return
+                    }
+                    if (err) {
                             fail(err)
                       } else {
-                            if (!results[0]) {
-                                    fail("No such entity, sorry")
-                            }
 
-                            //console.log ("Success found by Id entity "+results[0].name +"\n")
+                            console.log ("Success found by Id entity "+results[0].name +"\n")
                             succeed(results[0])
                       }
               }); //connection
@@ -781,7 +822,7 @@ function getCapitalCallById (cc_id) {
                           console.log ("in Model: CCByID problem "+err)
                             fail(err)
                       } else {
-                            //console.log ("in Model: TransByID "+JSON.stringify(results))
+                            //console.log ("in Model: CapCallbyId "+JSON.stringify(results))
                             succeed(results[0])
                       }
               }); //connection

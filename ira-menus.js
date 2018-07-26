@@ -38,6 +38,120 @@ module.exports = router;
 
 //==========  ROUTES ===========================
 
+
+router.get('/dealdetails/:id', checkAuthentication, (req, res) => {
+
+
+
+    if (req.session && req.session.passport) {
+                 userObj = req.session.passport.user;
+    }
+
+    //call the async function
+    pullDealComponents().catch(err => {
+          console.log("Deal Components problem: "+err);
+    })
+
+    async function pullDealComponents() {
+          var entity = await iraSQL.getEntityById(req.params.id);
+          console.log("have Entity   "+ JSON.stringify(entity));
+
+          let capitalCalls =  await iraSQL.getCapitalCallsForEntity(entity.id);
+          console.log("Got bacck Capital Calls "+JSON.stringify(capitalCalls, null, 4))
+
+          var deals = await iraSQL.getDealById(entity.deal_id);
+          console.log("Before Ownership, have Entity   "+ entity.name+"   and Deal is  "+JSON.stringify(deals));
+          var investors = await iraSQL.getOwnershipForEntity(entity.id)
+          if (investors.length>0) {
+                                let results = calc.totalupInvestors(investors)
+                                let expandInvestors = results[0]
+                                let totalCapital =  results[1]
+                                let totalCapitalPct = results[2]
+                                let expandDeal = calc.calculateDeal(deals[0])
+                                // console.log("\nrendering ownership and Deal is "+JSON.stringify(deals, null, 4))
+                                res.render('deal-details', {
+                                        userObj: userObj,
+                                        message:  "Showing "+expandInvestors.length+" investors",
+                                        investors: expandInvestors,
+                                        capitalCalls: capitalCalls,
+                                        totalCapital: totalCapital,
+                                        totalCapitalPct: totalCapitalPct,
+                                        deal:expandDeal,
+                                        entity:entity
+                                });
+
+            } else { //no ownership data
+                                let expandDeal = calc.calculateDeal(deals[0])
+                                res.render('deal-details', {
+                                      userObj: userObj,
+                                      message:  "No ownership information found ",
+                                      dealName: expandDeal.name,
+                                      deal:expandDeal,
+                                      capitalCalls: capitalCalls
+                                }); //  render
+            }  //if-else  - no ownership get name of entity
+      } //async function pullDealComponents
+}); //route - deal details
+
+
+
+
+
+
+
+//pull up info for this one capital call
+router.get('/capitalcall/:id', checkAuthentication, (req, res) => {
+      if (req.session && req.session.passport) {
+         userObj = req.session.passport.user;
+       }
+
+       showCapCallDetails().catch(err => {
+             console.log("cap call details problem: "+err);
+             req.flash('login', "Problems getting Capital Call for "+req.params.id+".  ")
+             res.redirect('/home')
+       })
+
+       async function showCapCallDetails() {
+             let foundCapCall = await iraSQL.getCapitalCallById(req.params.id);
+             console.log("in CC Details, have CC   "+ JSON.stringify(foundCapCall));
+             foundCapCall.formatted_target_amount = calc.formatCurrency(foundCapCall.target_amount);
+             foundCapCall.formatted_target_per_investor = calc.formatCurrency(foundCapCall.target_per_investor);
+
+            let capCallTransactions = await iraSQL.getTransactionsForCapitalCall (foundCapCall.id, [8]);
+            console.log("Capp Call transactions are: "+JSON.stringify(capCallTransactions,null,4))
+
+            let dealEntity = await iraSQL.getEntityById(foundCapCall.deal_entity_id);
+
+            let totalRaised = 0
+            let formattedCapCallTransaction = capCallTransactions.map((trans) => {
+                        trans.formatted_amount = calc.formatCurrency(trans.t_amount);
+                        totalRaised += trans.t_amount;
+                        return trans
+            })
+
+
+
+                            console.log("rendering Cap Call")
+                            res.render('capitalcall-details', {
+                                    userObj: userObj,
+                                    message:  "Showing "+capCallTransactions.length+" transactions. ",
+                                    capCall: foundCapCall,
+                                    dealEntity: dealEntity,
+                                    transactions: formattedCapCallTransaction,
+                                    totalRaised: calc.formatCurrency(totalRaised)
+
+                            });
+
+
+       } //async function
+  }); //route - ownership
+
+
+
+
+
+
+
 router.get('/portfolio/:id', (req, res) => {
     if (req.session && req.session.passport) {
        userObj = req.session.passport.user;
@@ -381,54 +495,6 @@ router.get('/ownership/:id', checkAuthentication, (req, res) => {
        } //async function
   }); //route - ownership
 
-  router.get('/dealdetails/:id', checkAuthentication, (req, res) => {
-
-      if (req.session && req.session.passport) {
-                   userObj = req.session.passport.user;
-      }
-
-      //call the async function
-      pullDealComponents().catch(err => {
-            console.log("Deal Components problem: "+err);
-      })
-
-      async function pullDealComponents() {
-            var entity = await iraSQL.getEntityById(req.params.id);
-            console.log("have Entity   "+ JSON.stringify(entity));
-            var deals = await iraSQL.getDealById(entity.deal_id);
-            console.log("Before Ownership, have Entity   "+ entity.name+"   and Deal is  "+JSON.stringify(deals));
-            var investors = await iraSQL.getOwnershipForEntity(entity.id)
-            if (investors.length>0) {
-                                  let results = calc.totalupInvestors(investors)
-                                  let expandInvestors = results[0]
-                                  let totalCapital =  results[1]
-                                  let totalCapitalPct = results[2]
-                                  let expandDeal = calc.calculateDeal(deals[0])
-                                  console.log("\nrendering ownership and Deal is "+JSON.stringify(deals))
-                                  res.render('deal-details', {
-                                          userObj: userObj,
-                                          message:  "Showing "+expandInvestors.length+" investors",
-                                          dealName: expandDeal.name,
-                                          investors: expandInvestors,
-                                          totalCapital: totalCapital,
-                                          totalCapitalPct: totalCapitalPct,
-                                          deal:expandDeal
-                                  });
-
-              } else { //no ownership data
-                                  let expandDeal = calc.calculateDeal(deals[0])
-                                  res.render('deal-details', {
-                                        userObj: userObj,
-                                        message:  "No ownership information found ",
-                                        dealName: expandDeal.name,
-                                        deal:expandDeal
-                                  }); //  render
-              }  //if-else  - no ownership get name of entity
-        } //async function pullDealComponents
-  }); //route - deal details
-
-
-
 
 
 
@@ -533,7 +599,7 @@ router.get('/deals', checkAuthentication, (req, res) => {
 
 
 
-router.get('/transactions', (req, res) => {
+router.get('/transactions/', (req, res) => {
    res.redirect('/transactions/000');
 });
 
@@ -583,7 +649,7 @@ router.get('/commitments', checkAuthentication, (req, res) => {
       adminMenuOptions[2] = {name:"New Capital-Call Transaction", link:"/add-capital-call-transaction"}
       adminMenuOptions[3] = {name:"New Entity", link:"/add-entity"}
       adminMenuOptions[4] = {name:"New Deal", link:"/add-deal"}
-      adminMenuOptions[5] = {name:"Create a Capital Call", link:"/add-capital-call"}
+
 
 
 
