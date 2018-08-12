@@ -63,12 +63,14 @@
                       <td></td>
                         <td colspan = "2">
                         Deal: <h2>{{deal_name}}</h1>
-                        <br>
+                        <br><br><br>
                         </td>
 
-                        <td colspan = "2">
-                        Capital Call: <h2>{{capCall.cc_name}} </h1>
-                        <font size = 3>Per-investor target amount: <b>{{per_investor}} </b></font>
+                        <td colspan = 2>
+                            Capital Call: <h2>{{capCall.cc_name}} </h1>
+                            Raise goal : <b>{{capCall.formatted_target_amount}}</b><br>
+                            Per-investor goal amount: <b>{{capCall.formatted_target_per_investor}} </b><br>
+                            <br>
                         </td>
 
                 </tr>
@@ -85,7 +87,7 @@
                   <tr>
                   <td></td>
                   <td>
-                  Deal Investor:
+                  Select Investor:
                   </td>
                   <td>
                         <select name="investor_entity_id">

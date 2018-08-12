@@ -10,6 +10,7 @@ const app = express();
 const calc =  require('./ira-calc');
 const iraSQL =  require('./ira-model');
 const menus = require('./ira-menus');
+const api = require('./ira-api');
 const nconf = require('nconf');
 const deployConfig = require('./ira-config');
 
@@ -27,6 +28,12 @@ const session = require('express-session')
 const RedisStore = require('connect-redis')(session)
 const secret = "cat"
 const winston = require('winston')
+
+
+const iraVersion = "0.19.5  +Capital Call v2 +API getdeals"
+
+
+//tried byt failed to save winston logs into the DB
 //const winston_mysql = require('winston-mysql')
 
 // var winstonSQL_options = {
@@ -75,7 +82,7 @@ iraLogger.exceptions.handle(
 
 
 
-const iraVersion = "0.19  +Capital Call v1"
+
 
 
 app.use(cookieParser(secret));
@@ -127,7 +134,7 @@ let userObj =
   app.use(flash());
 //routes last
   app.use(menus) //for extra routing
-
+  app.use(api)
 
 // ========START THE SERVER ==============================
 
@@ -148,6 +155,9 @@ exports.logger = iraLogger;
 //============ ROUTES  ======================
 
 
+
+
+//add CC trans - nothing selected
 app.get('/add-capital-call-transaction', (req, res) => {
         if (req.session && req.session.passport) {
            userObj = req.session.passport.user;
@@ -163,7 +173,7 @@ addCapitalCallTrans().catch(err => {
 
   async function addCapitalCallTrans() {
 
-      let capitalCalls =  await iraSQL.getCapitalCallsForDeal();
+      let capitalCalls =  await iraSQL.getCapitalCallsForEntity();
       console.log("Got bacck Capital Calls "+JSON.stringify(capitalCalls, null, 4))
       // let dealsToPick  = deals.map(function(plank) {
       //         plank.name = plank.name.substring(0,30);
@@ -174,12 +184,51 @@ addCapitalCallTrans().catch(err => {
                 userObj: userObj,
                 postendpoint: '/process_add_capital_call_trans',
                 phase: 1,
-                capitalcalls: capitalCalls,
-                investors: null,
-                chosen_cap_call_id: null,
+                capitalcalls: capitalCalls
+
         });//render
   } //async function
 }); //route add capital call
+
+
+
+
+
+// capital call trans - Cap call selected - gp to phase 2
+app.get('/add_capital_call_trans/:ccid', (req, res) => {
+    //call the async function
+    processNewCapCallID().catch(err => {
+          console.log("Process Add Capital Call Transaction ID problem: "+err);
+    })
+
+    async function processNewCapCallID() {
+                    let cc_id = req.params.ccid;
+                    let capCallObj = await iraSQL.getCapitalCallById(cc_id);
+                    let deal_entity_id = capCallObj.deal_entity_id;
+                    let investors =  await iraSQL.getUniqueOwnershipForEntity(deal_entity_id);
+
+
+                    capCallObj.formatted_target_amount = calc.formatCurrency(capCallObj.target_amount);
+                    capCallObj.formatted_target_per_investor = calc.formatCurrency(capCallObj.target_per_investor);
+
+
+                    //transform ownership rows into investor rows
+                    console.log("In processCapCall-CCID, got "+investors.length+ " investors: "+JSON.stringify(investors,null,4)+"\n");
+
+                    res.render('add-capital-call-trans', {
+                              userObj: userObj,
+                              postendpoint: '/process_add_capital_call_trans',
+                              phase: 2,
+                              investors: investors,
+                              capCall: capCallObj,
+                              deal_name:investors[0].investment_name
+                      });//render
+
+     } //async function
+  }); //process add-deal route
+
+
+
 
 
 // insert the new transaction
@@ -209,6 +258,10 @@ app.post('/process_add_capital_call_trans', urlencodedParser, (req, res) => {
                     //transform ownership rows into investor rows
                     console.log("In processCapCall, got "+investors.length+ " investors: "+JSON.stringify(investors,null,4)+"\n");
 
+
+                    capCallObj.formatted_target_amount = calc.formatCurrency(capCallObj.target_amount);
+                    capCallObj.formatted_target_per_investor = calc.formatCurrency(capCallObj.target_per_investor);
+
                     res.render('add-capital-call-trans', {
                               userObj: userObj,
                               postendpoint: '/process_add_capital_call_trans',
@@ -233,7 +286,7 @@ app.post('/process_add_capital_call_trans', urlencodedParser, (req, res) => {
                                 wired_date: formCapCallTrans.wired_date,
                                 own_adj:0.00,
                                 trans_type:8,
-                                notes: formCapCallTrans.notes,
+                                notes: "for CapCall: " + capCallObj.cc_name + ".  " + formCapCallTrans.notes,
                                 capital_call_id: formCapCallTrans.cc_id
                         }
 
@@ -244,7 +297,7 @@ app.post('/process_add_capital_call_trans', urlencodedParser, (req, res) => {
               iraLogger.log('info', '/add-capital-call-transaction : '+insertTransResults.insertId+" U:"+userObj.email);
               req.flash('login', "Added capital-call transaction no. "+insertTransResults.insertId);
               console.log("\nAdded CapCall transaction no. "+insertTransResults.insertId);
-              res.redirect('/transactions');
+              res.redirect('/home');
           }
 
 
@@ -255,7 +308,11 @@ app.post('/process_add_capital_call_trans', urlencodedParser, (req, res) => {
 
 
 
-app.get('/add-capital-call', (req, res) => {
+
+
+
+//add cap call for a specific entity - link off deal page
+app.get('/add-capital-call/:id', (req, res) => {
         if (req.session && req.session.passport) {
            userObj = req.session.passport.user;
         }
@@ -269,17 +326,20 @@ app.get('/add-capital-call', (req, res) => {
 
 
   async function addCapitalCall() {
-      let deals = await iraSQL.getEntitiesByTypes([1]);
+      // let deals = await iraSQL.getEntitiesByTypes([1]);
+      //
+      // let dealsToPick  = deals.map(function(plank) {
+      //         plank.name = plank.name.substring(0,30);
+      //         return plank;
+      // });
 
-      let dealsToPick  = deals.map(function(plank) {
-              plank.name = plank.name.substring(0,30);
-              return plank;
-      });
 
+      let dealEntity = await iraSQL.getEntityById(req.params.id)
+      console.log("\ngot DealEntity... "+JSON.stringify(dealEntity,null,4));
       res.render('add-capital-call', {
                 userObj: userObj,
                 postendpoint: '/process_add_capital_call',
-                deals: dealsToPick
+                dealEntity: dealEntity
         });//render
   } //async function
 }); //route add capital call
@@ -298,11 +358,15 @@ app.post('/process_add_capital_call', urlencodedParser, (req, res) => {
 
               let readyCapCall = req.body;
               readyCapCall.target_amount = calc.parseFormAmountInput(readyCapCall.target_amount)
+              let deal_entity_id = readyCapCall.deal_entity_id;
+              let investors =  await iraSQL.getUniqueOwnershipForEntity(deal_entity_id);
+              readyCapCall.target_per_investor = readyCapCall.target_amount/investors.length;
+              console.log("Ready to add new Capital Call : "+JSON.stringify(readyCapCall, null,4));
               //readyCapCall.target_amount = parseFloat(calc.parseFormAmountInput(readyCapCall.target_amount)).toFixed(2)
               let insertCapCallResults = await iraSQL.insertCapitalCall(readyCapCall);
               console.log( "Added CapCall #: "+insertCapCallResults.insertId);
               req.flash('login', "Added Capital Call no. "+insertCapCallResults.insertId+"  ");
-              res.redirect('/home');
+              res.redirect('/add_capital_call_trans/'+insertCapCallResults.insertId);
 
      } //async function
   }); //process add-deal route
@@ -1165,86 +1229,3 @@ function checkAuthentication(req,res,next){
               res.redirect("/login");
           }
 }
-
-// =============== API ===============
-app.get('/api/searchentities/:term', (req, res, next) => {
-          api_searchEntities().catch(err => {
-                console.log("API search Entity problem: "+err);
-          })
-
-      async function api_searchEntities() {
-            try {
-
-                  var entList = await iraSQL.searchEntities (req.params.term);
-                  if (entList.length <1) {
-                              var entList = [{
-                                id:0,
-                                name: "Not found"
-                              }]
-
-                  }
-                  console.log("\nGot entities: "+JSON.stringify(entList,null,5));
-
-            } catch (err ){
-                  console.log(err+ " -- No entities for    "+ req.params.term);
-                  var entList = [{
-                    id:0,
-                    name: "Not found"
-                  }]
-
-            }
-
-
-            res.send(JSON.stringify(entList,null,3));
-
-    }; //async function
-
-}); //route
-
-app.get('/api/searchentities/', (req, res, next) => {
-
-          res.send("[]");
-}); //route
-
-
-
-
-app.get('/api/transforentity/:id', (req, res, next) => {
-          api_transactionsForEntity().catch(err => {
-                console.log("API trans for Entity problem: "+err);
-          })
-
-      async function api_transactionsForEntity() {
-            try {
-                  var entity = await iraSQL.getEntityById(req.params.id);
-                  console.log("have Entity   "+ JSON.stringify(entity));
-                  var transactions = await iraSQL.getTransactionsForInvestment(entity.id);
-                  console.log("\nGot transactions for entity  "+JSON.stringify(transactions,null,5));
-
-            } catch (err ){
-                  console.log(err+ " -- No entity for    "+ req.params.id);
-                  var transactions = await iraSQL.getAllTransactions();
-
-            }
-
-            var cleanTransactions = transactions.map(function(element) {
-                        let cleanTransaction = {
-                            id :element.id,
-                            investor_name :element.investor_name,
-                            investment_name :element.investment_name,
-                            passthru_name :element.passthru_name,
-                            tt_name :element.tt_name,
-                            t_wired_date :element.t_wired_date,
-                            formatted_amount :calc.formatCurrency(element.t_amount),
-                            t_own_adj :element.t_own_adj,
-                            t_notes :element.t_notes
-                        }
-
-
-                        return cleanTransaction;
-            });
-            res.send(JSON.stringify(cleanTransactions,null,3));
-
-    }; //async function
-
-}); //route

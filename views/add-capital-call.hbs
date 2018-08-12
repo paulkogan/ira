@@ -5,7 +5,7 @@
 <table width = "100%" border = 0 >
 
 <tr><td>
-  <font family = 'courier' size='5'><b>IRA</b> - Add a Capital Call</font>
+  <font family = 'courier' size='5'><b>IRA</b> - Setup New Capital Call</font>
 </td><td align = "right">
 <a href = '/updateuser'>{{userObj.firstname}}</a>&emsp;<img width='50' src={{userObj.photo}}>
 </td></tr>
@@ -30,7 +30,7 @@
 <table width = "100%" border = 0>
       <colgroup>
       <col width="5%"/>
-      <col width="15%"/>
+      <col width="20%"/>
       <col width="40%"/>
       <col width="20%"/>
       <col width="15%"/>
@@ -40,14 +40,12 @@
   <tr>
       <td></td>
       <td>
-        Deal for Capital Call:
+        New Capital Call for Deal:
 	    </td>
       <td>
-              <select name="deal_entity_id">
-              {{#each deals}}
-              <option value='{{id}}'>{{name}}</option>
-              {{/each}}
-              </select>
+
+              <h1>{{dealEntity.name}}</h1>
+
       </td>
       <td></td>
       <td></td>
@@ -66,7 +64,7 @@
 <tr>
     <td></td>
     <td align = "left">
-        Capital Call Name:
+        Capital Call Name: <br><br>
     </td>
     <td>
           <input type = "text" name = "cc_name" value=""><br>
@@ -101,7 +99,8 @@
   <td></td>
 
   <td>
-    <button type="submit" form="newcapcall" xtyle="color:white;background-color:dodgerblue;width:150px;height:50px">Add Capital Call</button>
+    <input type = "hidden" name = "deal_entity_id" value={{dealEntity.id}}>
+    <button type="submit" form="newcapcall" xtyle="color:white;background-color:dodgerblue;width:150px;height:50px">Create Capital Call</button>
 
   </td>
 
