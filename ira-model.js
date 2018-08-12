@@ -98,6 +98,29 @@ module.exports = {
   authUser
 };
 
+
+function getEntitiesByTypes(wantedTypes) {
+     if (!wantedTypes) wantedTypes = [1,2,3,4]
+
+      let queryString =
+      'SELECT e.id as id, types.name as entity_type, e.name as name, e.taxid as taxid, e.ownership_status as own_status FROM entities as e'
+        + ' JOIN entity_types as types ON types.type_num = e.type'
+        + ' WHERE e.type IN ('+wantedTypes.join()+')';
+
+      return new Promise(function(succeed, fail) {
+            connection.query(queryString,
+              function(err, results) {
+                      if (err) {
+                            fail(err)
+                      } else {
+                            succeed(results)
+                      }
+              }); //connection
+      }); //promise
+} // function
+
+
+
 function getTransactionsForCapitalCall (cc_id, transTypes) {
 
   if (!transTypes) transTypes = [8]
@@ -318,9 +341,8 @@ function searchEntities (searchTerm) {
     if (!searchTerm) {
       queryString = "SELECT name, id FROM entities";
     }
-//SELECT * FROM `my_table` WHERE CONTAINS(name, 'search')
-
-//'SELECT * from transactions WHERE id = ?', trans_id,
+    //SELECT * FROM `my_table` WHERE CONTAINS(name, 'search')
+    //'SELECT * from transactions WHERE id = ?', trans_id,
 
     console.log ("in searchEntities, the query string is "+queryString+"\n\n")
 
@@ -705,23 +727,7 @@ function getOwnershipForEntity (child_id) {
 } // function
 
 
-function getEntitiesByTypes(wantedTypes) {
-      let queryString =
-      'SELECT e.id as id, types.name as entity_type, e.name as name, e.taxid as taxid, e.ownership_status as own_status FROM entities as e'
-        + ' JOIN entity_types as types ON types.type_num = e.type'
-        + ' WHERE e.type IN ('+wantedTypes.join()+')';
 
-      return new Promise(function(succeed, fail) {
-            connection.query(queryString,
-              function(err, results) {
-                      if (err) {
-                            fail(err)
-                      } else {
-                            succeed(results)
-                      }
-              }); //connection
-      }); //promise
-} // function
 
 
 function getEntitiesByOwnership(ownStatus) {

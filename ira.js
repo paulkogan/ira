@@ -10,6 +10,7 @@ const app = express();
 const calc =  require('./ira-calc');
 const iraSQL =  require('./ira-model');
 const menus = require('./ira-menus');
+const api = require('./ira-api');
 const nconf = require('nconf');
 const deployConfig = require('./ira-config');
 
@@ -27,6 +28,12 @@ const session = require('express-session')
 const RedisStore = require('connect-redis')(session)
 const secret = "cat"
 const winston = require('winston')
+
+
+const iraVersion = "0.19.5  +Capital Call v2 +API getdeals"
+
+
+//tried byt failed to save winston logs into the DB
 //const winston_mysql = require('winston-mysql')
 
 // var winstonSQL_options = {
@@ -75,7 +82,7 @@ iraLogger.exceptions.handle(
 
 
 
-const iraVersion = "0.19.2  +Capital Call v2"
+
 
 
 app.use(cookieParser(secret));
@@ -127,7 +134,7 @@ let userObj =
   app.use(flash());
 //routes last
   app.use(menus) //for extra routing
-
+  app.use(api)
 
 // ========START THE SERVER ==============================
 
@@ -148,6 +155,9 @@ exports.logger = iraLogger;
 //============ ROUTES  ======================
 
 
+
+
+//add CC trans - nothing selected
 app.get('/add-capital-call-transaction', (req, res) => {
         if (req.session && req.session.passport) {
            userObj = req.session.passport.user;
@@ -301,7 +311,7 @@ app.post('/process_add_capital_call_trans', urlencodedParser, (req, res) => {
 
 
 
-
+//add cap call for a specific entity - link off deal page
 app.get('/add-capital-call/:id', (req, res) => {
         if (req.session && req.session.passport) {
            userObj = req.session.passport.user;
@@ -1219,86 +1229,3 @@ function checkAuthentication(req,res,next){
               res.redirect("/login");
           }
 }
-
-// =============== API ===============
-app.get('/api/searchentities/:term', (req, res, next) => {
-          api_searchEntities().catch(err => {
-                console.log("API search Entity problem: "+err);
-          })
-
-      async function api_searchEntities() {
-            try {
-
-                  var entList = await iraSQL.searchEntities (req.params.term);
-                  if (entList.length <1) {
-                              var entList = [{
-                                id:0,
-                                name: "Not found"
-                              }]
-
-                  }
-                  console.log("\nGot entities: "+JSON.stringify(entList,null,5));
-
-            } catch (err ){
-                  console.log(err+ " -- No entities for    "+ req.params.term);
-                  var entList = [{
-                    id:0,
-                    name: "Not found"
-                  }]
-
-            }
-
-
-            res.send(JSON.stringify(entList,null,3));
-
-    }; //async function
-
-}); //route
-
-app.get('/api/searchentities/', (req, res, next) => {
-
-          res.send("[]");
-}); //route
-
-
-
-
-app.get('/api/transforentity/:id', (req, res, next) => {
-          api_transactionsForEntity().catch(err => {
-                console.log("API trans for Entity problem: "+err);
-          })
-
-      async function api_transactionsForEntity() {
-            try {
-                  var entity = await iraSQL.getEntityById(req.params.id);
-                  console.log("have Entity   "+ JSON.stringify(entity));
-                  var transactions = await iraSQL.getTransactionsForInvestment(entity.id);
-                  console.log("\nGot transactions for entity  "+JSON.stringify(transactions,null,5));
-
-            } catch (err ){
-                  console.log(err+ " -- No entity for    "+ req.params.id);
-                  var transactions = await iraSQL.getAllTransactions();
-
-            }
-
-            var cleanTransactions = transactions.map(function(element) {
-                        let cleanTransaction = {
-                            id :element.id,
-                            investor_name :element.investor_name,
-                            investment_name :element.investment_name,
-                            passthru_name :element.passthru_name,
-                            tt_name :element.tt_name,
-                            t_wired_date :element.t_wired_date,
-                            formatted_amount :calc.formatCurrency(element.t_amount),
-                            t_own_adj :element.t_own_adj,
-                            t_notes :element.t_notes
-                        }
-
-
-                        return cleanTransaction;
-            });
-            res.send(JSON.stringify(cleanTransactions,null,3));
-
-    }; //async function
-
-}); //route
