@@ -1,23 +1,22 @@
 'use strict';
 
+
+const calc =  require('./src/ira-calc');
+const iraSQL =  require('./src/ira-model');
+const menus = require('./src/ira-menus');
+const api = require('./src/ira-api');
+const deployConfig = require('./src/ira-config');
+
 const path = require('path');
 const fs = require('fs');
 const vm = require('vm')
-//vm.runInThisContext(fs.readFileSync(__dirname + "/extfile.js"))
-
 const express = require('express');
 const app = express();
-const calc =  require('./ira-calc');
-const iraSQL =  require('./ira-model');
-const menus = require('./ira-menus');
-const api = require('./ira-api');
 const nconf = require('nconf');
-const deployConfig = require('./ira-config');
-
 const bodyParser = require('body-parser');
 const urlencodedParser = bodyParser.urlencoded({ extended: false })
 const flash             = require('connect-flash-plus');
-const nodePort = 8081
+
 //const crypto            = require('crypto');
 //const bcrypt = require('bcrypt');
 
@@ -28,9 +27,9 @@ const session = require('express-session')
 const RedisStore = require('connect-redis')(session)
 const secret = "cat"
 const winston = require('winston')
+const nodePort = 8081;
 
-
-const iraVersion = "0.19.5  +Capital Call v2 +API getdeals"
+const iraVersion = "0.19.7  +Capital Call v2 +API capital calls"
 
 
 //tried byt failed to save winston logs into the DB
@@ -159,6 +158,7 @@ exports.logger = iraLogger;
 
 //add CC trans - nothing selected
 app.get('/add-capital-call-transaction', (req, res) => {
+
         if (req.session && req.session.passport) {
            userObj = req.session.passport.user;
         }
@@ -705,9 +705,9 @@ app.post('/process_set_ownership', urlencodedParser, (req, res) => {
                    let results = await calc.calcInvEntityImpliedValue(ownEntityId);
                    newImpliedValue = results[0];
           } else {   //its a deal, get it from Equity Value
-                  var deals = await iraSQL.getDealById(entityWithOwnership.deal_id);
-                  newImpliedValue = Number(deals[0].aggregate_value)+Number(deals[0].cash_assets)-Number(deals[0].deal_debt)-Number(deals[0].aggregate_debt);
-                  console.log("---getting EV from a deal, got "+newImpliedValue+"and Deal "+JSON.stringify(deals[0],null,4));
+                  var dealFinancials = await iraSQL.getDealById(entityWithOwnership.deal_id);
+                  newImpliedValue = Number(dealFinancials.aggregate_value)+Number(dealFinancials.cash_assets)-Number(dealFinancials.deal_debt)-Number(dealFinancials.aggregate_debt);
+                  console.log("---getting EV from a deal, got "+newImpliedValue+"and Deal "+JSON.stringify(dealFinancials,null,4));
           }
           entityWithOwnership.implied_value = newImpliedValue;
           iraLogger.log('info', '/set-ownership   : '+entityWithOwnership.name+":"+calc.formatCurrency(entityWithOwnership.implied_value)+" U:"+userObj.email);

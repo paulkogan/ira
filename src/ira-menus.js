@@ -10,7 +10,7 @@ const urlencodedParser = bodyParser.urlencoded({ extended: false })
 const mysql = require('mysql');
 const calc =  require('./ira-calc');
 const iraSQL =  require('./ira-model');
-const iraApp =  require('./ira');
+const iraApp =  require('../ira');
 const passport  = require('passport');
 const winston = require('winston')
 
@@ -59,29 +59,29 @@ router.get('/dealdetails/:id', checkAuthentication, (req, res) => {
           let capitalCalls =  await iraSQL.getCapitalCallsForEntity(entity.id);
           console.log("Got bacck Capital Calls "+JSON.stringify(capitalCalls, null, 4))
 
-          var deals = await iraSQL.getDealById(entity.deal_id);
-          console.log("Before Ownership, have Entity   "+ entity.name+"   and Deal is  "+JSON.stringify(deals));
+          var dealFinancials = await iraSQL.getDealById(entity.deal_id);
+          console.log("Before Ownership, have Entity   "+ entity.name+"   and Deal is  "+JSON.stringify(dealFinancials));
           var investors = await iraSQL.getOwnershipForEntity(entity.id)
           if (investors.length>0) {
                                 let results = calc.totalupInvestors(investors)
                                 let expandInvestors = results[0]
-                                let totalCapital =  results[1]
-                                let totalCapitalPct = results[2]
-                                let expandDeal = calc.calculateDeal(deals[0])
+                                let totalCapital =  results[1].totalCapital
+                                let totalCapitalPct = results[1].totalCapitalPct
+                                let expandDeal = calc.calculateDeal(dealFinancials)
                                 // console.log("\nrendering ownership and Deal is "+JSON.stringify(deals, null, 4))
                                 res.render('deal-details', {
                                         userObj: userObj,
                                         message:  "Showing "+expandInvestors.length+" investors",
                                         investors: expandInvestors,
                                         capitalCalls: capitalCalls,
-                                        totalCapital: totalCapital,
+                                        totalCapital: calc.formatCurrency(totalCapital),
                                         totalCapitalPct: totalCapitalPct,
                                         deal:expandDeal,
                                         entity:entity
                                 });
 
             } else { //no ownership data
-                                let expandDeal = calc.calculateDeal(deals[0])
+                                let expandDeal = calc.calculateDeal(dealFinancials)
                                 res.render('deal-details', {
                                       userObj: userObj,
                                       message:  "No ownership information found ",
@@ -472,8 +472,8 @@ router.get('/ownership/:id', checkAuthentication, (req, res) => {
                             console.log("show-Ownership rows with DATE JOIN are: "+JSON.stringify(investors,null,4))
                             let results = calc.totalupInvestors(investors)
                             let expandInvestors = results[0]
-                            let totalCapital =  results[1]
-                            let totalCapitalPct = (results[2]*1).toFixed(2)
+                            let totalCapital =  results[1].totalCapital
+                            let totalCapitalPct = (results[1].totalCapitalPct*1).toFixed(2)
 
 
 

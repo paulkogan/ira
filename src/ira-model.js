@@ -7,7 +7,7 @@ const nconf = require('nconf');
 const deployConfig = require('./ira-config');
 const passport  = require('passport');
 const winston = require('winston')
-const iraApp =  require('./ira');
+const iraApp =  require('../ira');
 //const bcrypt = require('bcrypt');
 
 //CHANGE ENV HERE
@@ -523,11 +523,11 @@ function getEntityByDealId (deal_id) {
 //owneship: parent_entity_id, child_entity_id, capital_pct
 function getEntityById (entity_id) {
   let queryString = 'SELECT * from entities WHERE id ='+entity_id;
-  console.log ("in getEntiyById, the query string is "+queryString+"\n\n")
+  //console.log ("in getEntiyById, the query string is "+queryString+"\n\n")
       return new Promise(function(succeed, fail) {
             connection.query(queryString,
               function(err, results) {
-                console.log ("Searching Entity the resukts are "+results +"\n")
+                //console.log ("Searching Entity the resukts are "+results +"\n")
                     if (!results || results === undefined || results.length < 1) {
                          fail("No such entity, sorry")
                          return
@@ -536,7 +536,7 @@ function getEntityById (entity_id) {
                             fail(err)
                       } else {
 
-                            console.log ("Success found by Id entity "+results[0].name +"\n")
+                            //console.log ("Success found by Id entity "+results[0].name +"\n")
                             succeed(results[0])
                       }
               }); //connection
@@ -555,7 +555,7 @@ function getDealById (deal_id) {
                       if (err) {
                             fail(err)
                       } else {
-                            succeed(results)
+                            succeed(results[0])
                       }
               }); //connection
       }); //promise
