@@ -68,32 +68,32 @@
 
 <tr>
         <td align="right">Properties' Value:</td>
-        <td align="left"><input type = "text" name = "aggregate_value" value={{deal.formatted_aggregate_value}}><br></td>
+        <td align="left"><input type = "text" name = "aggregate_value" value={{#formatUSD deal.aggregate_value}}{{/formatUSD}}><br></td>
         <td></td>
           <td align="right">Properties' Debt/Loan:</td>
-        <td align="left"><input type = "text" name = "aggregate_debt" value={{deal.formatted_aggregate_debt}}><br></td>
+        <td align="left"><input type = "text" name = "aggregate_debt" value={{#formatUSD deal.aggregate_debt}}{{/formatUSD}}><br></td>
 </tr>
 
   <tr>
     <td align="right">Deal Cash and Assets:</td>
-    <td align="left"><input type = "text" name = "cash_assets" value={{deal.formatted_cash_assets}}></td>
+    <td align="left"><input type = "text" name = "cash_assets" value={{#formatUSD deal.cash_assets}}{{/formatUSD}}></td>
     <td></td>
     <td align="right">Deal Debt/Loan:</td>
-    <td align="left"><input type = "text" name = "deal_debt" value={{deal.formatted_deal_debt}}></td>
+    <td align="left"><input type = "text" name = "deal_debt" value={{#formatUSD deal.deal_debt}} {{/formatUSD}}></td>
   </tr>
 
   <tr>
 
     <td align="right">Asset Value:</td>
-    <td align="left">{{deal.formatted_total_assets}}</td>
+    <td align="left">{{#formatUSD deal.total_assets}}{{/formatUSD}}</td>
     <td></td>
     <td align="right">Total Debt: </td>
-    <td align="left">{{deal.formatted_total_debt}}</td>
+    <td align="left">{{#formatUSD deal.total_debt}}{{/formatUSD}}</td>
   </tr>
 
   <tr>
     <td align="right">Equity Value&nbsp;</td>
-    <td>{{deal.formatted_equity_value}}</td>
+    <td>{{#formatUSD deal.deal_equity_value}}{{/formatUSD}}</td>
     <td></td>
   </tr>
 

@@ -91,13 +91,13 @@
           <td align="center">{{tt_name}}</td>
           <td align="center">
                {{#ifEqual t_own_adj 0}}
-                        {{#ifLessThan t_amount 0}}
-                            <font color = "red">
-                                   {{formattedAmount}}
-                            </font>
-                        {{else}}
-                                   {{formattedAmount}}&nbsp;
-                        {{/ifLessThan}}
+                       {{#ifLessThan t_amount 0}}
+                           <font color = "red">
+                                 {{#formatUSD t_amount}}{{/formatUSD}}
+                           </font>
+                       {{else}}
+                                   {{#formatUSD t_amount}}{{/formatUSD}}&nbsp;
+                       {{/ifLessThan}}
              {{/ifEqual}}
 
 
@@ -130,12 +130,11 @@
     </colgroup>
 
 
-
       <tr>
         <td></td>
         <td></td>
         <td>Total Invested Capital:</td>
-        <td align="center">{{totalCapital}}</td>
+        <td align="center">{{#formatUSD totalCapital}}{{/formatUSD}}</td>
         <td><b></b></td>
         <td></td>
         <td></td>

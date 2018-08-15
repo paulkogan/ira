@@ -29,7 +29,7 @@ const secret = "cat"
 const winston = require('winston')
 const nodePort = 8081;
 
-const iraVersion = "0.19.7  +Capital Call v2 +API capital calls"
+const iraVersion = "0.19.8  +Currency refactor +API capital calls"
 
 
 //tried byt failed to save winston logs into the DB
@@ -554,7 +554,7 @@ app.get('/setownership/:id', checkAuthentication, (req, res) => {
                                         message:  "Showing "+ownershipRows.length+" transactions",
                                         entityName: entity.name,
                                         investors: ownershipRows,
-                                        totalCapital: calc.formatCurrency(totalCapital),
+                                        totalCapital: totalCapital,
                                         totalAdjOwnPct: ((totalAdjOwnPct*10000)/10000).toFixed(4),
                                         totalOwnPct: Math.round((totalOwnPct*1000)/1000).toFixed(4),
                                         postendpoint: '/process_set_ownership'
@@ -781,7 +781,7 @@ app.get('/updatedeal/:id', checkAuthentication, (req, res) => {
           var deals = await iraSQL.getDealById(entity.deal_id);
           console.log("\nGot raw Deal to edit  "+JSON.stringify(deals));
 
-          let expandDeal = calc.calculateDeal(deals[0])
+          let expandDeal = calc.calculateDeal(deals)
           console.log("\nDeal ready to edit  "+JSON.stringify(expandDeal));
           res.render('update-deal', {
                 userObj: userObj,

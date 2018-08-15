@@ -48,8 +48,8 @@
 
         <td colspan = 2>
             Capital Call: <h2>{{capCall.cc_name}} </h1>
-            Raise goal : <b>{{capCall.formatted_target_amount}}</b><br>
-            Per-investor goal amount: <b>{{capCall.formatted_target_per_investor}} </b><br>
+            Raise goal : <b>{{#formatUSD capCall.target_amount}}{{/formatUSD}}</b><br>
+            Per-investor goal amount: <b>{{#formatUSD capCall.target_per_investor}}{{/formatUSD}}</b><br>
             <br>
         </td>
         <td></td>
@@ -110,13 +110,13 @@
 
           <td align="center">
                    {{#ifEqual t_own_adj 0}}
-                            {{#ifLessThan t_amount 0}}
-                                <font color = "red">
-                                       {{formatted_amount}}
-                                </font>
-                            {{else}}
-                                       {{formatted_amount}}&nbsp;
-                            {{/ifLessThan}}
+                                     {{#ifLessThan t_amount 0}}
+                                         <font color = "red">
+                                               {{#formatUSD t_amount}}{{/formatUSD}}
+                                         </font>
+                                     {{else}}
+                                                 {{#formatUSD t_amount}}{{/formatUSD}}&nbsp;
+                                     {{/ifLessThan}}
                   {{else}}
                         {{t_own_adj}}%
                   {{/ifEqual}}
@@ -172,7 +172,7 @@
         <td></td>
         <td></td>
         <td align = "right">Total Raised for Capital Call : </td>
-        <td><b>{{totalRaised}}</b></td>
+        <td><b>{{#formatUSD totalRaised}}{{/formatUSD}}</b></td>
         <td></td>
       </tr>
 

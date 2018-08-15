@@ -148,7 +148,7 @@ function getTransactionsForCapitalCall (cc_id, transTypes) {
                             console.log ("Cant find transcations "+err)
                             fail(err)
                       } else {
-                            console.log ("In Model: for CC found "+results.length+" transactions \n")
+                            console.log ("In Model: for CC "+cc_id+" found "+results.length+" transactions \n")
                             //console.log ("The results are:"+JSON.stringify(results))
                             // if (results.length<1) {
                             //           fail("no ownership data")

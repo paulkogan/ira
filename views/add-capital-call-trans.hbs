@@ -66,13 +66,13 @@
                         <br><br><br>
                         </td>
 
+
                         <td colspan = 2>
                             Capital Call: <h2>{{capCall.cc_name}} </h1>
-                            Raise goal : <b>{{capCall.formatted_target_amount}}</b><br>
-                            Per-investor goal amount: <b>{{capCall.formatted_target_per_investor}} </b><br>
+                            Raise goal : <b>{{#formatUSD capCall.target_amount}}{{/formatUSD}}</b><br>
+                            Per-investor goal amount: <b>{{#formatUSD capCall.target_per_investor}}{{/formatUSD}}</b><br>
                             <br>
                         </td>
-
                 </tr>
 
 

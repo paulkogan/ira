@@ -51,28 +51,28 @@ Deal details for: <font family = 'courier' size='4'><b>{{deal.name}}</b></font>
               <tr>
                 <td></td>
                 <td align="right">Properties' Value:</td>
-                <td align="right">{{deal.formatted_aggregate_value}}</td>
+                <td align="right">{{#formatUSD deal.aggregate_value}}{{/formatUSD}} </td>
                 <td></td>
                 <td>Properties' Debt/Loan:</td>
-                <td align="right">{{deal.formatted_aggregate_debt}}</td>
+                <td align="right">{{#formatUSD deal.aggregate_debt}}{{/formatUSD}} </td>
                 <td></td>
               </tr>
               <tr>
                 <td></td>
                 <td align="right">Deal Cash and Assets:</td>
-                <td align="right">{{deal.formatted_cash_assets}}</td>
+                <td align="right">{{#formatUSD deal.cash_assets}}{{/formatUSD}} </td>
                 <td></td>
                 <td>Deal Debt/Loan:</td>
-                <td align="right">{{deal.formatted_deal_debt}}</td>
+                <td align="right">{{#formatUSD deal.deal_debt}}{{/formatUSD}}</td>
                 <td></td>
               </tr>
               <tr>
                 <td></td>
                 <td align="right">Total Assets:</td>
-                <td align="right">{{deal.formatted_total_assets}}</td>
+                <td align="right">{{#formatUSD deal.total_assets}}{{/formatUSD}}</td>
                 <td></td>
                 <td >Total Debt</td>
-                <td align="right">{{deal.formatted_total_debt}}</td>
+                <td align="right">{{#formatUSD deal.total_debt}}{{/formatUSD}}</td>
                 <td></td>
               </tr>
             <tr>
@@ -81,7 +81,7 @@ Deal details for: <font family = 'courier' size='4'><b>{{deal.name}}</b></font>
               <td align="right"></td>
               <td></td>
               <td >Deal Equity Value</td>
-              <td align="right"><b>{{deal.formatted_equity_value}}</b></td>
+              <td align="right"><b>{{#formatUSD deal.deal_equity_value}}{{/formatUSD}}</b></td>
               <td></td>
             </tr>
 
@@ -200,7 +200,7 @@ Deal details for: <font family = 'courier' size='4'><b>{{deal.name}}</b></font>
           </td>
           <td align="left">{{passthru_name}}</td>
           <td>{{capital_pct}}%</td>
-          <td>{{formattedAmount}}</td>
+          <td>{{#formatUSD amount}}{{/formatUSD}}</td>
           <td>{{wired_date}}</td>
           <td></td>
       </tr>
@@ -228,7 +228,7 @@ Deal details for: <font family = 'courier' size='4'><b>{{deal.name}}</b></font>
         <td></td>
         <td>Total Inv. Capital:</td>
         <td><b>{{totalCapitalPct}}%</b></td>
-        <td><b>{{totalCapital}}</b></td>
+        <td><b>{{#formatUSD totalCapital}}{{/formatUSD}}</b></td>
 
         <td></td>
         <td></td>

@@ -111,6 +111,8 @@ router.get('/capitalcall/:id', checkAuthentication, (req, res) => {
              res.redirect('/home')
        })
 
+
+       //move this to calc
        async function showCapCallDetails() {
              let foundCapCall = await iraSQL.getCapitalCallById(req.params.id);
              console.log("in CC Details, have CC   "+ JSON.stringify(foundCapCall));
@@ -138,7 +140,7 @@ router.get('/capitalcall/:id', checkAuthentication, (req, res) => {
                                     capCall: foundCapCall,
                                     dealEntity: dealEntity,
                                     transactions: formattedCapCallTransaction,
-                                    totalRaised: calc.formatCurrency(totalRaised)
+                                    totalRaised
 
                             });
 
@@ -182,11 +184,11 @@ router.get('/portfolio/:id', (req, res) => {
                                   message:  "Showing "+portfolioDeals.length+" investments ",
                                   investorName: portfolioDeals[0].investor_name,
                                   investments: portfolioDeals, //including rollover transactions
-                                  totalPortfolioValue: calc.formatCurrency(totalPortfolioValue),
-                                  totalInvestmentValue: calc.formatCurrency(totalInvestmentValue),
-                                  portfolioValueGain: calc.formatCurrency(portfolioValueGain),
-                                  totalDistributions: calc.formatCurrency(totalDistributions),
-                                  portfolioCashGain: calc.formatCurrency(portfolioCashGain),
+                                  totalPortfolioValue,
+                                  totalInvestmentValue,
+                                  portfolioValueGain,
+                                  totalDistributions,
+                                  portfolioCashGain,
                                   portfolioIRR: portfolioIRR.toFixed(2)
                           });
 
@@ -482,7 +484,7 @@ router.get('/ownership/:id', checkAuthentication, (req, res) => {
                                     userObj: userObj,
                                     message:  "Showing "+expandInvestors.length+" investors ",
                                     entity: foundEntity,
-                                    impliedValue: calc.formatCurrency(foundEntity.implied_value),
+                                    impliedValue: foundEntity.implied_value,
                                     investors: expandInvestors,
                                     totalCapital: totalCapital,
                                     totalCapitalPct: totalCapitalPct

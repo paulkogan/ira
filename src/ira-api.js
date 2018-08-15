@@ -36,10 +36,56 @@ module.exports = api;
 
 
 
+// let capcallsWithDetails = capitalCalls.map(async (cc) => {
+//
+//       return {
+//           id: cc.id,
+//           cc: cc,
+//           cc_deets:  await calc.getCapCallDetails(cc.id)
+//       }
 
 
 
-api.get('/api/getccdetails/:id',  (req, res) => {
+
+// for each CC ID it returns
+//return [{foundCapCall}, capCallTransactions[], {dealEntity}, totalRaised]
+api.get('/api/getcapcallswithdetails/:entid',  (req, res) => {
+
+    //call the async function
+    api_getcapitalcalls().catch(err => {
+          console.log("Get capital calls problem: "+err);
+          res.send({err});
+    })
+
+    async function api_getcapitalcalls() {
+          let capitalCalls =  await iraSQL.getCapitalCallsForEntity(req.params.entid);
+          console.log("IN getCapCallswithDetails found "+capitalCalls.length+" capital calls  " + JSON.stringify(capitalCalls, null, 4));
+
+          if (capitalCalls.length>0) {
+
+                let capcallsWithDetails = []
+                for (let i=0;i<capitalCalls.length; i++) {
+                      capcallsWithDetails[i] = await calc.getCapCallDetails(capitalCalls[i].id)
+                }
+
+              res.send(JSON.stringify(capcallsWithDetails ,null,4));
+
+          } else {
+              res.send([]);
+          }
+
+
+
+    } //async function getdealfinancials
+}); //route - cc-s
+
+
+
+
+// it returns:
+//return [foundCapCall, capCallTransactions, dealEntity, totalRaised]
+
+api.get('/api/getccdetails/:ccid',  (req, res) => {
 
     //call the async function
     api_getccdetails().catch(err => {
@@ -48,7 +94,7 @@ api.get('/api/getccdetails/:id',  (req, res) => {
     })
 
     async function api_getccdetails() {
-          let ccDetails =  await calc.getCapCallDetails(req.params.id);
+          let ccDetails =  await calc.getCapCallDetails(req.params.ccid);
           res.send(JSON.stringify(ccDetails ,null,4));
       } //async function getdealfinancials
 }); //route - cc-details
@@ -59,7 +105,7 @@ api.get('/api/getccdetails/:id',  (req, res) => {
 
 
 
-api.get('/api/getcapitalcalls/:id',  (req, res) => {
+api.get('/api/getcapitalcalls/:entid',  (req, res) => {
 
     //call the async function
     api_getcapitalcalls().catch(err => {
