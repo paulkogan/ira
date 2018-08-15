@@ -10,10 +10,10 @@ const urlencodedParser = bodyParser.urlencoded({ extended: false })
 const mysql = require('mysql');
 const calc =  require('./ira-calc');
 const iraSQL =  require('./ira-model');
+const actions =  require('./ira-actions');
 const iraApp =  require('../ira');
 const passport  = require('passport');
-const winston = require('winston')
-
+const winston = require('winston');
 
 
 //default session info
@@ -679,11 +679,8 @@ router.get('/commitments', checkAuthentication, (req, res) => {
  })
 
 
-
- //NOT FIRST TIME LOGIN - Repeat of checkAuthentication from app.js
+ //NOT FIRST TIME LOGIN
  function checkAuthentication(req,res,next){
-
-   try {
            if (userObj.id == 0) {
                 req.session.return_to = "/";
            } else {
@@ -701,12 +698,4 @@ router.get('/commitments', checkAuthentication, (req, res) => {
                //req.flash('login', 'checkAuth failed, need to login')
                res.redirect("/login");
            }
-
-     } catch (err){
-               console.log(err+ " -- Login   ");
-               req.flash('login', "Could not find user with err"+err);
-               res.redirect('/home/');
-    } //trycatch
-
-
- } //function
+ }
