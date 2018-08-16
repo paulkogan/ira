@@ -11,7 +11,8 @@ const mysql = require('mysql');
 const calc =  require('./ira-calc');
 const iraSQL =  require('./ira-model');
 const menus =  require('./ira-menus');
-const iraApp =  require('../ira');
+const ira =  require('../ira');
+//const iraLogger = ira.iraLogger
 const passport  = require('passport');
 const winston = require('winston');
 
@@ -41,6 +42,34 @@ module.exports = actions;
 //============ ROUTES  ======================
 
 
+// insert the new transaction
+actions.post('/process_add_transaction', urlencodedParser, (req, res) => {
+    let transaction = req.body
+    transaction.amount = calc.parseFormAmountInput(transaction.amount)
+    transaction.own_adj = parseFloat(transaction.own_adj)
+    if ((transaction.trans_type==3 || transaction.trans_type==6) && transaction.amount>0) transaction.amount*=-1
+    console.log("\nAbout to insert new transaction with "+JSON.stringify(transaction)+"\n");
+
+        iraSQL.insertTransaction(transaction).then (
+        function (savedData) {
+            //console.log( "Added entity #: "+savedData.insertId);
+            req.flash('login', "Added transaction no. "+savedData.insertId);
+            console.log("\nAdded transaction no. "+savedData.insertId);
+            //iraLogger.log('info', '/add-transaction : '+savedData.insertId+":"+transaction.investor_entity_id+":"+transaction.investment_entity_id+":"+transaction.trans_type+":"+transaction.amount+" U:"+userObj.email);
+             ira.iraLogger.log('info', '/add-transaction : '+savedData.insertId+" U:"+userObj.email);
+
+            res.redirect('/transactions');
+          }, function(error) {   //failed
+               console.log("Process_add_transaction problem: "+error);
+               return;
+          }
+    ); //try-catch
+}); //route
+
+
+
+
+
 
 // insert the new transaction
 actions.post('/process_add_capital_call_trans', urlencodedParser, (req, res) => {
@@ -68,10 +97,6 @@ actions.post('/process_add_capital_call_trans', urlencodedParser, (req, res) => 
 
                     //transform ownership rows into investor rows
                     console.log("In processCapCall, got "+investors.length+ " investors: "+JSON.stringify(investors,null,4)+"\n");
-
-
-                    capCallObj.formatted_target_amount = calc.formatCurrency(capCallObj.target_amount);
-                    capCallObj.formatted_target_per_investor = calc.formatCurrency(capCallObj.target_per_investor);
 
                     res.render('add-capital-call-trans', {
                               userObj: userObj,
@@ -105,7 +130,7 @@ actions.post('/process_add_capital_call_trans', urlencodedParser, (req, res) => 
               console.log("\nAbout to insert new Cap Call transaction with "+JSON.stringify(newTransaction, null, 4)+"\n");
 
               let insertTransResults = await iraSQL.insertTransaction(newTransaction);
-              iraLogger.log('info', '/add-capital-call-transaction : '+insertTransResults.insertId+" U:"+userObj.email);
+              ira.iraLogger.log('info', '/add-capital-call-transaction : '+insertTransResults.insertId+" U:"+userObj.email);
               req.flash('login', "Added capital-call transaction no. "+insertTransResults.insertId);
               console.log("\nAdded CapCall transaction no. "+insertTransResults.insertId);
               res.redirect('/home');
@@ -263,29 +288,6 @@ actions.get('/add-transaction', checkAuthentication, (req, res) => {
 }); //route add transactions
 
 
-// insert the new transaction
-actions.post('/process_add_transaction', urlencodedParser, (req, res) => {
-    let transaction = req.body
-    transaction.amount = calc.parseFormAmountInput(transaction.amount)
-    transaction.own_adj = parseFloat(transaction.own_adj)
-    if ((transaction.trans_type==3 || transaction.trans_type==6) && transaction.amount>0) transaction.amount*=-1
-    console.log("\nAbout to insert new transaction with "+JSON.stringify(transaction)+"\n");
-
-        iraSQL.insertTransaction(transaction).then (
-        function (savedData) {
-            //console.log( "Added entity #: "+savedData.insertId);
-            req.flash('login', "Added transaction no. "+savedData.insertId);
-            console.log("\nAdded transaction no. "+savedData.insertId);
-            //iraLogger.log('info', '/add-transaction : '+savedData.insertId+":"+transaction.investor_entity_id+":"+transaction.investment_entity_id+":"+transaction.trans_type+":"+transaction.amount+" U:"+userObj.email);
-            iraLogger.log('info', '/add-transaction : '+savedData.insertId+" U:"+userObj.email);
-
-            res.redirect('/transactions');
-          }, function(error) {   //failed
-               console.log("Process_add_transaction problem: "+error);
-               return;
-          }
-    ); //try-catch
-}); //route
 
 
 
@@ -521,7 +523,7 @@ actions.post('/process_set_ownership', urlencodedParser, (req, res) => {
                   console.log("---getting EV from a deal, got "+newImpliedValue+"and Deal "+JSON.stringify(dealFinancials,null,4));
           }
           entityWithOwnership.implied_value = newImpliedValue;
-          iraLogger.log('info', '/set-ownership   : '+entityWithOwnership.name+":"+calc.formatCurrency(entityWithOwnership.implied_value)+" U:"+userObj.email);
+          ira.iraLogger.log('info', '/set-ownership   : '+entityWithOwnership.name+":"+calc.formatCurrency(entityWithOwnership.implied_value)+" U:"+userObj.email);
           console.log("\nUpdating Entity with implied_value and new Ownership status for "+JSON.stringify(entityWithOwnership)+"\n");
           var updateEntityResults = await iraSQL.updateEntity(entityWithOwnership);
           console.log("\nUpdated Ownership Status, here results: "+updateEntityResults+"\n\n")
@@ -790,7 +792,6 @@ actions.get('/updateentity/:id', checkAuthentication, (req, res) => {
                 message: "Updating Entity: " + entity.name,
                 entity: entity,
                 impliedValue: entity.implied_value,
-                formattedImpliedValue: calc.formatCurrency(entity.implied_value),
                 postendpoint: '/process_update_entity'
           }); //  render
 

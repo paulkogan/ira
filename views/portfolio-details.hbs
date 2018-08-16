@@ -120,10 +120,10 @@ Investment Summary for: <font family = 'courier' size='4'><b>{{investorName}}</b
     <td align="right">
       {{#ifLessThan t_amount 0}}
           <font color = "red">
-                {{#formatUSD t_amount}}{{/formatUSD}}
+                {{#formatUSD formatted_amount}}{{/formatUSD}}
           </font>
       {{else}}
-                  {{#formatUSD t_amount}}{{/formatUSD}}&nbsp;
+                  {{#formatUSD formatted_amount}}{{/formatUSD}}&nbsp;
       {{/ifLessThan}}
 
 

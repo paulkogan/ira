@@ -146,7 +146,7 @@ api.get('/api/getownership/:id',  (req, res) => {
 
       api_getownership().catch(err => {
             console.log("api_getownership problem: "+err);
-            res.send({err});
+            res.send([]);
       })
 
       async function api_getownership() {
@@ -158,7 +158,7 @@ api.get('/api/getownership/:id',  (req, res) => {
                                     res.send(ownResults);
 
               } else { //no ownership data
-                                   res.send({err:"Sorry, no ownership information found"});
+                                   res.send([{err:"No ownership information found"}]);
               }  //if-else  - no ownership get name of entity
 
       } //async function
@@ -216,9 +216,15 @@ api.get('/api/searchentities/:term', (req, res, next) => {
                               }]
 
                   }
-                  console.log("\nGot entities: "+JSON.stringify(entList,null,5));
 
-                  res.send(JSON.stringify(entList,null,3));
+                  var entitiesForFilter = entList.map(function(plank) {
+                              plank.name = plank.name.substring(0,35);
+                              return plank;
+                  });
+
+                  console.log("\nGot entities: "+JSON.stringify(entitiesForFilter,null,5));
+
+                  res.send(JSON.stringify(entitiesForFilter,null,3));
 
     }; //async function
 
@@ -231,7 +237,7 @@ api.get('/api/searchentities/', (req, res, next) => {
 
 
 
-api.get('/api/transforentity/:id', (req, res, next) => {
+api.get('/api/transforentity/:id', (req, res) => {
 
           api_transactionsForEntity().catch(err => {
                 console.log("API trans for Entity problem: "+err);
@@ -239,11 +245,19 @@ api.get('/api/transforentity/:id', (req, res, next) => {
           })
 
           async function api_transactionsForEntity() {
+                  let entity_id = req.params.id
+                  console.log("have Entity_id   "+ entity_id )
+                  let transactions = []
+                  if (entity_id <1) {
+                        console.log("giving back all" )
+                        transactions = await iraSQL.getAllTransactions();
 
-                  var entity = await iraSQL.getEntityById(req.params.id);
-                  //console.log("have Entity   "+ JSON.stringify(entity));
-                  var transactions = await iraSQL.getTransactionsForInvestment(entity.id);
-                  //console.log("\nGot transactions for entity  "+JSON.stringify(transactions,null,5));
+                  } else {
+                        let entity = await iraSQL.getEntityById(req.params.id);
+                        transactions = await iraSQL.getTransactionsForInvestment(entity.id);
+                        //console.log("\nGot transactions for entity  "+JSON.stringify(transactions,null,5));
+                  }
+
                   res.send(JSON.stringify(transactions,null,3));
 
     }; //async function

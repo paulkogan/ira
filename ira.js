@@ -30,7 +30,7 @@ const secret = "cat"
 const winston = require('winston')
 const nodePort = 8081;
 
-const iraVersion = "0.19.9 +actions  +Currency refactor +API capital calls"
+const iraVersion = "0.20.1 +actions  +Currency refactor +API capital calls "
 
 
 //tried byt failed to save winston logs into the DB
@@ -65,7 +65,7 @@ let iraLogger = winston.createLogger({
     transports: [
              new winston.transports.Console(),
              //new winston_mysql(winstonSQL_options),
- 		         new winston.transports.File({ filename: 'iralog2.log' })
+ 		         new winston.transports.File({ filename: './src/iralog3.log' })
        ]
 
     //    ,
@@ -146,8 +146,9 @@ const server = app.listen(nodePort, function() {
 
 
 module.exports = app;
+exports.iraLogger = iraLogger;
 exports.version = iraVersion;
-exports.logger = iraLogger;
+
 
 
 

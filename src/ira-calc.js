@@ -205,14 +205,8 @@ async function totalupInvestorPortfolio (entity_id) {
                                        "notes": "",
                                        "deal_equity_value": investmentEntity.implied_value, //yes!  get this from implied_value
                                        "total_assets": 0, //component of EV
-                                       "total_debt": 0,  //component of EV
-                                       "formatted_total_assets": "N/A FTV",  //show in portfolio
-                                       "formatted_total_debt": "N/A FTD"   //show in portfolio
-                                      //  "formatted_aggregate_value": "No AV",
-                                      //  "formatted_cash_assets": "No CA",
-                                      //  "formatted_aggregate_debt": "No AG",
-                                      //  "formatted_deal_debt": "No DD",  //why
-                                      //  "formatted_equity_value": "No EV"  //why
+                                       "total_debt": 0  //component of EV
+
                             };
 
               } //else for entity_id
@@ -242,16 +236,12 @@ async function totalupInvestorPortfolio (entity_id) {
               //need to change this.
               totalInvestmentValue += newPortfolioDeal.totalInvestments_noRollover;
               totalDistributions += newPortfolioDeal.dealDistributions;
-              newPortfolioDeal.formatted_amount = formatCurrency(newPortfolioDeal.amount)
-              newPortfolioDeal.formatted_totalInvestments_noRollover = formatCurrency(newPortfolioDeal.totalInvestments_noRollover)
-              newPortfolioDeal.formatted_deal_equity_value = formatCurrency(newPortfolioDeal.expandDeal.deal_equity_value)
-              newPortfolioDeal.formatted_investor_equity_value = formatCurrency(newPortfolioDeal.investor_equity_value)
               portfolioDeals.push(newPortfolioDeal);
 
 
-                     //console.log("IN validate ownership: "+ index +" lastname: "+expandInvestors[index].investor_name+" amount: "+expandInvestors[index].formattedAmount+" cap_pct: "+expandInvestors[index].capital_pct)
-              }//for
-              console.log("\nPortfolio for "+foundInvestor.name+" is ready - in TUI - implied Ent Value is "+formatCurrency(totalPortfolioValue));
+            } //for
+
+                    console.log("\nPortfolio for "+foundInvestor.name+" is ready - in TUI - implied Ent Value is "+formatCurrency(totalPortfolioValue));
               return [portfolioDeals, totalInvestmentValue, totalPortfolioValue, totalDistributions];
 
             }  else {  //if no investors
@@ -320,7 +310,6 @@ function totalupInvestors (investors) {
                     let newOwnRow =  investors[index]
                     totalCapital += investors[index].amount;
                     totalCapitalPct += investors[index].capital_pct;
-                    newOwnRow.formattedAmount = formatCurrency(investors[index].amount)
                     expandInvestors.push(newOwnRow)
                     console.log("\nTUI - NEW own_row: "+(expandInvestors.length-1)+" from transaction: "+index+"  :" +JSON.stringify(newOwnRow)+"  \n");
 
@@ -347,7 +336,7 @@ function totalupInvestors (investors) {
         let totalInvestments_noRollover = 0.0;
 
         for (let index = 0; index < transactions.length; index++) {
-                //console.log()
+                //FORMATTED_AMOUNT OK FOR TRANSACTIONS DISPLAY - to acount for Own.adj
                 if(transactions[index].tt_id != 7) { //standardTransactions
                           totalCashInDeal += transactions[index].t_amount
                           totalInvestments_noRollover += transactions[index].t_amount
@@ -424,9 +413,9 @@ function totalupInvestors (investors) {
 
                totalOwnPct += inv_trans_Rows[index].percent*100
               // console.log("\nIn CalculateOwnership, after: "+inv_trans_Rows[index].id + "the % total is "+  totalOwnPct+"\n");
-               inv_trans_Rows[index].formattedPercent = (inv_trans_Rows[index].percent*100).toFixed(4)+"%"
-               inv_trans_Rows[index].formattedAmount = formatCurrency(inv_trans_Rows[index].t_amount)
-               //console.log("IN validate ownership: "+ index +" lastname: "+expandInvestors[index].investor_name+" amount: "+expandInvestors[index].formattedAmount+" cap_pct: "+expandInvestors[index].capital_pct)
+               //inv_trans_Rows[index].xxformattedPercent = (inv_trans_Rows[index].percent*100).toFixed(4)+"%"
+               //inv_trans_Rows[index].xxformattedAmount = formatCurrency(inv_trans_Rows[index].t_amount)
+               //console.log("IN validate ownership: "+ index +" lastname: "+expandInvestors[index].investor_name+" amount: "+expandInvestors[index].xxformattedAmount+" cap_pct: "+expandInvestors[index].capital_pct)
         }//for  total capital
 
         return [inv_trans_Rows, totalCapital, totalAdjOwnPct, totalOwnPct];
@@ -439,15 +428,7 @@ function totalupInvestors (investors) {
          expandDeal.deal_equity_value = expandDeal.aggregate_value+expandDeal.cash_assets-expandDeal.deal_debt-expandDeal.aggregate_debt
          expandDeal.total_assets = expandDeal.aggregate_value + expandDeal.cash_assets
          expandDeal.total_debt = expandDeal.aggregate_debt + expandDeal.deal_debt
-         //need these for thre Deal Details page
-         expandDeal.formatted_total_assets = formatCurrency(expandDeal.aggregate_value + expandDeal.cash_assets)
-         expandDeal.formatted_total_debt = formatCurrency(expandDeal.aggregate_debt + expandDeal.deal_debt)
-         expandDeal.formatted_aggregate_value = formatCurrency(expandDeal.aggregate_value)
-         expandDeal.formatted_cash_assets = formatCurrency(expandDeal.cash_assets)
-         expandDeal.formatted_aggregate_debt = formatCurrency(expandDeal.aggregate_debt)
-         expandDeal.formatted_deal_debt  = formatCurrency(expandDeal.deal_debt)
-         expandDeal.formatted_equity_value =formatCurrency(expandDeal.deal_equity_value)
-        //console.log("\nin CalculateDeal, expandDeal is  "+JSON.stringify(expandDeal));
+
         return expandDeal;
     } //function
 

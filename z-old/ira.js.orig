@@ -133,7 +133,7 @@ function totalupInvestors (investors) {
                     expandInvestors[index] = investors[index]
                     totalCapital += investors[index].amount;
                     totalCapitalPct += investors[index].capital_pct;
-                    expandInvestors[index].formattedAmount = formatCurrency(expandInvestors[index].amount)
+                    expandInvestors[index].xxformattedAmount = formatCurrency(expandInvestors[index].amount)
                     console.log("\nin TUI - Adding own row " +JSON.stringify(expandInvestors[index])+"  \n");
             } //if not a dupe
 
@@ -153,10 +153,10 @@ function totalupInvestors (investors) {
                portfolioRows[index].investor_equity_value = portfolioRows[index].deal_equity_value*(portfolioRows[index].capital_pct/100);
                totalPortfolioValue += portfolioRows[index].investor_equity_value
                totalInvestmentValue += portfolioRows[index].amount;
-               portfolioRows[index].formatted_amount = formatCurrency(portfolioRows[index].amount)
-               portfolioRows[index].formatted_deal_equity_value = formatCurrency(expandDeal.equity_value)
-               portfolioRows[index].formatted_investor_equity_value = formatCurrency(portfolioRows[index].investor_equity_value)
-               //console.log("IN validate ownership: "+ index +" lastname: "+expandInvestors[index].investor_name+" amount: "+expandInvestors[index].formattedAmount+" cap_pct: "+expandInvestors[index].capital_pct)
+               portfolioRows[index].xxformatted_amount = formatCurrency(portfolioRows[index].amount)
+               portfolioRows[index].xxformatted_deal_equity_value = formatCurrency(expandDeal.equity_value)
+               portfolioRows[index].xxformatted_investor_equity_value = formatCurrency(portfolioRows[index].investor_equity_value)
+               //console.log("IN validate ownership: "+ index +" lastname: "+expandInvestors[index].investor_name+" amount: "+expandInvestors[index].xxformattedAmount+" cap_pct: "+expandInvestors[index].capital_pct)
         }//for
         return [portfolioRows, formatCurrency(totalInvestmentValue), formatCurrency(totalPortfolioValue)];
     } //function
@@ -176,9 +176,9 @@ function totalupInvestors (investors) {
         // now calculate % for each
         for (let index = 0; index < inv_trans_Rows.length; index++) {
                inv_trans_Rows[index].percent = (inv_trans_Rows[index].amount/totalCapital)
-               inv_trans_Rows[index].formattedPercent = (inv_trans_Rows[index].percent*100).toFixed(4)+"%"
-               inv_trans_Rows[index].formattedAmount = formatCurrency(inv_trans_Rows[index].amount)
-               //console.log("IN validate ownership: "+ index +" lastname: "+expandInvestors[index].investor_name+" amount: "+expandInvestors[index].formattedAmount+" cap_pct: "+expandInvestors[index].capital_pct)
+               inv_trans_Rows[index].xxformattedPercent = (inv_trans_Rows[index].percent*100).toFixed(4)+"%"
+               inv_trans_Rows[index].xxformattedAmount = formatCurrency(inv_trans_Rows[index].amount)
+               //console.log("IN validate ownership: "+ index +" lastname: "+expandInvestors[index].investor_name+" amount: "+expandInvestors[index].xxformattedAmount+" cap_pct: "+expandInvestors[index].capital_pct)
         }//for  total capital
 
         return [inv_trans_Rows, formatCurrency(totalCapital)];
@@ -197,7 +197,7 @@ function totalupInvestors (investors) {
          expandDeal.cash_assets = formatCurrency(expandDeal.cash_assets)
          expandDeal.aggregate_debt = formatCurrency(expandDeal.aggregate_debt)
          expandDeal.deal_debt  = formatCurrency(expandDeal.deal_debt)
-         expandDeal.formatted_equity_value =formatCurrency(expandDeal.equity_value)
+         expandDeal.xxformatted_equity_value =formatCurrency(expandDeal.equity_value)
         //console.log("\nin CalculateDeal, expandDeal is  "+JSON.stringify(expandDeal));
         return expandDeal;
     } //function
