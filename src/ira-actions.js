@@ -17,6 +17,13 @@ const passport  = require('passport');
 const winston = require('winston');
 
 
+actions.use(function(req, res, next) {
+      res.header("Access-Control-Allow-Origin", "*");
+      res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+      next();
+});
+
+
 //default session info
 let sessioninfo = "no session"
 let userObj =
@@ -41,30 +48,6 @@ module.exports = actions;
 
 //============ ROUTES  ======================
 
-
-// insert the new transaction
-actions.post('/process_add_transaction', urlencodedParser, (req, res) => {
-    let transaction = req.body
-    transaction.amount = calc.parseFormAmountInput(transaction.amount)
-    transaction.own_adj = parseFloat(transaction.own_adj)
-    if ((transaction.trans_type==3 || transaction.trans_type==6) && transaction.amount>0) transaction.amount*=-1
-    console.log("\nAbout to insert new transaction with "+JSON.stringify(transaction)+"\n");
-
-        iraSQL.insertTransaction(transaction).then (
-        function (savedData) {
-            //console.log( "Added entity #: "+savedData.insertId);
-            req.flash('login', "Added transaction no. "+savedData.insertId);
-            console.log("\nAdded transaction no. "+savedData.insertId);
-            //iraLogger.log('info', '/add-transaction : '+savedData.insertId+":"+transaction.investor_entity_id+":"+transaction.investment_entity_id+":"+transaction.trans_type+":"+transaction.amount+" U:"+userObj.email);
-             ira.iraLogger.log('info', '/add-transaction : '+savedData.insertId+" U:"+userObj.email);
-
-            res.redirect('/transactions');
-          }, function(error) {   //failed
-               console.log("Process_add_transaction problem: "+error);
-               return;
-          }
-    ); //try-catch
-}); //route
 
 
 
@@ -287,6 +270,37 @@ actions.get('/add-transaction', checkAuthentication, (req, res) => {
 
 }); //route add transactions
 
+
+// insert the new transaction
+actions.post('/process_add_transaction', urlencodedParser, (req, res,next) => {
+
+  try {
+    let transaction = req.body
+    console.log("\nRaw from the Form, got this "+JSON.stringify(transaction)+"\n");
+    transaction.amount = calc.parseFormAmountInput(transaction.amount)
+    transaction.own_adj = parseFloat(transaction.own_adj)
+    if ((transaction.trans_type==3 || transaction.trans_type==6) && transaction.amount>0) transaction.amount*=-1
+    console.log("\nAbout to insert new transaction with "+JSON.stringify(transaction)+"\n");
+
+              iraSQL.insertTransaction(transaction).then (
+              function (savedData) {
+                          //console.log( "Added entity #: "+savedData.insertId);
+                          req.flash('login', "Added transaction no. "+savedData.insertId);
+                          console.log("\nAdded transaction no. "+savedData.insertId);
+                          ira.iraLogger.log('info', '/add-transaction : '+savedData.insertId+" U:"+userObj.email);
+
+                          res.redirect('/transactions');
+                        }, function(error) {   //failed
+                             console.log("Process_add_transaction problem: "+error);
+                             return;
+                        }
+             );
+
+  } catch(err) {
+        console.log("Get New Trans Form problem: "+err);
+  }
+
+}); //route
 
 
 

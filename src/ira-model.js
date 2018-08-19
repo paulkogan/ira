@@ -1,6 +1,5 @@
 
 'use strict';
-
 const extend = require('lodash').assign;
 const mysql = require('mysql');
 const nconf = require('nconf');
@@ -191,8 +190,6 @@ function getCapitalCallsForEntity(dealEntityID) {
 
 
 
-
-
 //without Bcrypt for now
 function authUser (email, password, done) {
   connection.query(
@@ -221,24 +218,27 @@ function authUser (email, password, done) {
       }
 
 
-    //  bcrypt.compare(password, results[0].password, function(err, res) {
-    //                if (err) {
-    //                  console.log("PW auth error" +err)
-    //                  done("PW auth error" +err, null);
-    //                  return;
-    //                }
-    //               if (!(checkPlainPW) && !(res) ) {
-    //                   console.log("\nbad pw "+password+", res is: "+res+"   checkPlainPW is: "+checkPlainPW)
-    //                   done("bad password", null)
-    //                   return
-    //               }
-    //             console.log(results[0].firstname+" has authed in authuser");
-    //             done(null, results[0]);
-    // }); //bcrypt
 
   } //cb function
  ) //connection querty
 } //authuser
+
+
+
+//  bcrypt.compare(password, results[0].password, function(err, res) {
+//                if (err) {
+//                  console.log("PW auth error" +err)
+//                  done("PW auth error" +err, null);
+//                  return;
+//                }
+//               if (!(checkPlainPW) && !(res) ) {
+//                   console.log("\nbad pw "+password+", res is: "+res+"   checkPlainPW is: "+checkPlainPW)
+//                   done("bad password", null)
+//                   return
+//               }
+//             console.log(results[0].firstname+" has authed in authuser");
+//             done(null, results[0]);
+// }); //bcrypt
 
 
 

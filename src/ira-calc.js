@@ -2,7 +2,7 @@
 
 
 const hbs = require('hbs');
-const iraSQL =  require('./ira-model');
+const iraSQL =  require('./ira-model.js');
 const j2csvParser = require('json2csv').parse;
 let logIndent = 0
 const indentChar = "___"
@@ -172,7 +172,7 @@ async function calcInvEntityImpliedValue (entity_id) {
 // these are Ownership Rows for an investor
 async function totalupInvestorPortfolio (entity_id) {
     let foundInvestor = await iraSQL.getEntityById(entity_id);
-    let investments = await iraSQL.getOwnershipForInvestor(foundInvestor.id);
+    let investments = await iraSQL.getOwnershipForInvestor(entity_id);
 
       if (investments.length > 0) {
           console.log("In calc/TUIP, got "+investments.length+ " investments: "+JSON.stringify(investments,null,4)+"\n\n");
@@ -254,7 +254,7 @@ async function totalupInvestorPortfolio (entity_id) {
       //               return [ [], null, null, null];
       // }
 
-    } //function totalupInvestorPortfolio
+  } //function totalupInvestorPortfolio
 
 
 

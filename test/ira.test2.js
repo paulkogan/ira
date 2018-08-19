@@ -1,9 +1,9 @@
 const assert = require('assert');
+const iraSQL2 =  require('./ira-model');
 const ira =  require('../ira');
-const actions =  require('../src/ira-actions');
-const calc =  require('../src/ira-calc');
-const menus = require('../src/ira-menus.js');
-const iraSQL2 =  require('../src/ira-model');
+const actions =  require('./ira-actions');
+const calc =  require('./ira-calc');
+const menus = require('./ira-menus.js');
 //var transactions = []
 
 beforeEach(async function () {
@@ -22,7 +22,7 @@ after( async function () {
 
 
 
-describe("IRA - Tests: ..........", async function () {
+describe("IRA - Tests 2: ..........", async function () {
 
 
       it("finds some transcations", async function(){
@@ -64,6 +64,7 @@ describe("IRA - Tests: ..........", async function () {
       it("can calculate portfolio Value", async function(){
                 let investorID = 5;
                 let expectedValue = 11636330;
+                let formattedValue = calc.formatCurrency(expectedValue)
                 let results = await calc.totalupInvestorPortfolio(investorID)
                 console.log("Noah's investor portfolio is: "+JSON.stringfy(results,null,4) )
                 //let portfolioDeals = results[0]

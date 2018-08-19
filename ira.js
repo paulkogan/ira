@@ -30,7 +30,7 @@ const secret = "cat"
 const winston = require('winston')
 const nodePort = 8081;
 
-const iraVersion = "0.20.1 +actions  +Currency refactor +API capital calls "
+const iraVersion = "0.21.1 +APIs for new transaction"
 
 
 //tried byt failed to save winston logs into the DB
