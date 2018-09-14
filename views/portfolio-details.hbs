@@ -118,13 +118,13 @@ Investment Summary for: <font family = 'courier' size='4'><b>{{investorName}}</b
     <td align="left">{{tt_name}}</td>
     <td>{{t_notes}}</td>
     <td align="right">
-      {{#ifIncludes formatted_amount '('}}
+      {{#ifLessThan t_amount 0}}
           <font color = "red">
-                {{formatted_amount}}
+                {{#formatUSD formatted_amount}}{{/formatUSD}}
           </font>
       {{else}}
-                {{formatted_amount}}&nbsp;
-      {{/ifIncludes}}
+                  {{#formatUSD formatted_amount}}{{/formatUSD}}&nbsp;
+      {{/ifLessThan}}
 
 
     </td>
@@ -139,13 +139,17 @@ Investment Summary for: <font family = 'courier' size='4'><b>{{investorName}}</b
     <td></td>
     <td style="border-top: thin solid">Current Cash in Deal:</td>
     <td align="right" style="border-top: thin solid"><b>
-      {{#ifIncludes totalCashInDeal '('}}
+
+      {{#ifLessThan totalCashInDeal 0}}
           <font color = "red">
-                {{totalCashInDeal}}
+                {{#formatUSD totalCashInDeal}}{{/formatUSD}}
           </font>
       {{else}}
-                {{totalCashInDeal}}&nbsp;
-      {{/ifIncludes}}
+                  {{#formatUSD totalCashInDeal}}{{/formatUSD}}&nbsp;
+      {{/ifLessThan}}
+
+
+
   </b>
    </td>
     <td></td>
@@ -184,13 +188,15 @@ Investment Summary for: <font family = 'courier' size='4'><b>{{investorName}}</b
     <td align="left">{{tt_name}}</td>
     <td>{{t_notes}}</td>
     <td align="right">
-      {{#ifIncludes formatted_amount '('}}
+
+      {{#ifLessThan t_amount 0}}
           <font color = "red">
-                {{formatted_amount}}
+                {{#formatUSD t_amount}}{{/formatUSD}}
           </font>
       {{else}}
-                {{formatted_amount}}&nbsp;
-      {{/ifIncludes}}
+                  {{#formatUSD t_amount}}{{/formatUSD}}&nbsp;
+      {{/ifLessThan}}
+
 
 
     </td>
@@ -244,7 +250,7 @@ Investment Summary for: <font family = 'courier' size='4'><b>{{investorName}}</b
           <td align="left"></td>
           <td align="right">Investor's Total Investment:&nbsp;</td>
           <td></td>
-          <td align="right">{{formatted_totalInvestments_noRollover}}&nbsp;</td>
+          <td align="right">{{#formatUSD totalInvestments_noRollover}}{{/formatUSD}}&nbsp;</td>
           <td></td>
       </tr>
 
@@ -274,9 +280,9 @@ Investment Summary for: <font family = 'courier' size='4'><b>{{investorName}}</b
         <td align="center"> </td>
         <td align="left"></td>
         <td align="left"></td>
-        <td align="right">Value of Property:&nbsp;</td>
+        <td align="right">Total Asssets:&nbsp;</td>
         <td></td>
-        <td align="right">{{expandDeal.formatted_total_value}}&nbsp;</td>
+        <td align="right">{{#formatUSD expandDeal.total_assets}}{{/formatUSD}}&nbsp;</td>
         <td></td>
     </tr>
 
@@ -286,7 +292,7 @@ Investment Summary for: <font family = 'courier' size='4'><b>{{investorName}}</b
         <td align="left"></td>
         <td align="right">In-Place Debt:&nbsp;</td>
         <td></td>
-        <td align="right">{{expandDeal.formatted_total_debt}}&nbsp;</td>
+        <td align="right">{{#formatUSD expandDeal.total_debt}}{{/formatUSD}}&nbsp;</td>
         <td></td>
     </tr>
 
@@ -297,7 +303,7 @@ Investment Summary for: <font family = 'courier' size='4'><b>{{investorName}}</b
         <td align="left"></td>
         <td align="right">Deal Equity Valuation:&nbsp;</td>
         <td></td>
-        <td align="right">{{formatted_deal_equity_value}}&nbsp;</td>
+        <td align="right">{{#formatUSD expandDeal.deal_equity_value}}{{/formatUSD}}&nbsp;</td>
         <td></td>
     </tr>
 
@@ -308,7 +314,7 @@ Investment Summary for: <font family = 'courier' size='4'><b>{{investorName}}</b
         <td align="left"></td>
         <td align="right">Investor's Potential Unrealized Deal Equity:&nbsp;</td>
         <td></td>
-        <td align="right"><b>{{formatted_investor_equity_value}}&nbsp;</b></td>
+        <td align="right"><b>{{#formatUSD investor_equity_value}}{{/formatUSD}}&nbsp;</b></td>
         <td></td>
     </tr>
 
@@ -354,7 +360,7 @@ Investment Summary for: <font family = 'courier' size='4'><b>{{investorName}}</b
         <td></td>
         <td align="right">Total Portfolio Equity:</td>
         <td></td>
-        <td align="right">{{totalPortfolioValue}}</td>
+        <td align="right">{{#formatUSD totalPortfolioValue}}{{/formatUSD}}</td>
         <td></td>
     </tr>
 
@@ -364,10 +370,9 @@ Investment Summary for: <font family = 'courier' size='4'><b>{{investorName}}</b
         <td></td>
         <td align="right">Total Cash Investment:</td>
         <td></td>
-        <td align="right">-&nbsp;{{totalInvestmentValue}}</td>
+        <td align="right">-&nbsp;{{#formatUSD totalInvestmentValue}}{{/formatUSD}}</td>
         <td></td>
     </tr>
-
 
 
 
@@ -379,7 +384,7 @@ Investment Summary for: <font family = 'courier' size='4'><b>{{investorName}}</b
         <td></td>
         <td align="right">Potential Growth in Portfolio Value:</td>
         <td></td>
-        <td align="right" style="border-top: thin solid">{{portfolioValueGain}}</td>
+        <td align="right" style="border-top: thin solid">{{#formatUSD portfolioValueGain}}{{/formatUSD}}</td>
         <td></td>
     </tr>
 
@@ -402,7 +407,7 @@ Investment Summary for: <font family = 'courier' size='4'><b>{{investorName}}</b
         <td></td>
         <td align="right">Investor Distrubutions and Cash back:</td>
         <td></td>
-        <td align="right">+&nbsp;{{totalDistributions}}</td>
+        <td align="right">+&nbsp;{{#formatUSD totalDistributions}}{{/formatUSD}}</td>
         <td></td>
     </tr>
 
@@ -412,7 +417,7 @@ Investment Summary for: <font family = 'courier' size='4'><b>{{investorName}}</b
         <td></td>
         <td align="right">Total Potential Return to Investor:</td>
         <td></td>
-        <td align="right" style="border-top: thin solid"><b>{{portfolioCashGain}}</b></td>
+        <td align="right" style="border-top: thin solid"><b>{{#formatUSD portfolioCashGain}}{{/formatUSD}}</b></td>
         <td></td>
     </tr>
 
@@ -437,9 +442,3 @@ Investment Summary for: <font family = 'courier' size='4'><b>{{investorName}}</b
 </table>
 
 </div>
-
- <hr style="border-top: 1px solid #000000">
-&emsp;{{expandDeal.id}}&nbsp;<b>{{investment_name}}</b>&emsp;{{passthru_name}}
- &emsp; &emsp;<br>
- &emsp;&emsp;<br>
- <br><br>

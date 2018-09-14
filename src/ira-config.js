@@ -44,7 +44,7 @@ nconf
 
 
   // 3. Config file
-  .file({ file: path.join(__dirname, 'config.json') })
+  .file({ file: path.join(__dirname, '../config.json') })
   // 4. Defaults
   .defaults({
 

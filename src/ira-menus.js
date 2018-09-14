@@ -10,10 +10,10 @@ const urlencodedParser = bodyParser.urlencoded({ extended: false })
 const mysql = require('mysql');
 const calc =  require('./ira-calc');
 const iraSQL =  require('./ira-model');
-const iraApp =  require('./ira');
+const actions =  require('./ira-actions');
+const ira =  require('../ira');
 const passport  = require('passport');
-const winston = require('winston')
-
+const winston = require('winston');
 
 
 //default session info
@@ -37,6 +37,120 @@ module.exports = router;
 
 
 //==========  ROUTES ===========================
+
+
+router.get('/dealdetails/:id',  checkAuthentication, (req, res) => {
+
+
+
+    if (req.session && req.session.passport) {
+                 userObj = req.session.passport.user;
+    }
+
+    //call the async function
+    pullDealComponents().catch(err => {
+          console.log("Deal Components problem: "+err);
+    })
+
+    async function pullDealComponents() {
+          var entity = await iraSQL.getEntityById(req.params.id);
+          console.log("have Entity   "+ JSON.stringify(entity));
+
+          let capitalCalls =  await iraSQL.getCapitalCallsForEntity(entity.id);
+          console.log("Got bacck Capital Calls "+JSON.stringify(capitalCalls, null, 4))
+
+          var dealFinancials = await iraSQL.getDealById(entity.deal_id);
+          console.log("Before Ownership, have Entity   "+ entity.name+"   and Deal is  "+JSON.stringify(dealFinancials));
+          var investors = await iraSQL.getOwnershipForEntity(entity.id)
+          if (investors.length>0) {
+                                let results = calc.totalupInvestors(investors)
+                                let expandInvestors = results[0]
+                                let totalCapital =  results[1].totalCapital
+                                let totalCapitalPct = results[1].totalCapitalPct
+                                let expandDeal = calc.calculateDeal(dealFinancials)
+                                // console.log("\nrendering ownership and Deal is "+JSON.stringify(deals, null, 4))
+                                res.render('deal-details', {
+                                        userObj: userObj,
+                                        message:  "Showing "+expandInvestors.length+" investors",
+                                        investors: expandInvestors,
+                                        capitalCalls: capitalCalls,
+                                        totalCapital: calc.formatCurrency(totalCapital),
+                                        totalCapitalPct: totalCapitalPct,
+                                        deal:expandDeal,
+                                        entity:entity
+                                });
+
+            } else { //no ownership data
+                                let expandDeal = calc.calculateDeal(dealFinancials)
+                                res.render('deal-details', {
+                                      userObj: userObj,
+                                      message:  "No ownership information found ",
+                                      dealName: expandDeal.name,
+                                      deal:expandDeal,
+                                      capitalCalls: capitalCalls
+                                }); //  render
+            }  //if-else  - no ownership get name of entity
+      } //async function pullDealComponents
+}); //route - deal details
+
+
+
+
+
+
+
+//pull up info for this one capital call
+router.get('/capitalcall/:id', checkAuthentication, (req, res) => {
+      if (req.session && req.session.passport) {
+         userObj = req.session.passport.user;
+       }
+
+       showCapCallDetails().catch(err => {
+             console.log("cap call details problem: "+err);
+             req.flash('login', "Problems getting Capital Call for "+req.params.id+".  ")
+             res.redirect('/home')
+       })
+
+
+       //move this to calc
+       async function showCapCallDetails() {
+             let foundCapCall = await iraSQL.getCapitalCallById(req.params.id);
+             console.log("in CC Details, have CC   "+ JSON.stringify(foundCapCall));
+
+            let capCallTransactions = await iraSQL.getTransactionsForCapitalCall (foundCapCall.id, [8]);
+            console.log("Capp Call transactions are: "+JSON.stringify(capCallTransactions,null,4))
+
+            let dealEntity = await iraSQL.getEntityById(foundCapCall.deal_entity_id);
+
+
+
+            let totalRaised = capCallTransactions.reduce((total, item) => {
+                  return total + item.t_amount;
+              }, 0);
+
+
+
+
+                            console.log("rendering Cap Call")
+                            res.render('capitalcall-details', {
+                                    userObj: userObj,
+                                    message:  "Showing "+capCallTransactions.length+" transactions. ",
+                                    capCall: foundCapCall,
+                                    dealEntity: dealEntity,
+                                    transactions: capCallTransactions,
+                                    totalRaised
+
+                            });
+
+
+       } //async function
+  }); //route - ownership
+
+
+
+
+
+
 
 router.get('/portfolio/:id', (req, res) => {
     if (req.session && req.session.passport) {
@@ -62,17 +176,17 @@ router.get('/portfolio/:id', (req, res) => {
                           let portfolioIRR = parseFloat(portfolioCashGain/totalInvestmentValue)*100
                           console.log("\nRendering Investor Portfolio, totalDistrib is  : " + totalDistributions+"")
                           console.log("\nexample 2nd Deal : " + JSON.stringify(portfolioDeals[1],null,6)+"\n\n")
-                          iraApp.logger.log('info', '/portfolio/id    : '+foundInvestor.name+"  U:"+userObj.email);
+                          ira.iraLogger.log('info', '/portfolio/id    : '+foundInvestor.name+"  U:"+userObj.email);
                           res.render('portfolio-details', {
                                   userObj: userObj,
                                   message:  "Showing "+portfolioDeals.length+" investments ",
                                   investorName: portfolioDeals[0].investor_name,
                                   investments: portfolioDeals, //including rollover transactions
-                                  totalPortfolioValue: calc.formatCurrency(totalPortfolioValue),
-                                  totalInvestmentValue: calc.formatCurrency(totalInvestmentValue),
-                                  portfolioValueGain: calc.formatCurrency(portfolioValueGain),
-                                  totalDistributions: calc.formatCurrency(totalDistributions),
-                                  portfolioCashGain: calc.formatCurrency(portfolioCashGain),
+                                  totalPortfolioValue,
+                                  totalInvestmentValue,
+                                  portfolioValueGain,
+                                  totalDistributions,
+                                  portfolioCashGain,
                                   portfolioIRR: portfolioIRR.toFixed(2)
                           });
 
@@ -99,7 +213,7 @@ router.get('/showlogs',  (req, res) => {
 
 
         async function asyncShowFile() {
-              let fileName = "iralog2.log"
+              let fileName = "iralog3.log"
               let filePath = path.resolve(__dirname, fileName)
               console.log("FilePath is : "+filePath )
 
@@ -222,14 +336,13 @@ router.get('/download_csv/:id', (req, res) => {
             try {
                   var entity = await iraSQL.getEntityById(req.params.id);
                   console.log("have Entity   "+ JSON.stringify(entity));
-                  iraApp.logger.log('info', '/transactions/id : '+entity.name+"  U:"+userObj.email);
+                  ira.iraLogger.log('info', '/transactions/id : '+entity.name+"  U:"+userObj.email);
                   var transactions = await iraSQL.getTransactionsForInvestment(entity.id);
                   console.log("\nGot transactions for entity, here is 1st  "+JSON.stringify(transactions[0],null,5));
 
                   //add delete flag to each
                   for (let j=0; j<transactions.length; j++) {
 
-                              transactions[j].formatted_amount = calc.formatCurrency(transactions[j].t_amount);
                               let hasOwnTrans = await iraSQL.getOwnTransByTransID(transactions[j].id);
                               transactions[j].can_delete = (hasOwnTrans ? false : true);
                               //console.log ("for "+transactions[j].id+" can delete is: "+transactions[j].can_delete)
@@ -241,7 +354,6 @@ router.get('/download_csv/:id', (req, res) => {
                   var transactions = await iraSQL.getAllTransactions();
 
                   for (let j=0; j<transactions.length; j++) {
-                              transactions[j].formatted_amount = calc.formatCurrency(transactions[j].t_amount);
                               transactions[j].can_delete = false;
                                //return e;
                   };
@@ -316,8 +428,7 @@ router.get('/download_csv/:id', (req, res) => {
                             for (let index = 0; index < entities.length; index++) {
                                    if(  (expandEntities[index].ownership===0) && (expandEntities[index].type === 1)    ) {
                                               expandEntities[index].canSetOwnership = true
-                                   //console.log("IN validate ownership: "+ index +" lastname: "+expandInvestors[index].investor_name+" amount: "+expandInvestors[index].formattedAmount+" cap_pct: "+expandInvestors[index].capital_pct)
-                                 } //
+                                    } //if
                             }//for
 
                             //console.log("\nEntities for Manage Owenership menu "+JSON.stringify(entities,null,4));
@@ -360,8 +471,8 @@ router.get('/ownership/:id', checkAuthentication, (req, res) => {
                             console.log("show-Ownership rows with DATE JOIN are: "+JSON.stringify(investors,null,4))
                             let results = calc.totalupInvestors(investors)
                             let expandInvestors = results[0]
-                            let totalCapital =  results[1]
-                            let totalCapitalPct = (results[2]*1).toFixed(2)
+                            let totalCapital =  results[1].totalCapital
+                            let totalCapitalPct = (results[1].totalCapitalPct*1).toFixed(2)
 
 
 
@@ -370,7 +481,7 @@ router.get('/ownership/:id', checkAuthentication, (req, res) => {
                                     userObj: userObj,
                                     message:  "Showing "+expandInvestors.length+" investors ",
                                     entity: foundEntity,
-                                    impliedValue: calc.formatCurrency(foundEntity.implied_value),
+                                    impliedValue: foundEntity.implied_value,
                                     investors: expandInvestors,
                                     totalCapital: totalCapital,
                                     totalCapitalPct: totalCapitalPct
@@ -383,6 +494,7 @@ router.get('/ownership/:id', checkAuthentication, (req, res) => {
        } //async function
   }); //route - ownership
 
+<<<<<<< HEAD:ira-menus.js
 
 
 
@@ -437,11 +549,6 @@ router.get('/ownership/:id', checkAuthentication, (req, res) => {
 
 
 
-
-
-
-
-
 //===========TOP LEVEL MENUS =============================
 
 router.get('/entities', checkAuthentication, (req, res) => {
@@ -454,7 +561,6 @@ router.get('/entities', checkAuthentication, (req, res) => {
                           console.log("in get all ENTITIES #6  "+JSON.stringify(entities[5], null, 4))
 
                           var expandEntities = entities.map((ent) => {
-                                      ent.formatted_implied_value = calc.formatCurrency(ent.implied_value);
                                       ent.short_name = ent.name.substring(0,30);
                                       return ent
                           });
@@ -516,8 +622,7 @@ router.get('/deals', checkAuthentication, (req, res) => {
                           for (let index = 0; index < entities.length; index++) {
                                  if(  (expandEntities[index].ownership===0) && (expandEntities[index].type === 1)    ) {
                                             expandEntities[index].canSetOwnership = true
-                                 //console.log("IN validate ownership: "+ index +" lastname: "+expandInvestors[index].investor_name+" amount: "+expandInvestors[index].formattedAmount+" cap_pct: "+expandInvestors[index].capital_pct)
-                               } //
+                                  } //if
                           }//for
 
 
@@ -541,7 +646,7 @@ router.get('/deals', checkAuthentication, (req, res) => {
 
 
 
-router.get('/transactions', (req, res) => {
+router.get('/transactions/', (req, res) => {
    res.redirect('/transactions/000');
 });
 
@@ -588,8 +693,10 @@ router.get('/commitments', checkAuthentication, (req, res) => {
       let adminMenuOptions = []
       adminMenuOptions[0] = {name:"Manage Ownership", link:"/setownership/"}
       adminMenuOptions[1] = {name:"New Transaction", link:"/add-transaction"}
-      adminMenuOptions[2] = {name:"New Entity", link:"/add-entity"}
-      adminMenuOptions[3] = {name:"New Deal", link:"/add-deal"}
+      adminMenuOptions[2] = {name:"New Capital-Call Transaction", link:"/add-capital-call-transaction"}
+      adminMenuOptions[3] = {name:"New Entity", link:"/add-entity"}
+      adminMenuOptions[4] = {name:"New Deal", link:"/add-deal"}
+
 
 
 
@@ -599,7 +706,7 @@ router.get('/commitments', checkAuthentication, (req, res) => {
               sessionInfo: JSON.stringify(req.session),
               reportmenuoptions: reportMenuOptions,
               adminmenuoptions: adminMenuOptions,
-              iraVersion: iraApp.version
+              iraVersion: ira.version
       });
 
   });
@@ -617,11 +724,8 @@ router.get('/commitments', checkAuthentication, (req, res) => {
  })
 
 
-
- //NOT FIRST TIME LOGIN - Repeat of checkAuthentication from app.js
+ //NOT FIRST TIME LOGIN
  function checkAuthentication(req,res,next){
-
-   try {
            if (userObj.id == 0) {
                 req.session.return_to = "/";
            } else {
@@ -639,12 +743,4 @@ router.get('/commitments', checkAuthentication, (req, res) => {
                //req.flash('login', 'checkAuth failed, need to login')
                res.redirect("/login");
            }
-
-     } catch (err){
-               console.log(err+ " -- Login   ");
-               req.flash('login', "Could not find user with err"+err);
-               res.redirect('/home/');
-    } //trycatch
-
-
- } //function
+ }

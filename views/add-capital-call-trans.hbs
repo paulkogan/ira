@@ -1,0 +1,159 @@
+
+
+<div class="w3-panel w3-pale-blue w3-leftbar
+ w3-rightbar w3-topbar w3-border-blue w3-margin-right w3-margin-left">
+<table width = "100%" border = 0 >
+
+<tr><td>
+  <font family = 'courier' size='5'><b>IRA</b> - New Capital Call Transaction</font>
+</td><td align = "right">
+<a href = '/updateuser'>{{userObj.firstname}}</a>&emsp;<img width='50' src={{userObj.photo}}>
+</td></tr>
+
+<tr><td align = "left">
+  <a href = "/">Home</a>&emsp;
+</td><td>
+</td><td align = "right">
+</td></tr>
+
+<tr><td>
+<br>
+{{message}}
+</td></tr>
+</table>
+</div>
+
+<form action = "{{postendpoint}}" method = "POST" id="newcapcalltrans">
+<div class="w3-panel w3-pale-blue w3-leftbar
+          w3-rightbar w3-border-blue w3-margin-right w3-margin-left">
+<br>
+<table width = "100%" border = 0>
+      <colgroup>
+      <col width="1%"/>
+      <col width="10%"/>
+      <col width="20%"/>
+      <col width="15%"/>
+      <col width="29%"/>
+      </colgroup>
+
+
+{{#ifEqual phase 1}}
+                <tr>
+                    <td></td>
+                    <td>
+                    Select Capital-Call:
+                    </td>
+                    <td>
+                            <select name="choiceA">
+                            {{#each capitalcalls}}
+                            <option value='[ {{id}}, {{deal_entity_id}}, "{{cc_name}}"]'>{{cc_name}}</option>
+
+                            {{/each}}
+                            </select>
+                    </td>
+                    <td></td>
+                    <td></td>
+                </tr>
+
+
+
+
+      {{else}}
+                <tr>
+                      <td></td>
+                        <td colspan = "2">
+                        Deal: <h2>{{deal_name}}</h1>
+                        <br><br><br>
+                        </td>
+
+
+                        <td colspan = 2>
+                            Capital Call: <h2>{{capCall.cc_name}} </h1>
+                            Raise goal : <b>{{#formatUSD capCall.target_amount}}{{/formatUSD}}</b><br>
+                            Per-investor goal amount: <b>{{#formatUSD capCall.target_per_investor}}{{/formatUSD}}</b><br>
+                            <br>
+                        </td>
+                </tr>
+
+
+
+                 <tr>
+                 	<td></td>
+                   <td>&nbsp;</td>
+                   <td></td>
+                   <td>
+                </tr>
+
+                  <tr>
+                  <td></td>
+                  <td>
+                  Select Investor:
+                  </td>
+                  <td>
+                        <select name="investor_entity_id">
+                        {{#each investors}}
+                        <option value='{{investor_id}}'>{{investor_name}}</option>
+                        {{/each}}
+                        </select>
+                 </td>
+                 </tr>
+
+                 <tr>
+                       <td></td>
+                       <td>&nbsp;</td>
+                       <td></td>
+                 </tr>
+
+                 <tr>
+                    <td></td>
+                  	<td align = "left">
+                           Amount:<br>
+                      	</td><td>
+                          <input type = "text" name = "amount" value="$0.00"><br>
+
+                      </td>
+
+
+                  	  <td>
+                        Transaction Date:<br>
+                      </td>
+                      <td>
+                        	<input type = "date" name = "wired_date"><br>
+                      </td>
+                  </tr>
+
+                  <tr>
+                    	<td></td>
+
+                    	<td colspan = "3">
+                        Notes: <br>
+                        <textarea name = "notes" cols="40" rows="2"></textarea>
+                        </td>
+                    <tr>
+
+      <input type = "hidden" name = "cc_id" value={{capCall.id}}>
+      <input type = "hidden" name = "investment_entity_id" value={{capCall.deal_entity_id}}>
+      {{/ifEqual}}
+
+
+  </form>
+
+<tr>
+	<td></td>
+  <td></td>
+
+  <td></td>
+  <td>
+     <input type = "hidden" name = "phase" value={{phase}}>
+
+    <button type="submit" form="newcapcalltrans" xtyle="color:white;background-color:dodgerblue;width:150px;height:50px">Submit</button>
+
+  </td>
+
+    <td></td>
+<tr>
+</table>
+<br>
+
+</div>
+&emsp;&emsp;

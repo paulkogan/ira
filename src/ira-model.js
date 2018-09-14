@@ -1,13 +1,12 @@
 
 'use strict';
-
 const extend = require('lodash').assign;
 const mysql = require('mysql');
 const nconf = require('nconf');
 const deployConfig = require('./ira-config');
 const passport  = require('passport');
 const winston = require('winston')
-const iraApp =  require('./ira');
+const iraApp =  require('../ira');
 //const bcrypt = require('bcrypt');
 
 //CHANGE ENV HERE
@@ -62,7 +61,10 @@ module.exports = {
   searchEntities,
   getAllEntities,
   getAllTransactions,
+  getCapitalCallsForEntity,
+  getCapitalCallById,
   getOwnershipForEntity,
+  getUniqueOwnershipForEntity,
   getOwnershipForEntityUpstreamUpdate,
   getOwnershipForInvestor,
   getOwnershipForInvestorAndEntity,
@@ -75,6 +77,7 @@ module.exports = {
   getTransactionsForInvestorAndEntity,
   getTransactionsByType,
   getTransactionsForInvestment,
+  getTransactionsForCapitalCall,
   getDealById,
   getEntityTypes,
   getTransactionTypes,
@@ -83,6 +86,7 @@ module.exports = {
   insertDeal,
   insertOwnership,
   insertOwnTrans,
+  insertCapitalCall,
   updateEntity,
   updateEntityImpliedValue,
   updateDeal,
@@ -92,6 +96,97 @@ module.exports = {
   updateUser,
   authUser
 };
+
+
+function getEntitiesByTypes(wantedTypes) {
+     if (!wantedTypes) wantedTypes = [1,2,3,4]
+
+      let queryString =
+      'SELECT e.id as id, types.name as entity_type, e.name as name, e.taxid as taxid, e.ownership_status as own_status FROM entities as e'
+        + ' JOIN entity_types as types ON types.type_num = e.type'
+        + ' WHERE e.type IN ('+wantedTypes.join()+')';
+
+      return new Promise(function(succeed, fail) {
+            connection.query(queryString,
+              function(err, results) {
+                      if (err) {
+                            fail(err)
+                      } else {
+                            succeed(results)
+                      }
+              }); //connection
+      }); //promise
+} // function
+
+
+
+function getTransactionsForCapitalCall (cc_id, transTypes) {
+
+  if (!transTypes) transTypes = [8]
+
+  //console.log("\nIn Model, TransTypes are: "+JSON.stringify(transTypes)+"\n\n")
+
+  let queryString = 'SELECT t.id as id,  t.investor_entity_id as investor_entity_id,  t.investment_entity_id as investment_entity_id, t.passthru_entity_id as passthru_entity_id,'
+  + ' investor.name as investor_name, investment.name as investment_name, passthru.name as passthru_name,'
+  + ' t.trans_type as tt_id, trans_types.name as tt_name, t.capital_call_id as cc_id,'
+  + ' DATE_FORMAT(t.wired_date, "%b %d %Y") as t_wired_date, t.amount as t_amount, t.own_adj as t_own_adj, t.notes as t_notes'
+  + ' FROM transactions as t'
+  + ' JOIN entities as investment ON investment.id = t.investment_entity_id'
+  + ' JOIN entities as investor ON investor.id = t.investor_entity_id'
+  + ' JOIN transaction_types as trans_types ON t.trans_type = trans_types.type_num'
+  + ' LEFT JOIN entities as passthru ON passthru.id = t.passthru_entity_id'
+  + ' WHERE t.capital_call_id ='+cc_id
+  //+ ' AND t.trans_type = 1'
+  + ' AND t.trans_type IN ('+transTypes.join()+')'
+  + ' ORDER BY t.id DESC';
+
+      return new Promise(function(succeed, fail) {
+            connection.query(queryString,
+              function(err, results) {
+                      if (err) {
+                            console.log ("Cant find transcations "+err)
+                            fail(err)
+                      } else {
+                            console.log ("In Model: for CC "+cc_id+" found "+results.length+" transactions \n")
+                            //console.log ("The results are:"+JSON.stringify(results))
+                            // if (results.length<1) {
+                            //           fail("no ownership data")
+                            // }
+                            succeed(results)
+                      }
+              }); //connection
+      }); //promise
+} // function
+
+
+
+
+//owneship: parent_entity_id, child_entity_id, capital_pct
+function getCapitalCallsForEntity(dealEntityID) {
+    let queryString = ""
+    if(dealEntityID) {
+          queryString = 'SELECT * from capital_calls WHERE deal_entity_id='+dealEntityID;
+      //console.log ("in getOwnTransByTransID, the query string is "+queryString+"\n\n")
+    } else {
+          queryString = 'SELECT * from capital_calls'
+
+    }
+
+    return new Promise(   function(succeed, fail) {
+          connection.query(queryString,
+            function(err, results) {
+                    if (err) {
+                          fail(err)
+                    } else {
+                        //console.log ("in Moooodel, got records "+JSON.stringify(results)+"")
+                        succeed(results)
+                    }
+            }); //connection
+        }); //promise
+
+
+} // function
+
 
 
 
@@ -123,24 +218,29 @@ function authUser (email, password, done) {
       }
 
 
-    //  bcrypt.compare(password, results[0].password, function(err, res) {
-    //                if (err) {
-    //                  console.log("PW auth error" +err)
-    //                  done("PW auth error" +err, null);
-    //                  return;
-    //                }
-    //               if (!(checkPlainPW) && !(res) ) {
-    //                   console.log("\nbad pw "+password+", res is: "+res+"   checkPlainPW is: "+checkPlainPW)
-    //                   done("bad password", null)
-    //                   return
-    //               }
-    //             console.log(results[0].firstname+" has authed in authuser");
-    //             done(null, results[0]);
-    // }); //bcrypt
 
   } //cb function
  ) //connection querty
 } //authuser
+
+
+
+//  bcrypt.compare(password, results[0].password, function(err, res) {
+//                if (err) {
+//                  console.log("PW auth error" +err)
+//                  done("PW auth error" +err, null);
+//                  return;
+//                }
+//               if (!(checkPlainPW) && !(res) ) {
+//                   console.log("\nbad pw "+password+", res is: "+res+"   checkPlainPW is: "+checkPlainPW)
+//                   done("bad password", null)
+//                   return
+//               }
+//             console.log(results[0].firstname+" has authed in authuser");
+//             done(null, results[0]);
+// }); //bcrypt
+
+
 
 //owneship: parent_entity_id, child_entity_id, capital_pct
 function getOwnTransByTransID (transaction_id) {
@@ -241,9 +341,8 @@ function searchEntities (searchTerm) {
     if (!searchTerm) {
       queryString = "SELECT name, id FROM entities";
     }
-//SELECT * FROM `my_table` WHERE CONTAINS(name, 'search')
-
-//'SELECT * from transactions WHERE id = ?', trans_id,
+    //SELECT * FROM `my_table` WHERE CONTAINS(name, 'search')
+    //'SELECT * from transactions WHERE id = ?', trans_id,
 
     console.log ("in searchEntities, the query string is "+queryString+"\n\n")
 
@@ -302,7 +401,7 @@ function getTransactionsForInvestorAndEntity (investorId, dealEntityId, transTyp
 
 function getTransactionsForInvestment (invest_entityId, transTypes) {
 
-  if (!transTypes) transTypes = [1,2,3,4,5,6]
+  if (!transTypes) transTypes = [1,2,3,4,5,6,7,8]
 
   //console.log("\nIn Model, TransTypes are: "+JSON.stringify(transTypes)+"\n\n")
 
@@ -424,15 +523,18 @@ function getEntityByDealId (deal_id) {
 //owneship: parent_entity_id, child_entity_id, capital_pct
 function getEntityById (entity_id) {
   let queryString = 'SELECT * from entities WHERE id ='+entity_id;
+  //console.log ("in getEntiyById, the query string is "+queryString+"\n\n")
       return new Promise(function(succeed, fail) {
             connection.query(queryString,
               function(err, results) {
-                      if (err) {
+                //console.log ("Searching Entity the resukts are "+results +"\n")
+                    if (!results || results === undefined || results.length < 1) {
+                         fail("No such entity, sorry")
+                         return
+                    }
+                    if (err) {
                             fail(err)
                       } else {
-                            if (!results[0]) {
-                                    fail("No such entity, sorry")
-                            }
 
                             //console.log ("Success found by Id entity "+results[0].name +"\n")
                             succeed(results[0])
@@ -453,7 +555,7 @@ function getDealById (deal_id) {
                       if (err) {
                             fail(err)
                       } else {
-                            succeed(results)
+                            succeed(results[0])
                       }
               }); //connection
       }); //promise
@@ -563,7 +665,34 @@ function getOwnershipForEntityUpstreamUpdate (child_id) {
       }); //promise
 } // function
 
+//owneship: parent_entity_id, child_entity_id, capital_pct
+function getUniqueOwnershipForEntity (child_id) {
+  let queryString = 'SELECT o.id, investor.name as investor_name, investment.name as investment_name, passthru.name as passthru_name,'
+  + ' investment.id as investment_id, investor.id as investor_id,'
+  + ' o.amount as amount, ROUND(o.capital_pct,4) as capital_pct FROM ownership as o'
+  + ' JOIN entities as investment ON investment.id = o.child_entity_id'
+  + ' JOIN entities as investor ON investor.id = o.parent_entity_id'
+  + ' LEFT JOIN entities as passthru ON passthru.id = o.passthru_entity_id'
+  + ' WHERE o.child_entity_id ='+child_id+' ORDER BY amount DESC';
 
+      return new Promise(function(succeed, fail) {
+            connection.query(queryString,
+              function(err, results) {
+                      if (err) {
+                            console.log ("Problem in getOwnershipForEntity "+err)
+                            fail(err)
+                      } else {
+                            // if (results.length<1) {
+                            //           fail("no ownership data")
+                            // }
+
+                            console.log ("Ownership query OK got "+results.length)
+                            //console.log ("The results are:"+JSON.stringify(results, null,4))
+                            succeed(results)
+                      }
+              }); //connection
+      }); //promise
+} // function
 
 //owneship: parent_entity_id, child_entity_id, capital_pct
 function getOwnershipForEntity (child_id) {
@@ -598,23 +727,7 @@ function getOwnershipForEntity (child_id) {
 } // function
 
 
-function getEntitiesByTypes(wantedTypes) {
-      let queryString =
-      'SELECT e.id as id, types.name as entity_type, e.name as name, e.taxid as taxid, e.ownership_status as own_status FROM entities as e'
-        + ' JOIN entity_types as types ON types.type_num = e.type'
-        + ' WHERE e.type IN ('+wantedTypes.join()+')';
 
-      return new Promise(function(succeed, fail) {
-            connection.query(queryString,
-              function(err, results) {
-                      if (err) {
-                            fail(err)
-                      } else {
-                            succeed(results)
-                      }
-              }); //connection
-      }); //promise
-} // function
 
 
 function getEntitiesByOwnership(ownStatus) {
@@ -706,6 +819,21 @@ function getTransactionById (trans_id) {
 } // function
 
 
+function getCapitalCallById (cc_id) {
+      return new Promise(function(succeed, fail) {
+            connection.query(
+              'SELECT * from capital_calls WHERE id = ?', cc_id,
+              function(err, results) {
+                      if (err) {
+                          console.log ("in Model: CCByID problem "+err)
+                            fail(err)
+                      } else {
+                            //console.log ("in Model: CapCallbyId "+JSON.stringify(results))
+                            succeed(results[0])
+                      }
+              }); //connection
+      }); //promise
+} // function
 
 
 
@@ -727,6 +855,29 @@ function insertOwnTrans(own_id, trans_id) {
                  }); //connection
          }); //promise
 } // function
+
+
+
+
+
+function insertCapitalCall (capitalCall) {
+      console.log("In Model, adding new Capital Call: "+JSON.stringify(capitalCall))
+      return new Promise(function(succeed, fail) {
+            connection.query(
+            'INSERT INTO capital_calls SET ?', capitalCall,
+                function(err, results) {
+                          if (err) {
+                                console.log("Problem inserting capital_calls SQL"+err)
+                                fail(err)
+                          } else {
+                                //console.log("In model, results: "+JSON.stringify(results));
+                                succeed(results)
+                          }
+              }); //connection
+      }); //promise
+} // function
+
+
 
 
 

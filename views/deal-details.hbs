@@ -10,20 +10,29 @@
   <a href = '/updateuser'>{{userObj.firstname}}</a>&emsp;<img width='50' src={{userObj.photo}}>
 </td></tr>
 
-<tr><td align = "left">
-  <a href = "/">Home</a>&emsp;
-</td><td>
-</td><td align = "right">
-</td></tr>
+<tr>
+    <td align = "left">
+    <a href = "/">Home</a>&emsp;
+    </td>
+    <td></td>
+</tr>
+{{#if deal}}
 
 <tr><td>
   <br>
-Deal details for: <font family = 'courier' size='4'><b>{{dealName}}</b></font>
-</td></tr>
+Deal details for: <font family = 'courier' size='4'><b>{{deal.name}}</b></font>
+</td>
+
+<td align = "right">
+  <br>
+
+</td>
+</tr>
 </table>
 </div>
 
-{{#if deal}}
+
+
 <div class="w3-panel w3-pale-blue w3-leftbar
  w3-rightbar w3-border-blue w3-margin-right w3-margin-left">
   <table width = "100%" border = 0>
@@ -42,28 +51,28 @@ Deal details for: <font family = 'courier' size='4'><b>{{dealName}}</b></font>
               <tr>
                 <td></td>
                 <td align="right">Properties' Value:</td>
-                <td align="right">{{deal.formatted_aggregate_value}}</td>
+                <td align="right">{{#formatUSD deal.aggregate_value}}{{/formatUSD}} </td>
                 <td></td>
                 <td>Properties' Debt/Loan:</td>
-                <td align="right">{{deal.formatted_aggregate_debt}}</td>
+                <td align="right">{{#formatUSD deal.aggregate_debt}}{{/formatUSD}} </td>
                 <td></td>
               </tr>
               <tr>
                 <td></td>
                 <td align="right">Deal Cash and Assets:</td>
-                <td align="right">{{deal.formatted_cash_assets}}</td>
+                <td align="right">{{#formatUSD deal.cash_assets}}{{/formatUSD}} </td>
                 <td></td>
                 <td>Deal Debt/Loan:</td>
-                <td align="right">{{deal.formatted_deal_debt}}</td>
+                <td align="right">{{#formatUSD deal.deal_debt}}{{/formatUSD}}</td>
                 <td></td>
               </tr>
               <tr>
                 <td></td>
-                <td align="right">Total Value:</td>
-                <td align="right">{{deal.formatted_total_value}}</td>
+                <td align="right">Total Assets:</td>
+                <td align="right">{{#formatUSD deal.total_assets}}{{/formatUSD}}</td>
                 <td></td>
                 <td >Total Debt</td>
-                <td align="right">{{deal.formatted_total_debt}}</td>
+                <td align="right">{{#formatUSD deal.total_debt}}{{/formatUSD}}</td>
                 <td></td>
               </tr>
             <tr>
@@ -72,7 +81,7 @@ Deal details for: <font family = 'courier' size='4'><b>{{dealName}}</b></font>
               <td align="right"></td>
               <td></td>
               <td >Deal Equity Value</td>
-              <td align="right"><b>{{deal.formatted_equity_value}}</b></td>
+              <td align="right"><b>{{#formatUSD deal.deal_equity_value}}{{/formatUSD}}</b></td>
               <td></td>
             </tr>
 
@@ -84,15 +93,85 @@ Deal details for: <font family = 'courier' size='4'><b>{{dealName}}</b></font>
                     <td colspan="4"> &emsp;{{deal.notes}}</td>
                   <td></td>
                 </tr>
+{{/if}}
+
+{{#if capitalCalls}}
 </table>
 </div>
-{{/if}}
+
 
 
 <div class="w3-panel w3-pale-blue w3-leftbar
  w3-rightbar w3-border-blue w3-margin-right w3-margin-left">
-Ownership details: <b>{{message}}</b>
+
+<table width = "100%" border = 0 >
+  <colgroup>
+  <col width="40%"/>
+  <col width="20%"/>
+  <col width="20%"/>
+  <col width="20%"/>
+  </colgroup>
+
+          <tr>
+              <td></td>
+              <td align = "right"> <b><i>Capital Calls Details:</i></b>
+             </td>
+             <td></td>
+            <td align = "right">   </td>
+          </tr>
+  {{#each capitalCalls}}
+            <tr>
+              <td></td>
+              <td></td>
+
+              <td>
+                  <a href = '/capitalcall/{{id}}'>{{cc_name}}</a>
+              </td>
+              <td></td>
+
+            </tr>
+{{/each}}
+<tr>
+    <td></td>
+    <td align = "right"> <b><i></i></b>
+   </td>
+   <td>&nbsp;</td>
+   <td></td>
+</tr>
+
+  <tr>
+    <td></td>
+    <td></td>
+
+    <td colspan = 2>
+        <i>Totals below do not include Capital-Calls.<i>
+    </td>
+
+  </tr>
+{{/if}}
+</table>
 </div>
+
+
+
+
+<div class="w3-panel w3-pale-blue w3-leftbar
+ w3-rightbar w3-border-blue w3-margin-right w3-margin-left">
+<table width = "100%" border = 0 >
+ <tr>
+   <td></td>
+   <td align="left">Ownership details: <b>{{message}}</b></td>
+   <td></td>
+   <td></td>
+
+   <td align="right"><a href = "/add-capital-call/{{entity.id}}">Setup New Capital Call</a></td>
+   <td>&nbsp;&nbsp;&nbsp;&nbsp;</td>
+ </tr>
+ </table>
+</div>
+<div>
+<div>
+
 
 
 {{#if investors}}
@@ -121,7 +200,7 @@ Ownership details: <b>{{message}}</b>
           </td>
           <td align="left">{{passthru_name}}</td>
           <td>{{capital_pct}}%</td>
-          <td>{{formattedAmount}}</td>
+          <td>{{#formatUSD amount}}{{/formatUSD}}</td>
           <td>{{wired_date}}</td>
           <td></td>
       </tr>
@@ -149,7 +228,7 @@ Ownership details: <b>{{message}}</b>
         <td></td>
         <td>Total Inv. Capital:</td>
         <td><b>{{totalCapitalPct}}%</b></td>
-        <td><b>{{totalCapital}}</b></td>
+        <td><b>{{#formatUSD totalCapital}}{{/formatUSD}}</b></td>
 
         <td></td>
         <td></td>
