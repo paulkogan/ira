@@ -137,7 +137,7 @@ router.get('/capitalcall/:id', checkAuthentication, (req, res) => {
                                     message:  "Showing "+capCallTransactions.length+" transactions. ",
                                     capCall: foundCapCall,
                                     dealEntity: dealEntity,
-                                    transactions: CapCallTransaction,
+                                    transactions: capCallTransactions,
                                     totalRaised
 
                             });

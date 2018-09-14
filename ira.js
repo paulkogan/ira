@@ -30,27 +30,7 @@ const secret = "cat"
 const winston = require('winston')
 const nodePort = 8081;
 
-const iraVersion = "0.21.1 +APIs for new transaction"
-
-
-//tried byt failed to save winston logs into the DB
-//const winston_mysql = require('winston-mysql')
-
-// var winstonSQL_options = {
-//   host     : deployConfig.get('DEV_ENDPOINT'),
-//   user     : deployConfig.get('DEV_USER'),
-//   password : deployConfig.get('DEV_USER'),
-//   database : deployConfig.get('DEV_DBNAME'),
-//   table    : 'activitylog'
-// };
-
-
-
-// var iraLogger = new (winston.Logger)({
-// transports: [
-//   new winston_mysql(options_default)
-// ]
-// });
+const iraVersion = "21.3 +fixed CapCallTrans bug +mask pw"
 
 
 

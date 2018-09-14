@@ -48,35 +48,7 @@ module.exports = api;
 
 // =============== APIs ===============
 
-//For New Transaction we need
 
-//iraSQL.getTransactionTypes()
-//iraSQL.getEntitiesByTypes([1,3,4]) - DEALS
-//  iraSQL.getEntitiesByTypes([3]) - PASS-THRUS
-//iraSQL.getEntitiesByTypes([4,2]) - INVESTOR ENTITIES
-
-
-// api.get('/api/getentitiesbytypes/:typesarray',  (req, res) => {
-//
-//     //call the async function
-//     api_getentitiesbytypes().catch(err => {
-//           console.log("Get entities by types problem: "+err);
-//           res.send({err});
-//     })
-//
-//     async function api_getentitiesbytypes() {
-
-//           let passedTypesArray = req.params.typesarray
-//           console.log("Here is the types Array from URL pram "+passedTypesArray);
-//
-//           let typesArray = [1,3]
-//           let entitiesToPick = await iraSQL.getEntitiesByTypes(typesArray);
-//           entitiesToPick.forEach(item => item.name.substring(0,30));
-//           res.send(JSON.stringify(entitiesToPick, null,4));
-//       } //async function getcentitiesbytypes
-//
-//
-// }); //route - api - getcentitiesbytypes
 
 api.get('/api/getentitiesbytypes/',  (req, res) => {
 
@@ -87,10 +59,7 @@ api.get('/api/getentitiesbytypes/',  (req, res) => {
     })
 
     async function api_getentitiesbytypes() {
-
-
           //http://localhost:8081/api/getentitiesbytypes?params={%22types%22:[1,2,3]}
-
 
           let getParams = req.query.params
           console.log("Here is GET ?params string:   "+getParams);
@@ -99,7 +68,7 @@ api.get('/api/getentitiesbytypes/',  (req, res) => {
           console.log("Tryarray is of type  "+(typeof tryArray));
           let typesArray = tryArray
           let entitiesToPick = await iraSQL.getEntitiesByTypes(typesArray);
-          entitiesToPick.forEach(item => item.name.substring(0,30));
+          entitiesToPick.forEach(item => item.name = item.name.substring(0,35));
           res.send(JSON.stringify(entitiesToPick, null,4));
       } //async function getcentitiesbytypes
 

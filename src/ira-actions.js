@@ -53,6 +53,84 @@ module.exports = actions;
 
 
 
+//add CC trans - nothing selected
+actions.get('/add-capital-call-transaction', (req, res) => {
+
+        if (req.session && req.session.passport) {
+           userObj = req.session.passport.user;
+        }
+
+
+addCapitalCallTrans().catch(err => {
+               console.log("Add CapCall Transacaton Problem problem: "+err);
+               req.flash('login', "Problems adding Capcall Transaction ")
+               res.redirect('/home')
+         })
+
+
+  async function addCapitalCallTrans() {
+
+      let capitalCalls =  await iraSQL.getCapitalCallsForEntity();
+      console.log("Got bacck Capital Calls "+JSON.stringify(capitalCalls, null, 4))
+      // let dealsToPick  = deals.map(function(plank) {
+      //         plank.name = plank.name.substring(0,30);
+      //         return plank;
+      // });
+
+      res.render('add-capital-call-trans', {
+                userObj: userObj,
+                postendpoint: '/process_add_capital_call_trans',
+                phase: 1,
+                capitalcalls: capitalCalls
+
+        });//render
+  } //async function
+}); //route add capital call
+
+
+
+
+
+// capital call trans - Cap call selected - gp to phase 2
+actions.get('/add_capital_call_trans/:ccid', (req, res) => {
+    //call the async function
+    processNewCapCallID().catch(err => {
+          console.log("Process Add Capital Call Transaction ID problem: "+err);
+    })
+
+    async function processNewCapCallID() {
+                    let cc_id = req.params.ccid;
+                    let capCallObj = await iraSQL.getCapitalCallById(cc_id);
+                    let deal_entity_id = capCallObj.deal_entity_id;
+                    let investors =  await iraSQL.getUniqueOwnershipForEntity(deal_entity_id);
+
+
+                    capCallObj.formatted_target_amount = calc.formatCurrency(capCallObj.target_amount);
+                    capCallObj.formatted_target_per_investor = calc.formatCurrency(capCallObj.target_per_investor);
+
+
+                    //transform ownership rows into investor rows
+                    console.log("In processCapCall-CCID, got "+investors.length+ " investors: "+JSON.stringify(investors,null,4)+"\n");
+
+                    res.render('add-capital-call-trans', {
+                              userObj: userObj,
+                              postendpoint: '/process_add_capital_call_trans',
+                              phase: 2,
+                              investors: investors,
+                              capCall: capCallObj,
+                              deal_name:investors[0].investment_name
+                      });//render
+
+     } //async function
+  }); //process add-deal route
+
+
+
+
+
+
+
+
 
 // insert the new transaction
 actions.post('/process_add_capital_call_trans', urlencodedParser, (req, res) => {
@@ -220,7 +298,7 @@ actions.get('/add-transaction', checkAuthentication, (req, res) => {
 
         //deals
 
-        iraSQL.getEntitiesByTypes([1,3,4]).then(
+        iraSQL.getEntitiesByTypes([1,4]).then(
               async function(entities) {
                     dealsToPick  = entities.map(function(plank) {
                             plank.name = plank.name.substring(0,30);
@@ -271,6 +349,8 @@ actions.get('/add-transaction', checkAuthentication, (req, res) => {
 }); //route add transactions
 
 
+
+
 // insert the new transaction
 actions.post('/process_add_transaction', urlencodedParser, (req, res,next) => {
 
@@ -301,6 +381,8 @@ actions.post('/process_add_transaction', urlencodedParser, (req, res,next) => {
   }
 
 }); //route
+
+
 
 
 
