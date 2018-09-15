@@ -494,7 +494,7 @@ router.get('/ownership/:id', checkAuthentication, (req, res) => {
        } //async function
   }); //route - ownership
 
-<<<<<<< HEAD:ira-menus.js
+
 
 
 

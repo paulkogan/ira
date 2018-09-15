@@ -30,7 +30,7 @@ const secret = "cat"
 const winston = require('winston')
 const nodePort = 8081;
 
-const iraVersion = "21.3 +fixed CapCallTrans bug +mask pw"
+const iraVersion = "21.4 +investors page API calls"
 
 
 

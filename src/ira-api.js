@@ -49,6 +49,70 @@ module.exports = api;
 // =============== APIs ===============
 
 
+api.get('/api/getportfolio/:entid',  (req, res) => {
+
+    //call the async function
+    api_getPortfolio().catch(err => {
+          console.log("Get portfolio problem: "+err);
+          res.send({err});
+    })
+
+    async function api_getPortfolio() {
+
+
+           let results = await calc.totalupInvestorPortfolio(req.params.entid)
+           let portfolioDeals = results[0]
+           if (portfolioDeals.length >0 ) {
+
+                   res.send(JSON.stringify(results,null,4));
+
+          } else {
+              res.send([]);
+          }
+
+    } //async function getPortfolio
+}); //route - cc-s
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+api.get('/api/getinvestors/', (req, res) => {
+    console.log("IN API get investors problem: ");
+
+          api_getInvestors().catch(err => {
+                console.log("API get investors problem: "+err);
+                res.send({err});
+          })
+
+      async function api_getInvestors() {
+
+                  var entList = await iraSQL.getEntitiesByTypes([2,4]);
+                  if (entList.length <1) {
+                              var entList = [{
+                                id:0,
+                                name: "Not found"
+                              }]
+
+                  }
+
+                  res.send(JSON.stringify(entList,null,4));
+
+    }; //async function
+}); //route
+
+
+
+
 
 api.get('/api/getentitiesbytypes/',  (req, res) => {
 
