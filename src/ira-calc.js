@@ -25,6 +25,7 @@ module.exports = {
 
 
 
+
 async function getCapCallDetails(capCallId) {
 
             let foundCapCall = await iraSQL.getCapitalCallById(capCallId);
@@ -276,8 +277,9 @@ async function getInvestorEquityValueInDeal(investor_id, entity_id) {
 
 
 //FOR OWNERSHIP - get own rows for entity, mith multiples for each wire
+
 function totalupInvestors (investors) {
-      console.log("\nTUI Found "+investors.length+" transaction rows")
+      console.log("\nTUI Found "+investors.length+" transaction rows, ad the whole thing is"+JSON.stringify(investors,null,4))
       let expandInvestors = []
       let totalCapital = 0;
       let totalCapitalPct =0.0000;
@@ -305,6 +307,10 @@ function totalupInvestors (investors) {
                     } //if
                     if (alreadyExists) break;
             }  //for loop checking existing own rows
+
+
+          //
+
 
             if (!alreadyExists) {  //not a duplicate -- not adding sequentially
                     let newOwnRow =  investors[index]
