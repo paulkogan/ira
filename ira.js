@@ -30,8 +30,8 @@ const secret = "cat"
 const winston = require('winston')
 const nodePort = 8081;
 
-<<<<<<< HEAD
-const iraVersion = "21.7  unified 1+3"
+
+const iraVersion = "21.8  3-red branch"
 
 
 
