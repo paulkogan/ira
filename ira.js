@@ -30,7 +30,7 @@ const secret = "cat"
 const winston = require('winston')
 const nodePort = 8082;
 
-const iraVersion = "21.6 + capcall API +API ownership transactions"
+const iraVersion = "21.6-1 + capcall API +API ownership transactions"
 
 
 
