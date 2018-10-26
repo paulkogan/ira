@@ -44,9 +44,115 @@ module.exports = api;
 // getalltransactions
 // transforentity
 // searchentities
+// getportfolio
 
 
 // =============== APIs ===============
+
+
+api.get('/api/getownership/:id',  (req, res) => {
+
+      api_getownership().catch(err => {
+            console.log("api_getownership problem: "+err);
+            res.send([]);
+      })
+
+      async function api_getownership() {
+              var investments = await iraSQL.getOwnershipForEntity(req.params.id)
+              let invTransactions = investments.slice();
+              //build deal details object
+              if (investments.length>0) {
+                                    let ownResults = calc.totalupInvestors(investments)
+                                    console.log("\n all the own Results "+ownResults)
+                                    let ownRows = ownResults[0];
+
+                                    //need to wait for all the async calls to be done
+                                    let ownRowswithTrans = await Promise.all(
+                                               ownRows.map( async (ownRow) =>  {
+                                                      ownRow.transactions = await iraSQL.getTransactionsForInvestorAndEntity(ownRow.investor_id, ownRow.investment_id,[1,3,5,6,7,8]);
+                                                      //console.log("\n here are the ownrow for "+ownRow.investor_name+"  "+JSON.stringify(ownRow,null,4));
+                                                      return ownRow
+                                              })
+                                    )
+                                    ownResults[0] = ownRowswithTrans;
+
+                                   res.send(JSON.stringify(ownResults,null,4));
+
+              } else { //no ownership data
+                                   res.send([{err:"No ownership information found"}]);
+              }  //if-else  - no ownership get name of entity
+
+      } //async function
+}); //route - api get woensrhip
+
+
+
+
+
+
+
+api.get('/api/getportfolio/:entid',  (req, res) => {
+
+    //call the async function
+    api_getPortfolio().catch(err => {
+          console.log("Get portfolio problem: "+err);
+          res.send({err});
+    })
+
+    async function api_getPortfolio() {
+
+
+           let results = await calc.totalupInvestorPortfolio(req.params.entid)
+           let portfolioDeals = results[0]
+           if (portfolioDeals.length >0 ) {
+
+                   res.send(JSON.stringify(results,null,4));
+
+          } else {
+              res.send([]);
+          }
+
+    } //async function getPortfolio
+}); //route - cc-s
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+api.get('/api/getinvestors/', (req, res) => {
+    console.log("IN API get investors problem: ");
+
+          api_getInvestors().catch(err => {
+                console.log("API get investors problem: "+err);
+                res.send({err});
+          })
+
+      async function api_getInvestors() {
+
+                  var entList = await iraSQL.getEntitiesByTypes([2,4]);
+                  if (entList.length <1) {
+                              var entList = [{
+                                id:0,
+                                name: "Not found"
+                              }]
+
+                  }
+
+                  res.send(JSON.stringify(entList,null,4));
+
+    }; //async function
+}); //route
+
+
 
 
 
@@ -92,13 +198,13 @@ api.get('/api/getentitiesbytypes/',  (req, res) => {
           //http://localhost:8081/api/getentitiesbytypes?params={%22types%22:[1,2,3]}
 
           let getParams = req.query.params
-          console.log("Here is GET ?params string:   "+getParams);
+          //console.log("Here is GET ?params string:   "+getParams);
           let tryArray = JSON.parse(getParams).types
-          console.log("Here is tryArray   "+tryArray);
-          console.log("Tryarray is of type  "+(typeof tryArray));
+          //console.log("Here is tryArray   "+tryArray);
+          //console.log("Tryarray is of type  "+(typeof tryArray));
           let typesArray = tryArray
           let entitiesToPick = await iraSQL.getEntitiesByTypes(typesArray);
-          entitiesToPick.forEach(item => item.name = item.name.substring(0,35));
+          entitiesToPick.forEach(item => item.name = item.name.substring(0,21));
           res.send(JSON.stringify(entitiesToPick, null,4));
       } //async function getcentitiesbytypes
 
@@ -184,10 +290,6 @@ api.get('/api/getccdetails/:ccid',  (req, res) => {
 
 
 
-
-
-
-
 api.get('/api/getcapitalcalls/:entid',  (req, res) => {
 
     //call the async function
@@ -197,10 +299,23 @@ api.get('/api/getcapitalcalls/:entid',  (req, res) => {
     })
 
     async function api_getcapitalcalls() {
-          let capitalCalls =  await iraSQL.getCapitalCallsForEntity(req.params.id);
-          res.send(JSON.stringify(capitalCalls,null,3));
+          let targetEnt = req.params.id ? req.params.id :0
+          console.log("TargetEnt "+targetEnt);
+          let capitalCalls =  await iraSQL.getCapitalCallsForEntity(targetEnt);
+          let capCallsName = capitalCalls.map(cc => {
+                    cc.name = cc.cc_name
+                    return cc
+          })
+
+          res.send(JSON.stringify(capCallsName,null,3));
       } //async function getdealfinancials
 }); //route - cc-s
+
+
+api.get('/api/getcapitalcalls', (req, res) => {
+          console.log("No ent for cap call ");
+          res.redirect("/api/getcapitalcalls/0");
+}); //route
 
 
 
@@ -220,30 +335,6 @@ api.get('/api/getdealfinancials/:id',  (req, res) => {
           res.send(JSON.stringify(expandDeal,null,3));
       } //async function getdealfinancials
 }); //route - deal details
-
-
-
-api.get('/api/getownership/:id',  (req, res) => {
-
-      api_getownership().catch(err => {
-            console.log("api_getownership problem: "+err);
-            res.send([]);
-      })
-
-      async function api_getownership() {
-              var investors = await iraSQL.getOwnershipForEntity(req.params.id)
-              //build deal details object
-              if (investors.length>0) {
-                                    let ownResults = JSON.stringify(calc.totalupInvestors(investors),null, 4)
-                                    console.log("\n API rendering ownership "+ownResults)
-                                    res.send(ownResults);
-
-              } else { //no ownership data
-                                   res.send([{err:"No ownership information found"}]);
-              }  //if-else  - no ownership get name of entity
-
-      } //async function
-}); //route - api get woensrhip
 
 
 

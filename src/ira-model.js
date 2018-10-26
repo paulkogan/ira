@@ -188,6 +188,26 @@ function getCapitalCallsForEntity(dealEntityID) {
 } // function
 
 
+//owneship: parent_entity_id, child_entity_id, capital_pct
+function getOwnTransByTransID (transaction_id) {
+  let queryString = 'SELECT * from own_trans_lookup WHERE trans_id='+transaction_id;
+  //console.log ("in getOwnTransByTransID, the query string is "+queryString+"\n\n")
+
+      return new Promise(   function(succeed, fail) {
+            connection.query(queryString,
+              function(err, results) {
+                      if (err) {
+                            fail(err)
+                      } else {
+                          //console.log ("in Moooodel, got own-trans records "+JSON.stringify(results)+"")
+                          succeed(results[0])
+                      }
+              }); //connection
+          }); //promise
+
+
+} // function
+
 
 
 //without Bcrypt for now
@@ -242,26 +262,6 @@ function authUser (email, password, done) {
 
 
 
-//owneship: parent_entity_id, child_entity_id, capital_pct
-function getOwnTransByTransID (transaction_id) {
-  let queryString = 'SELECT * from own_trans_lookup WHERE trans_id='+transaction_id;
-  //console.log ("in getOwnTransByTransID, the query string is "+queryString+"\n\n")
-
-      return new Promise(   function(succeed, fail) {
-            connection.query(queryString,
-              function(err, results) {
-                      if (err) {
-                            fail(err)
-                      } else {
-                          //console.log ("in Moooodel, got own-trans records "+JSON.stringify(results)+"")
-                          succeed(results[0])
-                      }
-              }); //connection
-          }); //promise
-
-
-} // function
-
 
 
 function updateUser (updateuser) {
@@ -306,7 +306,7 @@ function findUser (email, cb) {
 
 
 
-
+//========================= Auth =====================
 
 
 

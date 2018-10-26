@@ -39,6 +39,11 @@ module.exports = router;
 //==========  ROUTES ===========================
 
 
+
+
+
+
+
 router.get('/dealdetails/:id',  checkAuthentication, (req, res) => {
 
 
@@ -464,6 +469,8 @@ router.get('/ownership/:id', checkAuthentication, (req, res) => {
        async function showOwnershipInfo() {
              let foundEntity = await iraSQL.getEntityById(req.params.id);
              //console.log("in OWN, have Entity   "+ JSON.stringify(foundEntity));
+
+             //show ownership if its set, or send them to setownership to set it up
              if (foundEntity.ownership_status === 1) {
                             let investors = await iraSQL.getOwnershipForEntity(foundEntity.id);
                             console.log("show-Ownership rows with DATE JOIN are: "+JSON.stringify(investors,null,4))
@@ -494,6 +501,56 @@ router.get('/ownership/:id', checkAuthentication, (req, res) => {
 
 
 
+
+
+//does deal details reuse ownersghip?
+  router.get('/dealdetails/:id', checkAuthentication, (req, res) => {
+
+      if (req.session && req.session.passport) {
+                   userObj = req.session.passport.user;
+      }
+
+      //call the async function
+      pullDealComponents().catch(err => {
+            console.log("Deal Components problem: "+err);
+      })
+
+      async function pullDealComponents() {
+            var entity = await iraSQL.getEntityById(req.params.id);
+            console.log("have Entity   "+ JSON.stringify(entity));
+            var deals = await iraSQL.getDealById(entity.deal_id);
+            console.log("Before Ownership, have Entity   "+ entity.name+"   and Deal is  "+JSON.stringify(deals));
+            var investors = await iraSQL.getOwnershipForEntity(entity.id)
+            if (investors.length>0) {
+                                  //do one call to get results, instead of multiple calls
+                                  let results = calc.totalupInvestors(investors)
+                                  let expandInvestors = results[0]
+                                  let totalCapital =  results[1]
+                                  let totalCapitalPct = results[2]
+                                  //get Deal Financials
+                                  let expandDeal = calc.calculateDeal(deals[0])
+                                  console.log("\nrendering ownership and Deal is "+JSON.stringify(deals))
+                                  res.render('deal-details', {
+                                          userObj: userObj,
+                                          message:  "Showing "+expandInvestors.length+" investors",
+                                          dealName: expandDeal.name,
+                                          investors: expandInvestors,
+                                          totalCapital: totalCapital,
+                                          totalCapitalPct: totalCapitalPct,
+                                          deal:expandDeal
+                                  });
+
+              } else { //no ownership data
+                                  let expandDeal = calc.calculateDeal(deals[0])
+                                  res.render('deal-details', {
+                                        userObj: userObj,
+                                        message:  "No ownership information found ",
+                                        dealName: expandDeal.name,
+                                        deal:expandDeal
+                                  }); //  render
+              }  //if-else  - no ownership get name of entity
+        } //async function pullDealComponents
+  }); //route - deal details
 
 
 
