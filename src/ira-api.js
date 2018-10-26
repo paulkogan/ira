@@ -44,6 +44,7 @@ module.exports = api;
 // getalltransactions
 // transforentity
 // searchentities
+// getportfolio
 
 
 // =============== APIs ===============
@@ -173,7 +174,7 @@ api.get('/api/getentitiesbytypes/',  (req, res) => {
           //console.log("Tryarray is of type  "+(typeof tryArray));
           let typesArray = tryArray
           let entitiesToPick = await iraSQL.getEntitiesByTypes(typesArray);
-          entitiesToPick.forEach(item => item.name = item.name.substring(0,35));
+          entitiesToPick.forEach(item => item.name = item.name.substring(0,21));
           res.send(JSON.stringify(entitiesToPick, null,4));
       } //async function getcentitiesbytypes
 
@@ -259,10 +260,6 @@ api.get('/api/getccdetails/:ccid',  (req, res) => {
 
 
 
-
-
-
-
 api.get('/api/getcapitalcalls/:entid',  (req, res) => {
 
     //call the async function
@@ -272,10 +269,23 @@ api.get('/api/getcapitalcalls/:entid',  (req, res) => {
     })
 
     async function api_getcapitalcalls() {
-          let capitalCalls =  await iraSQL.getCapitalCallsForEntity(req.params.id);
-          res.send(JSON.stringify(capitalCalls,null,3));
+          let targetEnt = req.params.id ? req.params.id :0
+          console.log("TargetEnt "+targetEnt);
+          let capitalCalls =  await iraSQL.getCapitalCallsForEntity(targetEnt);
+          let capCallsName = capitalCalls.map(cc => {
+                    cc.name = cc.cc_name
+                    return cc
+          })
+
+          res.send(JSON.stringify(capCallsName,null,3));
       } //async function getdealfinancials
 }); //route - cc-s
+
+
+api.get('/api/getcapitalcalls', (req, res) => {
+          console.log("No ent for cap call ");
+          res.redirect("/api/getcapitalcalls/0");
+}); //route
 
 
 

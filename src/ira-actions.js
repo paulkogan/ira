@@ -354,31 +354,26 @@ actions.get('/add-transaction', checkAuthentication, (req, res) => {
 // insert the new transaction
 actions.post('/process_add_transaction', urlencodedParser, (req, res,next) => {
 
-  try {
-    let transaction = req.body
-    console.log("\nRaw from the Form, got this "+JSON.stringify(transaction)+"\n");
-    transaction.amount = calc.parseFormAmountInput(transaction.amount)
-    transaction.own_adj = parseFloat(transaction.own_adj)
-    if ((transaction.trans_type==3 || transaction.trans_type==6) && transaction.amount>0) transaction.amount*=-1
-    console.log("\nAbout to insert new transaction with "+JSON.stringify(transaction)+"\n");
 
-              iraSQL.insertTransaction(transaction).then (
-              function (savedData) {
-                          //console.log( "Added entity #: "+savedData.insertId);
-                          req.flash('login', "Added transaction no. "+savedData.insertId);
-                          console.log("\nAdded transaction no. "+savedData.insertId);
-                          ira.iraLogger.log('info', '/add-transaction : '+savedData.insertId+" U:"+userObj.email);
+  processAddTransaction().catch(err => {
+        console.log("Process Add Transaction problem: "+err);
+  })
 
-                          res.redirect('/transactions');
-                        }, function(error) {   //failed
-                             console.log("Process_add_transaction problem: "+error);
-                             return;
-                        }
-             );
+  async function processAddTransaction() {
+          let transaction = req.body
+          console.log("\nProcess_Add_Trans - Raw from the Form, got this "+JSON.stringify(transaction)+"\n");
+          transaction.amount = calc.parseFormAmountInput(transaction.amount)
+          transaction.own_adj = parseFloat(transaction.own_adj)
+          if ((transaction.trans_type==3 || transaction.trans_type==6) && transaction.amount>0) transaction.amount*=-1
+          console.log("\nAbout to insert new transaction with "+JSON.stringify(transaction)+"\n");
 
-  } catch(err) {
-        console.log("Get New Trans Form problem: "+err);
-  }
+          let insertResults = await iraSQL.insertTransaction(transaction);
+          console.log( "Added Trans #: "+insertResults.insertId);
+          req.flash('login', "Added Trans. no. "+insertResults.insertId+"  ");
+          res.redirect('/transactions/');
+
+
+    } //async function
 
 }); //route
 
@@ -929,11 +924,11 @@ actions.post('/process_update_entity', urlencodedParser, (req, res) => {
 function checkAuthentication(req,res,next){
 
   try {
-          if (userObj.id == 0) {
-               req.session.return_to = "/";
-          } else {
-               req.session.return_to = req.url;
-          }
+          // if (userObj.id == 0) {
+          //      req.session.return_to = "/";
+          // } else {
+          //      req.session.return_to = req.url;
+          // }
 
           if(req.isAuthenticated()){
                  console.log("YES, authenticated"+req.url)
@@ -944,6 +939,7 @@ function checkAuthentication(req,res,next){
           } else {
               console.log("NO, not authenticated"+req.url)
               //req.flash('login', 'checkAuth failed, need to login')
+              req.session.return_to = req.url;
               res.redirect("/login");
           }
 

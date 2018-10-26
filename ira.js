@@ -28,9 +28,9 @@ const session = require('express-session')
 const RedisStore = require('connect-redis')(session)
 const secret = "cat"
 const winston = require('winston')
-const nodePort = 8081;
+const nodePort = 8082;
 
-const iraVersion = "21.5 +API ownership transactions"
+const iraVersion = "21.6 + capcall API +API ownership transactions"
 
 
 

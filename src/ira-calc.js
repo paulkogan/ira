@@ -452,7 +452,7 @@ function totalupInvestors (investors) {
 
 
     function parseFormAmountInput (fieldInput) {
-        return fieldInput.replace(/(,|\$|\%)/g,"")
+        return fieldInput.toString().replace(/(,|\$|\%)/g,"")
     }
 
 
