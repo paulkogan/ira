@@ -156,6 +156,36 @@ api.get('/api/getinvestors/', (req, res) => {
 
 
 
+api.get('/api/getinvestors/', (req, res) => {
+    console.log("IN API get investors problem: ");
+
+          api_getInvestors().catch(err => {
+                console.log("API get investors problem: "+err);
+                res.send({err});
+          })
+
+      async function api_getInvestors() {
+
+                  var entList = await iraSQL.getEntitiesByTypes([2,4]);
+                  if (invList.length <1) {
+                              var entList = [{
+                                id:0,
+                                name: "Not found"
+                              }]
+
+                  }
+
+                  res.send(JSON.stringify(entList,null,3));
+
+    }; //async function
+}); //route
+
+
+
+
+
+
+//const fetchURL_investors = apiHost+"/api/getentitiesbytypes?params={%22types%22:[2,4]}"
 api.get('/api/getentitiesbytypes/',  (req, res) => {
 
     //call the async function
@@ -184,10 +214,9 @@ api.get('/api/getentitiesbytypes/',  (req, res) => {
 
 
 
-
-
-
    api.get('/api/gettransactiontypes',  (req, res) => {
+
+         console.log("IN API get TT ");
        //call the async function
        api_gettransactiontypes().catch(err => {
              console.log("Get transaction types problem: "+err);
@@ -198,6 +227,7 @@ api.get('/api/getentitiesbytypes/',  (req, res) => {
              let transactionTypesToPick =  await iraSQL.getTransactionTypes();
              //remove Capital Call for now
              //transactionTypesToPick.splice(6,1)
+             console.log("IN API get TT ");
              res.send(JSON.stringify(transactionTypesToPick, null,4));
          } //async function getdealfinancials
    }); //route - cc-details
