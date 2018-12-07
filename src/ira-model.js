@@ -93,9 +93,13 @@ module.exports = {
   clearOwnershipForEntity,
   deleteTransaction,
   findUser,
+  getUserDetails,
   updateUser,
   authUser
 };
+
+
+
 
 
 function getEntitiesByTypes(wantedTypes) {
@@ -267,6 +271,8 @@ function authUser (email, password, done) {
 function updateUser (updateuser) {
     console.log("\n\nHere at update: email:"+ updateuser.email +" PW:"+updateuser.password+" ID:"+updateuser.id)
 
+let queryString = 'SELECT * from own_trans_lookup WHERE trans_id='+transaction_id;
+
     return new Promise(   function(succeed, fail) {
           connection.query(
           'UPDATE users SET email = ?, photo =?, password=? WHERE id=?',
@@ -282,6 +288,24 @@ function updateUser (updateuser) {
       }); //promise
   } //updateuser
 
+
+function getUserDetails (id) {
+
+    //let queryString = 'SELECT id, firstname, lastname, photo from users WHERE email='+targetemail;
+    let queryString = 'SELECT id, email, firstname, lastname, photo from users WHERE id='+id;
+   //let queryString = 'SELECT id, firstname, lastname, photo from users WHERE email = ?', targetemail;
+    return new Promise(   function(succeed, fail) {
+          connection.query(queryString,
+            function(err, results) {
+                    if (err) {
+                          fail(err)
+                    } else {
+                        console.log ("in Moooodel, got user info "+JSON.stringify(results)+"")
+                        succeed(results[0])
+                    }
+            }); //connection
+        }); //promise
+} //findUser
 
 
 

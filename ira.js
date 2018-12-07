@@ -30,7 +30,7 @@ const secret = "cat"
 const winston = require('winston')
 const nodePort = 8081;
 
-const iraVersion = "21.8 master 3-blue"
+const iraVersion = "22.0 +user API"
 
 
 

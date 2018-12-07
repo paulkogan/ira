@@ -50,6 +50,22 @@ module.exports = api;
 // =============== APIs ===============
 
 
+api.get('/api/getuserdetails/:uid',  (req, res) => {
+
+    //call the async function
+    api_getuserdetails().catch(err => {
+          console.log("Get user details problem: "+err);
+          res.send({err});
+    })
+
+    async function api_getuserdetails() {
+          let userDetails =  await iraSQL.getUserDetails(req.params.uid);
+          res.send(JSON.stringify(userDetails ,null,4));
+      } //async function getdealfinancials
+}); //route - cc-details
+
+
+
 api.get('/api/getownership/:id',  (req, res) => {
 
       api_getownership().catch(err => {
@@ -114,12 +130,6 @@ api.get('/api/getportfolio/:entid',  (req, res) => {
 
     } //async function getPortfolio
 }); //route - cc-s
-
-
-
-
-
-
 
 
 
