@@ -1,4 +1,4 @@
-# ira
+# IRA - Investor Reporting Application
 IRA is a system for tracking and repprting investor participation in Real Estate deals
 
 BUSINESS PURPOSE
