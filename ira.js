@@ -30,9 +30,7 @@ const secret = "cat"
 const winston = require('winston')
 const nodePort = 8081;
 
-const iraVersion = "22.0 +user API"
-
-
+const iraVersion = "22.5 +switching to IRA3 DB"
 
 
 let iraLogger = winston.createLogger({
