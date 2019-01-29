@@ -19,8 +19,8 @@ const urlencodedParser = bodyParser.urlencoded({ extended: false })
 const flash             = require('connect-flash-plus');
 
 //const crypto            = require('crypto');
-//const bcrypt = require('bcrypt');
 
+const bcrypt = require('bcrypt');
 const passport          = require('passport');
 const LocalStrategy     = require('passport-local').Strategy;
 const cookieParser = require('cookie-parser')
@@ -30,7 +30,7 @@ const secret = "cat"
 const winston = require('winston')
 const nodePort = 8081;
 
-const iraVersion = "22.5 +switching to IRA3 DB"
+const iraVersion = "23.0 +bcrypt passwords"
 
 
 let iraLogger = winston.createLogger({
@@ -160,12 +160,12 @@ app.post('/process_user_update', urlencodedParser, (req, res) => {
 
     async function updateUserInfo()  {
              const data = req.body
-             console.log("Just got form: "+JSON.stringify(data)+"<br>")
+             //console.log("Just got form from User: "+JSON.stringify(data))
              //check if they entered the right old password
              //function authUser (email, password, done) {
              //pModel.authUser (username, password, (err, autheduser) => {
 
-              console.log("Session-Info-passport"+JSON.stringify(req.session.passport,null,4))
+              //console.log("Session-Info-passport"+JSON.stringify(req.session.passport,null,4))
 
              var updatedUser =
              {
@@ -177,46 +177,43 @@ app.post('/process_user_update', urlencodedParser, (req, res) => {
                "password": data.newpass
              }
 
-             if (data.newpass === "") {
-                 updatedUser.password = userObj.password;
-            }
+            //  if (data.newpass === "") {
+            //      updatedUser.password = userObj.password;
+            // }
 
-             console.log("\nHere is the New User v5 "+JSON.stringify(updatedUser,null,5))
+            //hash the NEW password
+             bcrypt.genSalt(12, function(err, salt) {
+                    if (err) return err;
+                    bcrypt.hash(data.newpass, salt, async function(err, hash) {
+                           if (err) {
+                             console.log("Auth error: "+err)
+                             return err;
+                           }
 
-              let results = await iraSQL.updateUser (updatedUser);
-              req.flash('login', "Updated USER "+updatedUser.lastname+".  ")
-              console.log("Updated  "+updatedUser.lastname+" with " +JSON.stringify(results));
-              res.redirect('/home');
+                           if (data.newpass === "") {
+                               updatedUser.password = userObj.password;
+                           } else {
+                                updatedUser.password = hash
+                           }
+                           console.log("\n\nHere is the New User in hash "+JSON.stringify(updatedUser))
+                           //updateuser
+
+                           let results = await iraSQL.updateUser (updatedUser);
+                           req.flash('login', "Updated USER "+updatedUser.lastname+".  ")
+                           console.log("Updated  "+updatedUser.lastname);
+                           res.redirect('/home');
+
+                  }); //hash
+
+          }); //getSalt
 
 
 
           } //async function
     }); // Route
 
-          //    //hash the NEW password - changing password
-          //     bcrypt.genSalt(10, function(err, salt) {
-          //            if (err) return err;
-          //            bcrypt.hash(data.newpass, salt, function(err, hash) {
-          //                   console.log("hashing "+err)
-          //                   if (err) return err;
-          //                   if (data.newpass === "") {
-          //                       updatedUser.password = userObj.password;
-          //                   } else {
-          //                        updatedUser.password = hash
-          //                   }
-          //                   console.log("\n\nHere is the New User v5 "+JSON.stringify(updatedUser))
-          //                   pModel.updateUser (updatedUser, (err, status) => {
-          //                          //err comes back but not results
-          //                          if (err) {
-          //                            console.log("\n\nModel Update problem "+JSON.stringify(err));
-          //                          } else {
-          //                          req.flash('login', "Updated USER "+updatedUser.lastname+".  ")
-          //                          console.log("Updated  "+updatedUser.lastname+" with " +JSON.stringify(status));
-          //                          res.redirect('/home');
-          //                          }
-          //                  });//updateuser
-          //          }); //hash
-          //  }); //getSalt
+
+
 
 
 

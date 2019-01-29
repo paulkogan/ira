@@ -7,7 +7,7 @@ const deployConfig = require('./ira-config');
 const passport  = require('passport');
 const winston = require('winston')
 const iraApp =  require('../ira');
-//const bcrypt = require('bcrypt');
+const bcrypt = require('bcrypt');
 
 //CHANGE ENV HERE
 const env = 'ebawsira-dev'
@@ -97,6 +97,67 @@ module.exports = {
   updateUser,
   authUser
 };
+
+
+
+
+
+//without Bcrypt for now
+function authUser (email, password, done) {
+  connection.query(
+    'SELECT * FROM users WHERE email = ?', email,  (err, results) => {
+      if (!err && !results.length) {
+              done("Not found "+ email+" got "+err, null);
+              return;
+      }
+
+      if (err) {
+        done("Search error" +err, null);
+        return;
+      }
+
+     let checkPlainPW = (password === results[0].password)
+     console.log("\nPlainCheck is "+checkPlainPW)
+     //now try encrypted
+     //res is result of comparing encrypted apsswords
+     bcrypt.compare(password, results[0].password, function(err, res) {
+                   if (err) {
+                     console.log("bcrypt - auth error of some kind" +err)
+                     done("PW auth error" +err, null);
+                     return;
+                   }
+                   console.log("\nbcrypt res is "+res)
+
+                  if (!(checkPlainPW) && !(res) ) {
+                      console.log("\nbad pw "+password+", res is: "+res+"   checkPlainPW is: "+checkPlainPW)
+                      done("bad password", null)
+                      return
+                  }
+                console.log(results[0].firstname+" has authed in authuser");
+                done(null, results[0]);
+    }); //bcrypt
+
+     /*
+      if (checkPlainPW) {
+        console.log(results[0].firstname+" has authed plain ");
+        done(null, results[0]);
+      } else {
+          console.log("\nbad pw "+password+",  plain checkPlainPW is: "+checkPlainPW)
+          //iraApp.logger.log('info', '/login failure U:'+email);
+          done("bad password", null)
+
+      } //if plain
+    */
+
+
+  } //cb function
+ ) //connection querty
+} //authuser
+
+
+
+
+
 
 
 
@@ -214,64 +275,12 @@ function getOwnTransByTransID (transaction_id) {
 
 
 
-//without Bcrypt for now
-function authUser (email, password, done) {
-  connection.query(
-    'SELECT * FROM users WHERE email = ?', email,  (err, results) => {
-      if (!err && !results.length) {
-              done("Not found "+ email+" got "+err, null);
-              return;
-      }
-
-      if (err) {
-        done("Search error" +err, null);
-        return;
-      }
-
-     let checkPlainPW = (password === results[0].password)
-     //res is result of comparing encrypted apsswords
-      if (checkPlainPW) {
-        console.log(results[0].firstname+" has authed in model - authuser");
-        done(null, results[0]);
-
-      } else {
-          console.log("\nbad pw "+password+",  checkPlainPW is: "+checkPlainPW)
-          iraApp.logger.log('info', '/login failure U:'+email);
-          done("bad password", null)
-
-      }
-
-
-
-  } //cb function
- ) //connection querty
-} //authuser
-
-
-
-//  bcrypt.compare(password, results[0].password, function(err, res) {
-//                if (err) {
-//                  console.log("PW auth error" +err)
-//                  done("PW auth error" +err, null);
-//                  return;
-//                }
-//               if (!(checkPlainPW) && !(res) ) {
-//                   console.log("\nbad pw "+password+", res is: "+res+"   checkPlainPW is: "+checkPlainPW)
-//                   done("bad password", null)
-//                   return
-//               }
-//             console.log(results[0].firstname+" has authed in authuser");
-//             done(null, results[0]);
-// }); //bcrypt
-
-
 
 
 
 function updateUser (updateuser) {
     console.log("\n\nHere at update: email:"+ updateuser.email +" PW:"+updateuser.password+" ID:"+updateuser.id)
 
-let queryString = 'SELECT * from own_trans_lookup WHERE trans_id='+transaction_id;
 
     return new Promise(   function(succeed, fail) {
           connection.query(

@@ -1,0 +1,35 @@
+{
+    "taskRoleArn": "ECS-task-full-access-IRA",
+    "containerDefinitions": [
+        {
+            "memory": 128,
+            "essential": true,
+            "name": "amazonlinux",
+            "image": "amazonlinux",
+            "entryPoint": [
+                "/bin/bash",
+                "-c"
+            ],
+            "command": [
+                "yum install -y aws-cli; aws ecs list-tasks --region us-east-2"
+            ],
+            "logConfiguration": {
+                "logDriver": "awslogs",
+                "options": {
+                    "awslogs-group": "ecs-tasks",
+                    "awslogs-region": "us-east-2",
+                    "awslogs-stream-prefix": "iam-role-test"
+                }
+            }
+        }
+    ],
+    "family": "iam-role-test",
+    "requiresCompatibilities": [
+        "EC2"
+    ],
+    "volumes": [],
+    "placementConstraints": [],
+    "networkMode": null,
+    "memory": null,
+    "cpu": null
+}

@@ -17,8 +17,7 @@
   "author": "Paul Kogan",
   "license": "ISC",
   "dependencies": {
-    "bcrypt": "^2.0.1",
-    "bcrypt-nodejs": "0.0.3",
+    "bcrypt": "^3.0.3",
     "body-parser": "^1.18.2",
     "connect-flash": "^0.1.1",
     "connect-flash-plus": "^0.2.1",
