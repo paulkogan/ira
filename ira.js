@@ -20,7 +20,7 @@ const flash             = require('connect-flash-plus');
 
 //const crypto            = require('crypto');
 
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcrypt-nodejs');
 const passport          = require('passport');
 const LocalStrategy     = require('passport-local').Strategy;
 const cookieParser = require('cookie-parser')
@@ -30,7 +30,7 @@ const secret = "cat"
 const winston = require('winston')
 const nodePort = 8081;
 
-const iraVersion = "23.0 +bcrypt passwords"
+const iraVersion = "23.3 +bcrypt-nodejs"
 
 
 let iraLogger = winston.createLogger({
@@ -160,7 +160,7 @@ app.post('/process_user_update', urlencodedParser, (req, res) => {
 
     async function updateUserInfo()  {
              const data = req.body
-             //console.log("Just got form from User: "+JSON.stringify(data))
+             console.log("Just got form from User: "+JSON.stringify(data))
              //check if they entered the right old password
              //function authUser (email, password, done) {
              //pModel.authUser (username, password, (err, autheduser) => {
@@ -183,10 +183,14 @@ app.post('/process_user_update', urlencodedParser, (req, res) => {
 
             //hash the NEW password
              bcrypt.genSalt(12, function(err, salt) {
-                    if (err) return err;
-                    bcrypt.hash(data.newpass, salt, async function(err, hash) {
+                    if (err) {
+                          console.log("SaLT error: "+err)
+                          return err;
+                    }
+                    console.log("Got SaLT")
+                    bcrypt.hash(data.newpass, salt, null, async function(err, hash) {
                            if (err) {
-                             console.log("Auth error: "+err)
+                             console.log("Hash error: "+err)
                              return err;
                            }
 

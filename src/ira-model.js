@@ -7,7 +7,7 @@ const deployConfig = require('./ira-config');
 const passport  = require('passport');
 const winston = require('winston')
 const iraApp =  require('../ira');
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcrypt-nodejs');
 
 //CHANGE ENV HERE
 const env = 'ebawsira-dev'
@@ -118,25 +118,30 @@ function authUser (email, password, done) {
 
      let checkPlainPW = (password === results[0].password)
      console.log("\nPlainCheck is "+checkPlainPW)
-     //now try encrypted
-     //res is result of comparing encrypted apsswords
-     bcrypt.compare(password, results[0].password, function(err, res) {
-                   if (err) {
-                     console.log("bcrypt - auth error of some kind" +err)
-                     done("PW auth error" +err, null);
-                     return;
-                   }
-                   console.log("\nbcrypt res is "+res)
 
-                  if (!(checkPlainPW) && !(res) ) {
-                      console.log("\nbad pw "+password+", res is: "+res+"   checkPlainPW is: "+checkPlainPW)
-                      done("bad password", null)
-                      return
-                  }
-                console.log(results[0].firstname+" has authed in authuser");
-                done(null, results[0]);
-    }); //bcrypt
+     if (checkPlainPW) {
+           console.log(results[0].firstname+" has authed PLAIN in authuser");
+           done(null, results[0]);
+     }  else {
+           //now try encrypted
+           //res is result of comparing encrypted apsswords
+           bcrypt.compare(password, results[0].password, function(err, res) {
+                         if (err) {
+                           console.log("bcrypt - auth error of some kind" +err)
+                           done("PW auth error" +err, null);
+                           return;
+                         }
+                         console.log("\nbcrypt res is "+res)
 
+                        if (!res) {
+                            console.log("\nbad pw "+password+", res is: "+res+"   checkPlainPW is: "+checkPlainPW)
+                            done("bad password", null)
+                            return
+                        }
+                      console.log(results[0].firstname+" has authed  BCRYPT in authuser");
+                      done(null, results[0]);
+          }); //bcrypt
+     }
      /*
       if (checkPlainPW) {
         console.log(results[0].firstname+" has authed plain ");
